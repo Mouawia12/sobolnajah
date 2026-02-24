@@ -1,0 +1,28 @@
+<?php
+
+return [
+
+    'accueil' => 'Home',
+    'langue' => 'Language',
+    'ecoles' => 'Schools',
+    'Listecoles' => 'School List',
+    'addecoles' => 'Add School',
+    'classe' => 'School Levels',
+    'Listclasses' => 'Level List',
+    'addclasse' => 'Add Level',
+    "addclasseroom" => 'Add Classroom',
+    'classerooms' => 'Classrooms',
+    'Listclasserooms' => 'Classroom List',
+    'agenda' => 'Agenda List',
+    'publication' => 'Publication List',
+    'grades' => 'Grades List',
+    'sections' => 'Sections List',
+    'addsection' => 'Add Section',
+    'logout' => 'Logout',
+    'studentlist' => 'Student List',
+    'addstudent' => 'Add Student',
+    'promotion' => 'Student Promotion',
+    'graduated' => 'Graduated Students',
+    'Absences'=>'Absences List',
+
+];

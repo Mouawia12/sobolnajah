@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'studentlist' => 'Students List',
+    'addstudent' => 'Add Student',
+    'addGraduated' => 'Add New Graduation',
+    'Undoall' => 'Undo All',
+    'name' => 'Name',
+    'adresse' => 'Address',
+    'informationstudent' => 'Personal Information',
+    'schoolcertificaterequest' => 'School Certificate Request',
+    'changePassword' => 'Change Password',
+    'message' => 'Message',
+    'library' => 'Library',
+    'password' => 'Password',
+    'newpassword' => 'New Password',
+    'confirmnewpassword' => 'Confirm New Password',
+    'schoolyear' => 'Enter School Year',
+    'studentspromotion' => 'Students Promotion',
+    'oldschoolstage' => 'Old School Stage',
+    'newschoolstage' => 'New School Stage',
+    'chapter1' => 'First Term I',
+    'chapter2' => 'Second Term II',
+    'chapter3' => 'Third Term III',
+];
