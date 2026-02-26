@@ -9,22 +9,41 @@
 @section('contenta')
 <div class="row">
     <div class="col-12">
- 
-       @if ($errors->any())
-       @foreach ($errors->all() as $error)
-          <div class="alert alert-danger col-md-6">     
-                <p>{{ $error }}</p>
-          </div>
-       @endforeach
-       @endif
        <div class="box">
         <div class="box-header with-border">
             <h3 class="box-title"><a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">{{ trans('teacher.addteacher') }}</a></h3>
         </div>
          <!-- /.box-header -->
          <div class="box-body">
+            <form method="GET" class="row mb-3">
+              <div class="col-md-4">
+                <input type="text" name="q" class="form-control" value="{{ request('q') }}"
+                  placeholder="بحث: الاسم / البريد">
+              </div>
+              <div class="col-md-3">
+                <select name="specialization_id" class="form-select">
+                  <option value="">كل التخصصات</option>
+                  @foreach ($Specializations as $sp)
+                    <option value="{{ $sp->id }}" @selected((string) request('specialization_id') === (string) $sp->id)>
+                      {{ $sp->name }}
+                    </option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="col-md-3">
+                <select name="gender" class="form-select">
+                  <option value="">كل الجنس</option>
+                  <option value="1" @selected(request('gender') === '1')>{{ trans('inscription.male') }}</option>
+                  <option value="0" @selected(request('gender') === '0')>{{ trans('inscription.female') }}</option>
+                </select>
+              </div>
+              <div class="col-md-2 d-flex gap-1">
+                <button class="btn btn-primary" type="submit">تصفية</button>
+                <a href="{{ route('Teachers.index') }}" class="btn btn-outline-secondary">إعادة</a>
+              </div>
+            </form>
             <div class="table-responsive">
-              <table id="example5" class="table table-bordered text-center"  style="width:100%">
+              <table class="table table-bordered text-center"  style="width:100%">
                <thead>
                   <tr>
                      <th></th>          
@@ -40,20 +59,18 @@
                </thead>
                <tbody>
  
-                <?php $i = 0; ?>
-                @foreach ($Teacher as $ins)
-                <?php $i++; ?>
+                @foreach ($Teacher as $index => $ins)
                   <tr>
                     
-                     <td>{{ $i }}</td> 
+                     <td>{{ $Teacher->firstItem() + $index }}</td> 
                      <td  class="col-md-2">
                         <a href="#" class="text-dark fw-600 hover-primary fs-16">{{ $ins->name }}</a>
-                        <span class="text-fade d-block">{{ $ins->user->email }}</span>
+                        <span class="text-fade d-block">{{ optional($ins->user)->email }}</span>
                     </td> 
     
                 
  
-                     <td>{{ $ins->specialization->name }}</td>         
+                     <td>{{ optional($ins->specialization)->name }}</td>         
                      <td class="col-md-2">
                         @if ( $ins->gender == 1 )              
                          {{ trans('inscription.male') }}
@@ -208,6 +225,9 @@
              </tfoot>
             </table>
             </div>
+            <div class="mt-3">
+              {{ $Teacher->links() }}
+            </div>
          </div>
          <!-- /.box-body -->
         </div>
@@ -303,8 +323,4 @@
 
 
 @section('jsa')
-    
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-
-@include('layoutsadmin.datatabels')
 @endsection

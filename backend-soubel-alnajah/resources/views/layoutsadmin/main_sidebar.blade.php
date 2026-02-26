@@ -5,6 +5,27 @@
 		  <div class="multinav-scroll" style="height: 100%;">	
 			  <!-- sidebar menu-->
 			  <ul class="sidebar-menu" data-widget="tree">	
+				@php
+					$isAccountantOnly = auth()->check()
+						&& auth()->user()->hasRole('accountant')
+						&& !auth()->user()->hasRole('admin');
+				@endphp
+				@if($isAccountantOnly)
+				<li class="header">المالية</li>
+				<li class="treeview">
+					<a href="#">
+						<i class="mdi mdi-cash-multiple me-15"><span class="path1"></span><span class="path2"></span></i>
+						<span>الإدارة المالية</span>
+						<span class="pull-right-container">
+							<i class="fa fa-angle-right pull-right"></i>
+						</span>
+					</a>
+					<ul class="treeview-menu">
+						<li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>العقود المالية</a></li>
+						<li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>الدفعات والوصولات</a></li>
+					</ul>
+				</li>
+				@else
 				<li class="header">{{ trans('main_sidebar.ecoles') }}</li>
 				<li class="treeview">
 					<a href="#">
@@ -105,6 +126,12 @@
 					<li><a href="{{route('Promotions.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.promotion') }}</a></li>	
 					<li><a href="{{route('graduated.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.graduated') }}</a></li>	
 					<li><a href="{{route('Absences.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.Absences') }}</a></li>	
+					<li><a href="{{route('JobPosts.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>إعلانات التوظيف</a></li>
+					<li><a href="{{route('recruitment.applications.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>طلبات التوظيف</a></li>
+					@if(auth()->check() && (auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant')))
+						<li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>العقود المالية</a></li>
+						<li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>الدفعات والوصولات</a></li>
+					@endif
 
 					
 					
@@ -196,6 +223,7 @@
 
 					<li><a href="{{route('Agendas.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.agenda') }}</a></li>	
 					<li><a href="{{route('Grades.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.grades') }}</a></li>								
+					<li><a href="{{route('timetables.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>الجداول</a></li>
 							
 
 				    <li><a href="{{route('Publications.index')}}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.publication') }}</a></li>					  	
@@ -437,12 +465,13 @@
 					<li><a href="error_maintenance.html"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>Maintenance</a></li>	
 				  </ul>
 				</li>	 	      --}}
+				@endif
 			  </ul>
 		  </div>
 		</div>
     </section>
 	<div class="sidebar-footer">
-		<a href="/changepass" class="link" data-bs-toggle="tooltip" title="{{ trans('main_header.setting') }}"><span class="icon-Settings-2"></span></a>
+		<a href="{{ route('admin.password.change.page') }}" class="link" data-bs-toggle="tooltip" title="{{ trans('main_header.setting') }}"><span class="icon-Settings-2"></span></a>
 		<a href="#" class="link" data-bs-toggle="tooltip" title="Email"><span class="icon-Mail"></span></a>
 		<a href="#" 
 		onclick="event.preventDefault(); document.getElementById('logout-form2').submit();"

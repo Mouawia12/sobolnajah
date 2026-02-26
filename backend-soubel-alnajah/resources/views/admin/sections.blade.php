@@ -17,8 +17,53 @@
                </div>
             @endforeach
       @endif
+      <div class="box">
+         <div class="box-body">
+            <form method="GET" action="{{ route('Sections.index') }}" class="admin-form-panel">
+               <div class="row">
+                  <div class="col-md-3">
+                     <label class="form-label">بحث</label>
+                     <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم القسم أو القاعة">
+                  </div>
+                  <div class="col-md-3">
+                     <label class="form-label">{{ trans('inscription.niveau') }}</label>
+                     <select name="grade_id" class="form-select">
+                        <option value="">الكل</option>
+                        @foreach ($SchoolgradeFilterOptions as $gradeOption)
+                           <option value="{{ $gradeOption->id }}" @selected((string) request('grade_id') === (string) $gradeOption->id)>
+                              {{ $gradeOption->name_grade }}
+                           </option>
+                        @endforeach
+                     </select>
+                  </div>
+                  <div class="col-md-3">
+                     <label class="form-label">{{ trans('inscription.Anneescolaire') }}</label>
+                     <select name="classroom_id" class="form-select">
+                        <option value="">الكل</option>
+                        @foreach ($ClassroomFilterOptions as $classOption)
+                           <option value="{{ $classOption->id }}" @selected((string) request('classroom_id') === (string) $classOption->id)>
+                              {{ $classOption->name_class }}
+                           </option>
+                        @endforeach
+                     </select>
+                  </div>
+                  <div class="col-md-2">
+                     <label class="form-label">{{ trans('inscription.status') }}</label>
+                     <select name="status" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="1" @selected(request('status') === '1')>{{ trans('inscription.sectionopen') }}</option>
+                        <option value="0" @selected(request('status') === '0')>{{ trans('inscription.sectionclose') }}</option>
+                     </select>
+                  </div>
+                  <div class="col-md-1 d-flex align-items-end">
+                     <button class="btn btn-primary w-p100" type="submit">بحث</button>
+                  </div>
+               </div>
+            </form>
+         </div>
+      </div>
       <?php $j = 0; ?>
-      @foreach ($Schoolgrade as $grade)
+      @forelse ($Schoolgrade as $grade)
       <div class="box box-slided-up">
          <div class="box-header with-border bg-info">
             <h4 class="box-title"><strong>{{ $grade->school->name_school}} - {{ $grade->name_grade}}</strong></h4>
@@ -32,7 +77,7 @@
             <h3 class="box-title"><a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">{{ trans('main_sidebar.addclasseroom') }}</a></h3>
 
                <div class="table-responsive">
-               <table id="example5{{$j}}" class="table table-bordered text-center" style="width:100%">
+               <table class="table table-bordered text-center" style="width:100%">
                <thead>
                   <tr>
                      <th>#</th>
@@ -56,20 +101,34 @@
                         <td>{{ $sc->classroom->schoolgrade->school->name_school }}</td>
 
                         <td>
-                           @if ( $sc->Status == 1)
-                           <a class="btn" data-bs-target="#modal-status{{ $sc->id }}" data-bs-toggle="modal"><span class="badge badge-success-light">{{ trans('inscription.sectionopen') }} </span> </a> 
-                           @else
-                           <a class="btn" data-bs-target="#modal-status{{ $sc->id }}" data-bs-toggle="modal"><span class="badge badge-danger-light">{{ trans('inscription.sectionclose') }} </span> </a> 
-                           @endif
-                        </td> 
+                           <form method="POST" action="{{ route('Sections.status', $sc->id) }}">
+                              @csrf
+                              <input type="hidden" name="statu" value="{{ (int) !$sc->Status }}">
+                              @if ($sc->Status == 1)
+                                 <button type="submit" class="btn p-0 border-0 bg-transparent">
+                                    <span class="badge badge-success-light">{{ trans('inscription.sectionopen') }}</span>
+                                 </button>
+                              @else
+                                 <button type="submit" class="btn p-0 border-0 bg-transparent">
+                                    <span class="badge badge-danger-light">{{ trans('inscription.sectionclose') }}</span>
+                                 </button>
+                              @endif
+                           </form>
+                        </td>
 
 
 
                         <td class="col-md-3">
-                        <a href="{{ route('Addnotestudents.show' ,$sc->id) }}" class="waves-effect waves-light btn btn-primary-light btn-circle"><span class="icon-Settings-1 fs-18"><span class="path1"></span><span class="path2"></span></span></a>
+                        <a href="{{ route('NoteStudents.show' ,$sc->id) }}" class="waves-effect waves-light btn btn-primary-light btn-circle"><span class="icon-Settings-1 fs-18"><span class="path1"></span><span class="path2"></span></span></a>
                         <a data-bs-target="#modal-teacher{{ $sc->id }}" data-bs-toggle="modal" class="waves-effect waves-light btn btn-success-light btn-circle mx-5"><span class="fa fa-mortar-board"><span class="path1"></span><span class="path2"></span></span></a>
                         <a data-bs-target="#modal-center{{ $sc->id }}" data-bs-toggle="modal" class="waves-effect waves-light btn btn-primary-light btn-circle mx-5"><span class="icon-Write"><span class="path1"></span><span class="path2"></span></span></a>
-                        <a data-bs-target="#modal-centerdelete{{ $sc->id }}" data-bs-toggle="modal" class="waves-effect waves-light btn btn-danger-light btn-circle"><span class="icon-Trash1 fs-18"><span class="path1"></span><span class="path2"></span></span></a>
+                        <form method="POST" action="{{ route('Sections.destroy', $sc->id) }}" class="d-inline" onsubmit="return confirm('{{ trans('opt.deletemsg') }}')">
+                           @method('DELETE')
+                           @csrf
+                           <button type="submit" class="waves-effect waves-light btn btn-danger-light btn-circle">
+                              <span class="icon-Trash1 fs-18"><span class="path1"></span><span class="path2"></span></span>
+                           </button>
+                        </form>
                         </td>
 
                      </tr>  
@@ -169,77 +228,13 @@
                                  </div>
                               </div>
                            </div>
-
-
-                           <!-- Delete -->
-                           <div class="modal center-modal fade" id="modal-centerdelete{{ $sc->id }}" tabindex="-1">
-                                 <div class="modal-dialog">
-                                    <div class="modal-content">
-                                    
-                                    <div class="modal-body">
-                                       <form id="delete-form{{ $sc->id }}" action="{{ route('Sections.destroy',$sc->id) }}" method="POST" > 
-                                          
-                                          {{ method_field('Delete') }}
-                                          @csrf
-                                          <div class="box-body">
-                                             <div class="row">
-                                                
-                                                <h1>{{ trans('opt.deletemsg') }}</h1>
-                                             </div>
-                                          </div>
-                                       </form>
-                                    </div>
-                                    <div class="modal-footer modal-footer-uniform">
-                                       <a type="button" class="btn btn-danger" data-bs-dismiss="modal">{{ trans('opt.close') }}</a>
-                                       <a type="button" class="btn btn-primary float-end" onclick="event.preventDefault();
-                                       document.getElementById('delete-form{{ $sc->id }}').submit();">{{ trans('opt.delete2') }}</a>
-                                    </div>
-                                    </div>
-                                 </div>
-                           </div>
-
-
-                           <!-- update  status-->
-                           <div class="modal center-modal fade" id="modal-status{{ $sc->id }}" tabindex="-1">
-                              <div class="modal-dialog">
-                              <div class="modal-content">
-                                 <div class="modal-body">
-                                    <form id="status-form{{ $sc->id }}" action="{{ route('Sections.edit',$sc->id) }}" method="POST" > 
-                                       
-                                    {{ method_field('GET') }}
-                                    @csrf
-                                       <div class="box-body">
-                                          <div class="row">
-                                          <div class="form-group">
-                                             <label class="form-label">{{ trans('inscription.status') }}</label>
-                                             
-                                          <select id="statu"  onchange="console.log($(this).val())"  class="form-select" name="statu">
-                                             <option value="" selected disabled>{{ trans('inscription.choisir') }}</option>
-                                             <option value="{{1}}">{{ trans('inscription.sectionopen') }}</option>
-                                             <option value="{{0}}">{{ trans('inscription.sectionclose') }}</option>
-                                          </select>
-                                          </div>
-                                          </div>
-                                       </div>
-                                    </form>
-                                 </div>
-                                 <div class="modal-footer modal-footer-uniform">
-                                 <a type="button" class="btn btn-danger" data-bs-dismiss="modal">{{ trans('opt.close') }}</a>
-                                 <a type="button" class="btn btn-primary float-end" onclick="event.preventDefault();
-                                 document.getElementById('status-form{{ $sc->id }}').submit();">{{ trans('opt.save') }}</a>
-                                 </div>
-                              </div>
-                              </div>
-                              </div>
-
                                <!-- update  teacher-->
                            <div class="modal center-modal fade" id="modal-teacher{{ $sc->id }}" tabindex="-1">
                               <div class="modal-dialog">
                               <div class="modal-content">
                                  <div class="modal-body">
-                                    <form id="teacher-form{{ $sc->id }}" action="{{ route('Sections.edit',$sc->id) }}" method="POST" > 
+                                    <form id="teacher-form{{ $sc->id }}" action="{{ route('Sections.teachers',$sc->id) }}" method="POST" > 
                                        
-                                    {{ method_field('GET') }}
                                     @csrf
                                        <div class="box-body text-center">
                                           <div class="row">
@@ -254,7 +249,6 @@
                                                         <option value="{{$teacher->id}}">{{$teacher->name}}</option>
                                                     @endforeach
                                                 </select>
-                                                <input type="hidden" name="teacher_test" value="{{1}}" />
                                           </div>
                                        </div>
                                     </form>
@@ -287,7 +281,17 @@
          </div>
       </div>
       <?php $j++; ?>
-      @endforeach
+      @empty
+      <div class="box">
+         <div class="box-body text-center">
+            <div class="admin-empty-state">لا توجد أقسام مطابقة للفلترة الحالية.</div>
+         </div>
+      </div>
+      @endforelse
+
+      <div class="d-flex justify-content-end mt-10">
+         {{ $Schoolgrade->links() }}
+      </div>
 
 
       
@@ -385,9 +389,6 @@
 
 
 @section('jsa')
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-@include('layoutsadmin.datatabels')
-
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup.min.js')}}"></script>
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup-init.js')}}"></script>
 
@@ -397,7 +398,7 @@
            var school_id = $(this).val();
            if (school_id) {
                $.ajax({
-                   url: "{{ URL::to('getgrade') }}/" + school_id,
+                   url: "{{ route('lookup.schoolGrades', ['id' => '__ID__']) }}".replace('__ID__', school_id),
                    type: "GET",
                    dataType: "json",
                    success: function (data) {
@@ -420,7 +421,7 @@
            var grade_id = $(this).val();
            if (grade_id) {
                $.ajax({
-                   url: "{{ URL::to('getclasse') }}/" + grade_id,
+                   url: "{{ route('lookup.gradeClasses', ['id' => '__ID__']) }}".replace('__ID__', grade_id),
                    type: "GET",
                    dataType: "json",
                    success: function (data) {

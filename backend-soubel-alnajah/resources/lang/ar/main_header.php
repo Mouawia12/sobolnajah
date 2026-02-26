@@ -17,6 +17,9 @@ return [
     'signin' => 'تسجيل الدخول',
     'question' => 'اطرح سؤال',
     'gallrey' => 'البوم المدرسة',
+    'gallery' => 'البوم المدرسة',
+    'recruitment' => 'التوظيف',
+    'timetables' => 'الجداول',
     'profile'=>'الصفحة الشخصية',
     'setting'=>'الاعدادات',
 ];

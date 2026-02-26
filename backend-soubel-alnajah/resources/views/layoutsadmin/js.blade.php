@@ -73,7 +73,7 @@
 			var school_id = $(this).val();
 			if (school_id) {
 				$.ajax({
-					url: "{{ URL::to('getgrade') }}/" + school_id,
+					url: "{{ route('lookup.schoolGrades', ['id' => '__ID__']) }}".replace('__ID__', school_id),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -97,7 +97,7 @@
 			var grade_id = $(this).val();
 			if (grade_id) {
 				$.ajax({
-					url: "{{ URL::to('getclasse') }}/" + grade_id,
+					url: "{{ route('lookup.gradeClasses', ['id' => '__ID__']) }}".replace('__ID__', grade_id),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -121,7 +121,7 @@
 			var classroom_id = $(this).val();
 			if (classroom_id) {
 				$.ajax({
-					url: "{{ URL::to('getsection') }}/" + classroom_id,
+					url: "{{ route('lookup.classSections', ['id' => '__ID__']) }}".replace('__ID__', classroom_id),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -146,7 +146,7 @@
 			var section_id = $(this).val();
 			if (section_id) {
 				$.ajax({
-					url: "{{ URL::to('getsection2') }}/" + section_id,
+					url: "{{ route('lookup.sectionById', ['id' => '__ID__']) }}".replace('__ID__', section_id),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -173,7 +173,7 @@
 			var school_id_new = $(this).val();
 			if (school_id_new) {
 				$.ajax({
-					url: "{{ URL::to('getgrade') }}/" + school_id_new,
+					url: "{{ route('lookup.schoolGrades', ['id' => '__ID__']) }}".replace('__ID__', school_id_new),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -197,7 +197,7 @@
 			var grade_id_new = $(this).val();
 			if (grade_id_new) {
 				$.ajax({
-					url: "{{ URL::to('getclasse') }}/" + grade_id_new,
+					url: "{{ route('lookup.gradeClasses', ['id' => '__ID__']) }}".replace('__ID__', grade_id_new),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -221,7 +221,7 @@
 			var classroom_id_new = $(this).val();
 			if (classroom_id_new) {
 				$.ajax({
-					url: "{{ URL::to('getsection') }}/" + classroom_id_new,
+					url: "{{ route('lookup.classSections', ['id' => '__ID__']) }}".replace('__ID__', classroom_id_new),
 					type: "GET",
 					dataType: "json",
 					success: function (data) {
@@ -239,5 +239,3 @@
 	});
 
 </script>
-
-

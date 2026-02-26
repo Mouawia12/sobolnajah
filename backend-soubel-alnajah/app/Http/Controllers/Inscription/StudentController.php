@@ -2,28 +2,41 @@
 
 namespace App\Http\Controllers\Inscription;
 
+use App\Actions\Inscription\BuildStudentEnrollmentPayloadAction;
+use App\Actions\Inscription\DeleteStudentEnrollmentAction;
+use App\Actions\Inscription\UpdateStudentEnrollmentAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ImportStudentsRequest;
 use App\Http\Requests\StoreStudent;
 use App\Imports\StudentsImport;
 use App\Models\Inscription\StudentInfo;
 use App\Models\School\School;
 use App\Models\School\Section;
 use App\Services\StudentEnrollmentService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
 class StudentController extends Controller
 {
-    public function __construct(private StudentEnrollmentService $enrollmentService)
+    public function __construct(
+        private StudentEnrollmentService $enrollmentService,
+        private BuildStudentEnrollmentPayloadAction $buildStudentEnrollmentPayloadAction,
+        private UpdateStudentEnrollmentAction $updateStudentEnrollmentAction,
+        private DeleteStudentEnrollmentAction $deleteStudentEnrollmentAction
+    )
     {
+        $this->middleware(['auth', 'role:admin']);
     }
 
     public function index()
     {
+        $this->authorize('viewAny', StudentInfo::class);
         $schoolId = $this->currentSchoolId();
+        $search = trim((string) request('q'));
+        $sectionId = request('section_id');
+        $classroomId = request('classroom_id');
+        $gradeId = request('grade_id');
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
@@ -34,16 +47,47 @@ class StudentController extends Controller
         $data['StudentInfo'] = StudentInfo::query()
             ->forSchool($schoolId)
             ->with(['user', 'parent.user', 'section.classroom.school'])
+            ->when($sectionId, fn ($query) => $query->where('section_id', $sectionId))
+            ->when($classroomId, function ($query) use ($classroomId) {
+                $query->whereHas('section', fn ($sectionQuery) => $sectionQuery->where('classroom_id', $classroomId));
+            })
+            ->when($gradeId, function ($query) use ($gradeId) {
+                $query->whereHas('section.classroom', fn ($classroomQuery) => $classroomQuery->where('grade_id', $gradeId));
+            })
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($studentQuery) use ($search) {
+                    $studentQuery->where('prenom->fr', 'like', '%' . $search . '%')
+                        ->orWhere('prenom->ar', 'like', '%' . $search . '%')
+                        ->orWhere('nom->fr', 'like', '%' . $search . '%')
+                        ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                        ->orWhere('numtelephone', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('email', 'like', '%' . $search . '%');
+                        });
+                });
+            })
             ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $data['Sections'] = Section::query()
+            ->forSchool($schoolId)
+            ->with(['classroom.schoolgrade'])
+            ->orderBy('id')
             ->get();
 
         $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('student.studentlist')],
+        ];
 
         return view('admin.studentInfo', $data);
     }
 
     public function create()
     {
+        $this->authorize('create', StudentInfo::class);
         $schoolId = $this->currentSchoolId();
 
         $data['School'] = School::query()
@@ -53,12 +97,18 @@ class StudentController extends Controller
             ->get();
 
         $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('student.studentlist'), 'url' => route('Students.index')],
+            ['label' => trans('main_sidebar.addstudent')],
+        ];
 
         return view('admin.addStudentParent', $data);
     }
 
     public function store(StoreStudent $request)
     {
+        $this->authorize('create', StudentInfo::class);
         $request->validated();
 
         $schoolId = $this->currentSchoolId();
@@ -67,46 +117,9 @@ class StudentController extends Controller
             ->forSchool($schoolId)
             ->findOrFail($request->section_id);
 
-        $studentPayload = [
-            'first_name' => [
-                'fr' => $request->prenomfr,
-                'ar' => $request->prenomar,
-                'en' => $request->prenomfr,
-            ],
-            'last_name' => [
-                'fr' => $request->nomfr,
-                'ar' => $request->nomar,
-                'en' => $request->nomfr,
-            ],
-            'email' => $request->email,
-            'gender' => (int) $request->gender,
-            'phone' => $request->numtelephone,
-            'birth_date' => $request->datenaissance,
-            'birth_place' => $request->lieunaissance,
-            'wilaya' => $request->wilaya,
-            'dayra' => $request->dayra,
-            'baladia' => $request->baladia,
-        ];
-
-        $guardianPayload = [
-            'first_name' => [
-                'fr' => $request->prenomfrwali,
-                'ar' => $request->prenomarwali,
-                'en' => $request->prenomfrwali,
-            ],
-            'last_name' => [
-                'fr' => $request->nomfrwali,
-                'ar' => $request->nomarwali,
-                'en' => $request->nomfrwali,
-            ],
-            'relation' => $request->relationetudiant,
-            'address' => $request->adressewali,
-            'wilaya' => $request->wilayawali,
-            'dayra' => $request->dayrawali,
-            'baladia' => $request->baladiawali,
-            'phone' => $request->numtelephonewali,
-            'email' => $request->emailwali,
-        ];
+        $payload = $this->buildStudentEnrollmentPayloadAction->execute($request->all());
+        $studentPayload = $payload['student'];
+        $guardianPayload = $payload['guardian'];
 
         try {
             $this->enrollmentService->createStudent($studentPayload, $guardianPayload, $section);
@@ -128,82 +141,16 @@ class StudentController extends Controller
         $schoolId = $this->currentSchoolId();
 
         $student = StudentInfo::query()
-            ->forSchool($schoolId)
-            ->with(['user', 'parent.user'])
+            ->with(['user', 'parent.user', 'section'])
             ->findOrFail($id);
+        $this->authorize('update', $student);
 
         $section = Section::query()
             ->forSchool($schoolId)
             ->findOrFail($request->section_id);
 
         try {
-            DB::transaction(function () use ($student, $request, $section) {
-                $student->update([
-                    'section_id' => $section->id,
-                    'prenom' => [
-                        'fr' => $request->prenomfr,
-                        'ar' => $request->prenomar,
-                        'en' => $request->prenomfr,
-                    ],
-                    'nom' => [
-                        'fr' => $request->nomfr,
-                        'ar' => $request->nomar,
-                        'en' => $request->nomfr,
-                    ],
-                    'gender' => (int) $request->gender,
-                    'numtelephone' => $request->numtelephone,
-                    'datenaissance' => $request->datenaissance,
-                    'lieunaissance' => $request->lieunaissance,
-                    'wilaya' => $request->wilaya,
-                    'dayra' => $request->dayra,
-                    'baladia' => $request->baladia,
-                ]);
-
-                if ($student->user) {
-                    $student->user->update([
-                        'name' => [
-                            'fr' => $request->prenomfr,
-                            'ar' => $request->prenomar,
-                            'en' => $request->prenomfr,
-                        ],
-                        'email' => $request->email,
-                        'school_id' => $section->school_id,
-                    ]);
-                }
-
-                if ($student->parent) {
-                    $student->parent->update([
-                        'prenomwali' => [
-                            'fr' => $request->prenomfrwali,
-                            'ar' => $request->prenomarwali,
-                            'en' => $request->prenomfrwali,
-                        ],
-                        'nomwali' => [
-                            'fr' => $request->nomfrwali,
-                            'ar' => $request->nomarwali,
-                            'en' => $request->nomfrwali,
-                        ],
-                        'relationetudiant' => $request->relationetudiant,
-                        'adressewali' => $request->adressewali,
-                        'wilayawali' => $request->wilayawali,
-                        'dayrawali' => $request->dayrawali,
-                        'baladiawali' => $request->baladiawali,
-                        'numtelephonewali' => $request->numtelephonewali,
-                    ]);
-
-                    if ($student->parent->user) {
-                        $student->parent->user->update([
-                            'name' => [
-                                'fr' => $request->prenomfrwali,
-                                'ar' => $request->prenomarwali,
-                                'en' => $request->prenomfrwali,
-                            ],
-                            'email' => $request->emailwali,
-                            'school_id' => $section->school_id,
-                        ]);
-                    }
-                }
-            });
+            $this->updateStudentEnrollmentAction->execute($student, $request->all(), $section);
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
@@ -218,53 +165,20 @@ class StudentController extends Controller
         $schoolId = $this->currentSchoolId();
 
         $student = StudentInfo::query()
-            ->forSchool($schoolId)
-            ->with(['user', 'parent.students', 'parent.user'])
+            ->with(['user', 'parent.students', 'parent.user', 'section'])
             ->findOrFail($id);
+        $this->authorize('delete', $student);
 
-        DB::transaction(function () use ($student) {
-            $guardian = $student->parent;
-            $studentUser = $student->user;
-
-            $student->forceDelete();
-
-            if ($studentUser) {
-                $studentUser->delete();
-            }
-
-            if ($guardian) {
-                $remainingChildren = $guardian->students()->whereKeyNot($student->id)->count();
-
-                if ($remainingChildren === 0) {
-                    if ($guardian->user) {
-                        $guardian->user->delete();
-                    }
-                    $guardian->delete();
-                }
-            }
-
-            $notifiableIds = array_filter([
-                $studentUser?->id,
-                $guardian?->user?->id,
-            ]);
-
-            if (!empty($notifiableIds)) {
-                DB::table('notifications')
-                    ->whereIn('notifiable_id', $notifiableIds)
-                    ->delete();
-            }
-        });
+        $this->deleteStudentEnrollmentAction->execute($student);
 
         toastr()->error(trans('messages.delete'));
 
         return redirect()->route('Students.index');
     }
 
-    public function importExcel(Request $request)
+    public function importExcel(ImportStudentsRequest $request)
     {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,xls',
-        ]);
+        $request->validated();
 
         $schoolId = $this->currentSchoolId();
 

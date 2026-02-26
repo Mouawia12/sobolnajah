@@ -9,18 +9,37 @@
 @section('contenta')
 <div class="row">
     <div class="col-12">
-
-        @if ($errors->any())
-            @foreach ($errors->all() as $error)
-                <div class="alert alert-danger col-md-6">
-                    <p>{{ $error }}</p>
-                </div>
-            @endforeach
-        @endif
-
         <div class="box-body">
+            <form method="GET" class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" name="q" class="form-control" value="{{ request('q') }}"
+                        placeholder="بحث: الاسم / البريد / الهاتف">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="section_id" class="form-select">
+                        <option value="">كل الأقسام</option>
+                        @foreach ($Sections as $section)
+                            <option value="{{ $section->id }}" @selected((string) request('section_id') === (string) $section->id)>
+                                {{ $section->classroom->schoolgrade->name_grade ?? '' }} /
+                                {{ $section->classroom->name_class ?? '' }} /
+                                {{ $section->name_section ?? '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button class="btn btn-primary" type="submit">تصفية</button>
+                    <a href="{{ route('Absences.index') }}" class="btn btn-outline-secondary">إعادة</a>
+                </div>
+            </form>
             <div class="table-responsive">
-                <table id="example5" class="table table-bordered text-center align-middle" style="width:100%">
+                <table class="table table-bordered text-center align-middle" style="width:100%">
                     <thead>
                         <tr>
                             <th>#</th> {{-- عمود الترقيم --}}
@@ -36,10 +55,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($Absence as $absence)
+                        @foreach ($Absence as $index => $absence)
                             <tr>
                                 {{-- الترقيم --}}
-                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $Absence->firstItem() + $index }}</td>
 
                                 {{-- بيانات الطالب --}}
                                 <td class="col-md">
@@ -85,6 +104,9 @@
                         </tr>
                     </tfoot>
                 </table>
+                <div class="mt-3">
+                    {{ $Absence->links() }}
+                </div>
             </div>
         </div>
 
@@ -93,6 +115,4 @@
 @endsection
 
 @section('jsa')
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js') }}"></script>
-@include('layoutsadmin.datatabels')
 @endsection

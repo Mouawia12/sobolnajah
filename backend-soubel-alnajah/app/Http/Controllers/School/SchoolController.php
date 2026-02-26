@@ -2,23 +2,39 @@
 
 namespace App\Http\Controllers\School;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\School\School;
 use App\Models\School\Schoolgrade;
 use App\Models\School\Classroom;
-use Illuminate\Support\Facades\Validator;
 use App\Http\Requests\StoreSchool;
 
 
 class SchoolController extends Controller
 {
-    
+    public function __construct()
+    {
+        $this->middleware(['auth', 'role:admin'])->except(['getclassrooms']);
+    }
 
 
     public function index()
     {
+        $this->authorize('viewAny', School::class);
+        $schoolId = $this->currentSchoolId();
+        $query = trim((string) request('q'));
+
         $data['notify'] = $this->notifications();
-        $data['School'] = School::all();
+        $data['School'] = School::query()
+            ->forSchool($schoolId)
+            ->when($query !== '', function ($schoolsQuery) use ($query) {
+                $schoolsQuery->where(function ($textQuery) use ($query) {
+                    $textQuery->where('name_school->fr', 'like', '%' . $query . '%')
+                        ->orWhere('name_school->ar', 'like', '%' . $query . '%')
+                        ->orWhere('name_school->en', 'like', '%' . $query . '%');
+                });
+            })
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.schools',$data);
     }
@@ -31,6 +47,7 @@ class SchoolController extends Controller
    */
     public function store(StoreSchool $request)
     {
+        $this->authorize('create', School::class);
         $validated = $request->validated();
 
         try {
@@ -51,14 +68,19 @@ class SchoolController extends Controller
 
    public function update(StoreSchool $request,$id)
    {
-   
+    $school = School::query()
+        ->forSchool($this->currentSchoolId())
+        ->findOrFail($id);
+    $this->authorize('update', $school);
+
     $validated = $request->validated();
 
         try {
 
-            School::where('id', $id)->
-            update(['name_school->fr'=> $request->name_schoolfr,
-                    'name_school->ar'=> $request->name_schoolar]);
+            $school->update([
+                'name_school->fr'=> $request->name_schoolfr,
+                'name_school->ar'=> $request->name_schoolar,
+            ]);
 
             toastr()->success(trans('messages.Update'));
             return redirect()->route('Schools.index');
@@ -80,13 +102,19 @@ class SchoolController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Request $request,$id)
+    public function destroy($id)
     {
+       $school = School::query()
+           ->forSchool($this->currentSchoolId())
+           ->findOrFail($id);
+       $this->authorize('delete', $school);
 
-       $MySchoolgrade_id = Schoolgrade::where('school_id',$id)->pluck('school_id');
+       $MySchoolgrade_id = Schoolgrade::query()
+           ->where('school_id', $school->id)
+           ->pluck('school_id');
        if($MySchoolgrade_id->count() == 0){
 
-          $School = School::where('id',$id)->delete();
+          $school->delete();
           toastr()->error(trans('messages.delete'));
           return redirect()->route('Schools.index');
       }
@@ -114,8 +142,9 @@ class SchoolController extends Controller
 
     public function test()
     {
-        $Schoolgrade = Schoolgrade::all();
-        $School = School::all();
+        $schoolId = $this->currentSchoolId();
+        $Schoolgrade = Schoolgrade::query()->forSchool($schoolId)->get();
+        $School = School::query()->forSchool($schoolId)->get();
         
         return view('admin.test',compact('Schoolgrade','School'));
     }

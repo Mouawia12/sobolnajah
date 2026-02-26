@@ -16,6 +16,8 @@ use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
 {
+    private const AVAILABLE_USERS_LIMIT = 60;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -39,6 +41,7 @@ class ChatController extends Controller
             ->whereKeyNot($currentUser->id)
             ->when($schoolId, fn (Builder $query) => $query->where('school_id', $schoolId))
             ->orderBy('name')
+            ->limit(self::AVAILABLE_USERS_LIMIT)
             ->get(['id', 'name', 'email']);
 
         $activeRoomId = $request->integer('room') ?: null;

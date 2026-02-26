@@ -25,8 +25,20 @@
         </div>
         
         <div class="box-body">
+           <form method="GET" action="{{ route('Grades.index') }}" class="admin-form-panel mb-15">
+             <div class="row">
+               <div class="col-md-4">
+                 <label class="form-label">بحث</label>
+                 <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم المستوى">
+               </div>
+               <div class="col-md-4 d-flex align-items-end gap-2">
+                 <button class="btn btn-primary" type="submit">بحث</button>
+                 <a href="{{ route('Grades.index') }}" class="btn btn-light">Reset</a>
+               </div>
+             </div>
+           </form>
            <div class="table-responsive">
-             <table id="example5" class="table table-bordered text-center" style="width:100%">
+             <table class="table table-bordered text-center" style="width:100%">
               <thead>
                  <tr>
                     <th>#</th>
@@ -35,9 +47,9 @@
                  </tr>
               </thead>
               <tbody>
-               <?php $i = 0; ?>
-               @foreach ($Grade as $g)
-               <?php $i++; ?>
+               @php($i = ($Grade->currentPage() - 1) * $Grade->perPage())
+               @forelse ($Grade as $g)
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>
                     <td>
@@ -110,9 +122,16 @@
     </div>
    </div>
 </div>
-   @endforeach
+               @empty
+                <tr>
+                  <td colspan="3"><div class="admin-empty-state">لا توجد مستويات مطابقة للفلترة.</div></td>
+                </tr>
+               @endforelse
               </tbody>
            </table>
+           <div class="mt-15 d-flex justify-content-end">
+             {{ $Grade->links() }}
+           </div>
            </div>
         </div>
        </div>      
@@ -139,8 +158,6 @@
 @endsection
 
 @section('jsa')
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-@include('layoutsadmin.datatabels')
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup.min.js')}}"></script>
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup-init.js')}}"></script>
 <script src="{{ asset('jsadmin/pages/validation.js')}}"></script>

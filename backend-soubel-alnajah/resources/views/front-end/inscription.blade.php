@@ -394,7 +394,7 @@
           var school_id = $(this).val();
           if (school_id) {
               $.ajax({
-                  url: "{{ URL::to('getgrade') }}/" + school_id,
+                  url: "{{ route('lookup.schoolGrades', ['id' => '__ID__']) }}".replace('__ID__', school_id),
                   type: "GET",
                   dataType: "json",
                   success: function (data) {
@@ -418,7 +418,7 @@
           var grade_id = $(this).val();
           if (grade_id) {
               $.ajax({
-                  url: "{{ URL::to('getclasse') }}/" + grade_id,
+                  url: "{{ route('lookup.gradeClasses', ['id' => '__ID__']) }}".replace('__ID__', grade_id),
                   type: "GET",
                   dataType: "json",
                   success: function (data) {

@@ -2,6 +2,7 @@
 
 namespace App\Models\School;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Translatable\HasTranslations;
@@ -34,6 +35,13 @@ class Schoolgrade extends Model
         return $this->hasMany(Section::class, 'grade_id');
     }
 
-    
+    public function scopeForSchool(Builder $query, ?int $schoolId): Builder
+    {
+        if (!$schoolId) {
+            return $query;
+        }
+
+        return $query->where('school_id', $schoolId);
+    }
 
 }

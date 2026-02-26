@@ -106,35 +106,33 @@
 					@foreach ($notify as $nt)
 						@if($nt->read_at == null)
 					<li>
-						<a href="{{ route('markasread', $nt->id)}}">		
-						  <i class="fa fa-users text-info"></i> 
-						  
-						  
-								   @if (App::isLocale('fr'))
-										<?php $data = json_decode($nt->data, true);
-										print_r($data['namefr']); ?>				
-								   	@else
-										<?php $data = json_decode($nt->data, true);
-										print_r($data['namear']); ?>
-								   @endif
-									   
-								  طلب شهادة مدرسية
-						</a>
+						<form action="{{ route('markAsRead', $nt->id) }}" method="POST">
+							@csrf
+							<button type="submit" class="w-full text-start border-0 bg-transparent p-0">
+								<i class="fa fa-users text-info"></i>
+								@if (App::isLocale('fr'))
+									<?php $data = json_decode($nt->data, true); print_r($data['namefr']); ?>
+								@else
+									<?php $data = json_decode($nt->data, true); print_r($data['namear']); ?>
+								@endif
+								طلب شهادة مدرسية
+							</button>
+						</form>
 					</li>
 						@else
 						<li>
-							<a href="{{ route('markasread', $nt->id)}}">		
-							  <i class="fa fa-users text-success"></i> 
-							  
-							  @if (App::isLocale('fr'))
-							  <?php $data = json_decode($nt->data, true);
-							  print_r($data['namefr']); ?>				
-							 @else
-							  <?php $data = json_decode($nt->data, true);
-							  print_r($data['namear']); ?>
-							 @endif
-									  طلب شهادة مدرسية
-							</a>
+							<form action="{{ route('markAsRead', $nt->id) }}" method="POST">
+								@csrf
+								<button type="submit" class="w-full text-start border-0 bg-transparent p-0">
+									<i class="fa fa-users text-success"></i>
+									@if (App::isLocale('fr'))
+										<?php $data = json_decode($nt->data, true); print_r($data['namefr']); ?>
+									@else
+										<?php $data = json_decode($nt->data, true); print_r($data['namear']); ?>
+									@endif
+									طلب شهادة مدرسية
+								</button>
+							</form>
 						</li>
 						@endif
 					@endforeach
@@ -192,7 +190,7 @@
               <li class="user-body">
 				 {{-- <a class="dropdown-item" href="#"><i class="ti-user text-muted me-2"></i> Profile</a>
 				 <a class="dropdown-item" href="#"><i class="ti-wallet text-muted me-2"></i> My Wallet</a> --}}
-				 <a class="dropdown-item" href="/changepass"><i class="ti-settings text-muted me-2"></i>{{ trans('main_header.setting') }}</a>
+				 <a class="dropdown-item" href="{{ route('admin.password.change.page') }}"><i class="ti-settings text-muted me-2"></i>{{ trans('main_header.setting') }}</a>
 				 <div class="dropdown-divider"></div>
 				 <a class="dropdown-item" href="#" onclick="event.preventDefault();
 				 document.getElementById('logout-form').submit();">

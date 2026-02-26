@@ -110,8 +110,51 @@
         
          <!-- /.box-header -->
          <div class="box-body">
+            <form method="GET" action="{{ route('Exames.index') }}" class="admin-form-panel mb-15">
+              <div class="row">
+                <div class="col-md-3">
+                  <label class="form-label">بحث</label>
+                  <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم الامتحان">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">{{ trans('exam.module') }}</label>
+                  <select name="specialization_id" class="form-select">
+                    <option value="">الكل</option>
+                    @foreach ($Specializations as $sp)
+                      <option value="{{ $sp->id }}" @selected((string) request('specialization_id') === (string) $sp->id)>{{ $sp->name }}</option>
+                    @endforeach
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">{{ trans('exam.perscolaire') }}</label>
+                  <select name="grade_id" class="form-select">
+                    <option value="">الكل</option>
+                    @foreach ($Schoolgrade as $grade)
+                      <option value="{{ $grade->id }}" @selected((string) request('grade_id') === (string) $grade->id)>{{ $grade->name_grade }}</option>
+                    @endforeach
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">{{ trans('exam.phase') }}</label>
+                  <select name="classroom_id" class="form-select">
+                    <option value="">الكل</option>
+                    @foreach ($Classrooms as $classroom)
+                      <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->name_class }}</option>
+                    @endforeach
+                  </select>
+                </div>
+                <div class="col-md-1">
+                  <label class="form-label">{{ trans('exam.Annscolaire') }}</label>
+                  <input type="number" name="Annscolaire" class="form-control" value="{{ request('Annscolaire') }}" min="1900" max="{{ date('Y') + 1 }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                  <button class="btn btn-primary" type="submit">بحث</button>
+                  <a href="{{ route('Exames.index') }}" class="btn btn-light">Reset</a>
+                </div>
+              </div>
+            </form>
             <div class="table-responsive">
-                <table id="example5" class="table table-bordered text-center"  style="width:100%">
+                <table class="table table-bordered text-center"  style="width:100%">
                  <thead>
                     <tr>
                        <th></th>          
@@ -129,9 +172,9 @@
                  </thead>
                  <tbody>
                     
-                  <?php $j = 0; ?>
-                  @foreach ($Exames as $ex)
-                  <?php $j++; ?>
+                  @php($j = ($Exames->currentPage() - 1) * $Exames->perPage())
+                  @forelse ($Exames as $ex)
+                  @php($j++)
                     <tr>
                       
                        <td>{{ $j }}</td> 
@@ -276,7 +319,11 @@
                 </div>
                 </div>
                 </div>
-                    @endforeach
+                  @empty
+                    <tr>
+                      <td colspan="7"><div class="admin-empty-state">لا توجد امتحانات مطابقة للفلترة.</div></td>
+                    </tr>
+                  @endforelse
                  </tbody>
                  <tfoot>
                   <tr>
@@ -293,6 +340,9 @@
                   </tr>
                </tfoot>
               </table>
+              <div class="mt-15 d-flex justify-content-end">
+                {{ $Exames->links() }}
+              </div>
               </div>
         
          </div>
@@ -345,10 +395,5 @@
       });
   });
 </script>
-
-    
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-
-@include('layoutsadmin.datatabels')
 
 @endsection

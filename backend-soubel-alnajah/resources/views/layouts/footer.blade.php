@@ -26,7 +26,7 @@
                 </div>					
                 <div class="col-12 col-lg-3">
                     <div class="widget widget_gallery clearfix">
-                        <h4 class="footer-title"><a href="{{ LaravelLocalization::localizeUrl('/album') }}">{{ trans('main_header.gallrey') }}</a> </h4>
+                        <h4 class="footer-title"><a href="{{ route('public.gallery.index') }}">{{ trans('main_header.gallery') }}</a> </h4>
                         <hr class="bg-info mb-10 mt-0 d-inline-block mx-auto w-60">
                         <ul class="list-unstyled">
                             <li><img src="{{ asset('agenda/1653329553fek8wbxC7.jpg')}}" alt=""></li>
@@ -84,6 +84,8 @@
                 <a href="#" class="btn btn-link">Courses</a> --}}
                 <a href="{{route('Inscriptions.index')}}" class="btn btn-link">{{ trans('main_header.inscription') }}</a>
                 <a href="{{route('Publications.index')}}" class="btn btn-link">{{ trans('main_header.agendascolaire') }}</a>
+                <a href="{{route('public.jobs.index')}}" class="btn btn-link">{{ trans('main_header.recruitment') }}</a>
+                <a href="{{route('public.timetables.index')}}" class="btn btn-link">{{ trans('main_header.timetables') }}</a>
                 <a href="{{ LaravelLocalization::localizeUrl('/contact') }}" class="btn btn-link">{{ trans('main_header.contact') }}</a>
             </div>
         </div>

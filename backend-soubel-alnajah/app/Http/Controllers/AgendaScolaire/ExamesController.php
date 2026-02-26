@@ -4,17 +4,22 @@ namespace App\Http\Controllers\AgendaScolaire;
 
 use Illuminate\Support\Facades\Auth;
 use App\Models\AgendaScolaire\Exames;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreExameRequest;
+use App\Http\Requests\UpdateExameRequest;
+use App\Models\School\Classroom;
 use App\Models\School\Schoolgrade;
 use App\Http\Controllers\Controller;
 use App\Models\Specialization\Specialization;
 use App\Services\OpenAiTranslationService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ExamesController extends Controller
 {
     public function __construct(private OpenAiTranslationService $translator)
     {
+        $this->middleware(['auth', 'role:admin'])->only(['create', 'edit', 'store', 'update', 'destroy']);
     }
 
     /**
@@ -24,18 +29,65 @@ class ExamesController extends Controller
      */
     public function index()
     {
-        $data['Exames'] = Exames::all();
+        $schoolId = $this->currentSchoolId();
+        $search = trim((string) request('q'));
+        $gradeId = request('grade_id');
+        $classroomId = request('classroom_id');
+        $specializationId = request('specialization_id');
+        $year = request('Annscolaire');
+
+        $query = Exames::query()
+            ->with(['classroom.schoolgrade', 'schoolgrade', 'specialization'])
+            ->when(Auth::check() && Auth::user()->hasRole('admin') && $schoolId, function ($query) use ($schoolId) {
+                $query->whereHas('classroom', fn ($classroomQuery) => $classroomQuery->where('school_id', $schoolId));
+            })
+            ->when($gradeId, fn ($q) => $q->where('grade_id', (int) $gradeId))
+            ->when($classroomId, fn ($q) => $q->where('classroom_id', (int) $classroomId))
+            ->when($specializationId, fn ($q) => $q->where('specialization_id', (int) $specializationId))
+            ->when($year, fn ($q) => $q->where('Annscolaire', $year))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($textQuery) use ($search) {
+                    $textQuery->where('name->ar', 'like', '%' . $search . '%')
+                        ->orWhere('name->fr', 'like', '%' . $search . '%')
+                        ->orWhere('name->en', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderByDesc('created_at');
         
         if(Auth::user()){
             if(Auth::user()->hasRole('admin')){
                 $data['notify'] = $this->notifications();
-                $data['Schoolgrade'] = Schoolgrade::all();
-                $data['Specializations'] = Specialization::all();
+                $data['Exames'] = $query->paginate(20)->withQueryString();
+                $cacheSchoolId = (int) ($schoolId ?? 0);
+                $data['Schoolgrade'] = Cache::remember(
+                    sprintf('exam:school:%d:grades', $cacheSchoolId),
+                    now()->addMinutes(15),
+                    fn () => Schoolgrade::query()
+                        ->forSchool($schoolId)
+                        ->orderBy('name_grade')
+                        ->get()
+                );
+                $data['Classrooms'] = Cache::remember(
+                    sprintf('exam:school:%d:classrooms', $cacheSchoolId),
+                    now()->addMinutes(15),
+                    fn () => Classroom::query()
+                        ->forSchool($schoolId)
+                        ->with('schoolgrade')
+                        ->orderBy('name_class')
+                        ->get()
+                );
+                $data['Specializations'] = Cache::remember(
+                    'exam:lookups:specializations',
+                    now()->addMinutes(15),
+                    fn () => Specialization::query()->orderBy('name')->get()
+                );
                 return view('admin.exam',$data);
             } else {
+                $data['Exames'] = $query->paginate(20)->withQueryString();
                 return view('front-end.exam',$data);
             }
         } else {
+            $data['Exames'] = $query->paginate(20)->withQueryString();
             return view('front-end.exam',$data);
         }
     }
@@ -43,29 +95,30 @@ class ExamesController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreExameRequest $request)
     {
         try {
-            $translations = $this->translator->translateToFrenchAndEnglish($request->name_ar);
+            $this->authorize('create', Exames::class);
+            $schoolId = $this->currentSchoolId();
+            $classroom = Classroom::query()
+                ->forSchool($schoolId)
+                ->findOrFail((int) $request->classroom_id);
 
-            // رفع الملف إن وجد
-            if($request->hasfile('file_url')) {
-                $randint = rand(4, 10);
-                $randstr = Str::random($randint);
-                $filepath_url = time().$randstr.'.'.$request->file_url->extension();
-                $request->file_url->move(public_path('exames'), $filepath_url);
-            }
+            $translations = $this->translator->translateToFrenchAndEnglish($request->name_ar);
+            $file = $request->file('file_url');
+            $filePath = 'private/exames/' . now()->format('Y/m') . '/' . time() . '_' . Str::random(16) . '.' . $file->getClientOriginalExtension();
+            Storage::disk('local')->put($filePath, file_get_contents($file->getRealPath()));
 
             Exames::create([
-                'file' => isset($filepath_url) ? (string)$filepath_url : null,
+                'file' => $filePath,
                 'name' => [
                     'ar' => $request->name_ar,
                     'fr' => $translations['fr'] ?? '',
                     'en' => $translations['en'] ?? '',
                 ],
                 'specialization_id' => $request->specialization_id,
-                'grade_id' => $request->grade_id,
-                'classroom_id' => $request->classroom_id,
+                'grade_id' => $classroom->grade_id,
+                'classroom_id' => $classroom->id,
                 'Annscolaire' => $request->Annscolaire,
             ]);
 
@@ -80,48 +133,49 @@ class ExamesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
-{
-    try {
-        $exam = Exames::findOrFail($id);
+    public function update(UpdateExameRequest $request, $id)
+    {
+        try {
+            $exam = Exames::findOrFail($id);
+            $this->authorize('update', $exam);
+            $schoolId = $this->currentSchoolId();
+            $classroom = Classroom::query()
+                ->forSchool($schoolId)
+                ->findOrFail((int) $request->classroom_id);
 
-        $translations = $this->translator->translateToFrenchAndEnglish($request->name_ar);
+            $translations = $this->translator->translateToFrenchAndEnglish($request->name_ar);
 
-        // إذا فيه ملف جديد يتم رفعه
-        if($request->hasFile('file_url')) {
-            // حذف الملف القديم إذا موجود
-            if ($exam->file && file_exists(public_path('exames/'.$exam->file))) {
-                unlink(public_path('exames/'.$exam->file));
+            if ($request->hasFile('file_url')) {
+                if ($exam->file && Storage::disk('local')->exists($exam->file)) {
+                    Storage::disk('local')->delete($exam->file);
+                }
+
+                if ($exam->file && file_exists(public_path('exames/' . $exam->file))) {
+                    @unlink(public_path('exames/' . $exam->file));
+                }
+
+                $file = $request->file('file_url');
+                $filePath = 'private/exames/' . now()->format('Y/m') . '/' . time() . '_' . Str::random(16) . '.' . $file->getClientOriginalExtension();
+                Storage::disk('local')->put($filePath, file_get_contents($file->getRealPath()));
+                $exam->file = $filePath;
             }
+            $exam->name = [
+                'ar' => $request->name_ar,
+                'fr' => $translations['fr'] ?? '',
+                'en' => $translations['en'] ?? '',
+            ];
+            $exam->specialization_id = $request->specialization_id;
+            $exam->grade_id = $classroom->grade_id;
+            $exam->classroom_id = $classroom->id;
+            $exam->Annscolaire = $request->Annscolaire;
+            $exam->save();
 
-            $randint = rand(4, 10);
-            $randstr = Str::random($randint);
-            $filepath_url = time().$randstr.'.'.$request->file_url->extension();
-            $request->file_url->move(public_path('exames'), $filepath_url);
-
-            $exam->file = (string)$filepath_url;
+            toastr()->success(trans('messages.Update'));
+            return redirect()->route('Exames.index');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        // تحديث باقي البيانات
-        $exam->name = [
-            'ar' => $request->name_ar,
-            'fr' => $translations['fr'] ?? '',
-            'en' => $translations['en'] ?? '',
-        ];
-        $exam->specialization_id = $request->specialization_id;
-        $exam->grade_id = $request->grade_id;
-        $exam->classroom_id = $request->classroom_id;
-        $exam->Annscolaire = $request->Annscolaire;
-
-        $exam->save();
-
-        toastr()->success(trans('messages.Update'));
-        return redirect()->route('Exames.index');
-
-    } catch (\Exception $e) {
-        return redirect()->back()->withErrors(['error' => $e->getMessage()]);
     }
-}
 
 
     /**
@@ -130,19 +184,21 @@ class ExamesController extends Controller
     public function show(Exames $exames, $id)
 {
     $Exames = Exames::findOrFail($id);
-    $file = public_path("exames/" . $Exames->file);
+    $this->authorize('view', $Exames);
 
-    if (!file_exists($file)) {
+    $extension = pathinfo($Exames->file, PATHINFO_EXTENSION) ?: 'pdf';
+    $filename = ($Exames->name['ar'] ?? 'exam') . '.' . $extension;
+
+    if ($Exames->file && Storage::disk('local')->exists($Exames->file)) {
+        return Storage::disk('local')->download($Exames->file, $filename);
+    }
+
+    $legacyFile = public_path("exames/" . $Exames->file);
+    if (!file_exists($legacyFile)) {
         abort(404, 'الملف غير موجود');
     }
 
-    // جلب الامتداد من اسم الملف الأصلي
-    $extension = pathinfo($Exames->file, PATHINFO_EXTENSION);
-
-    // تحديد الاسم للتحميل (من الترجمة أو الاسم العربي)
-    $filename = ($Exames->name['ar'] ?? 'exam') . '.' . $extension;
-
-    return response()->download($file, $filename);
+    return response()->download($legacyFile, $filename);
     }
 
     /**
@@ -150,7 +206,17 @@ class ExamesController extends Controller
      */
     public function destroy(Exames $exames, $id)
     {
-        Exames::where('id',$id)->delete();
+        $exam = Exames::findOrFail($id);
+        $this->authorize('delete', $exam);
+
+        if ($exam->file && Storage::disk('local')->exists($exam->file)) {
+            Storage::disk('local')->delete($exam->file);
+        }
+        if ($exam->file && file_exists(public_path('exames/' . $exam->file))) {
+            @unlink(public_path('exames/' . $exam->file));
+        }
+
+        $exam->delete();
         toastr()->error(trans('messages.delete'));
         return redirect()->route('Exames.index');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models\AgendaScolaire;
 
+use App\Models\Inscription\StudentInfo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

@@ -6,13 +6,14 @@ use App\Http\Requests\StoreGrade;
 use App\Models\AgendaScolaire\Grade;
 use App\Models\AgendaScolaire\Publication;
 use App\Services\OpenAiTranslationService;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Cache;
 
 class GradeController extends Controller
 {
     public function __construct(private OpenAiTranslationService $translator)
     {
+        $this->middleware(['auth', 'role:admin']);
     }
 
     /**
@@ -22,7 +23,19 @@ class GradeController extends Controller
      */
     public function index()
     {
-        $data['Grade']  = Grade::all();
+        $this->authorize('viewAny', Grade::class);
+        $search = trim((string) request('q'));
+        $data['Grade']  = Grade::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($textQuery) use ($search) {
+                    $textQuery->where('name_grades->ar', 'like', '%' . $search . '%')
+                        ->orWhere('name_grades->fr', 'like', '%' . $search . '%')
+                        ->orWhere('name_grades->en', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
         $data['notify'] = $this->notifications();
         return view('admin.grade',$data);
     }
@@ -45,6 +58,7 @@ class GradeController extends Controller
      */
 public function store(StoreGrade $request)
 {
+    $this->authorize('create', Grade::class);
     $validated = $request->validated();
 
     try {
@@ -57,6 +71,7 @@ public function store(StoreGrade $request)
             'en' => $translations['en'] ?? '',
         ];
         $Grade->save();
+        $this->forgetPublicPublicationReferenceCache();
 
         toastr()->success(trans('messages.success'));
         return redirect()->route('Grades.index');
@@ -98,6 +113,8 @@ public function store(StoreGrade $request)
     
 public function update(StoreGrade $request, $id)
 {
+    $grade = Grade::findOrFail($id);
+    $this->authorize('update', $grade);
     $validated = $request->validated();
 
     try {
@@ -108,6 +125,7 @@ public function update(StoreGrade $request, $id)
             'name_grades->fr' => $translations['fr'] ?? '',
             'name_grades->en' => $translations['en'] ?? '',
         ]);
+        $this->forgetPublicPublicationReferenceCache();
 
         toastr()->success(trans('messages.Update'));
         return redirect()->route('Grades.index');
@@ -123,13 +141,17 @@ public function update(StoreGrade $request, $id)
      * @param  \App\Models\Grade  $grade
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Request $request,$id)
+    public function destroy($id)
     {
+        $grade = Grade::findOrFail($id);
+        $this->authorize('delete', $grade);
+
         $MyGrade_id = Publication::where('grade_id',$id)->pluck('grade_id');
         
         if($MyGrade_id->count() == 0){
 
-        Grade::where('id',$id)->delete();
+        $grade->delete();
+        $this->forgetPublicPublicationReferenceCache();
         toastr()->error(trans('messages.delete'));
         return redirect()->route('Grades.index');
     }
@@ -140,5 +162,11 @@ public function update(StoreGrade $request, $id)
         return redirect()->route('Grades.index');
 
     }
+    }
+
+    private function forgetPublicPublicationReferenceCache(): void
+    {
+        Cache::forget('public:publication:grades');
+        Cache::forget('public:publication:agendas');
     }
 }

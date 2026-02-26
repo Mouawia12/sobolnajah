@@ -2,17 +2,26 @@
 
 namespace App\Http\Controllers\Inscription;
 
+use App\Actions\Inscription\CreateTeacherEnrollmentAction;
+use App\Actions\Inscription\DeleteTeacherEnrollmentAction;
+use App\Actions\Inscription\UpdateTeacherEnrollmentAction;
 use App\Models\Inscription\Teacher;
-use App\Models\User;
 use App\Models\Specialization\Specialization;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\StoreTeacher;
-use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class TeacherController extends Controller
 {
+    public function __construct(
+        private CreateTeacherEnrollmentAction $createTeacherEnrollmentAction,
+        private UpdateTeacherEnrollmentAction $updateTeacherEnrollmentAction,
+        private DeleteTeacherEnrollmentAction $deleteTeacherEnrollmentAction
+    )
+    {
+        $this->middleware(['auth', 'role:admin']);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -20,16 +29,36 @@ class TeacherController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', Teacher::class);
         $schoolId = $this->currentSchoolId();
+        $search = trim((string) request('q'));
+        $specializationId = request('specialization_id');
+        $gender = request('gender');
 
         $data['Teacher'] = Teacher::query()
             ->forSchool($schoolId)
             ->with(['user', 'specialization'])
+            ->when($specializationId, fn ($query) => $query->where('specialization_id', $specializationId))
+            ->when($gender !== null && $gender !== '', fn ($query) => $query->where('gender', $gender))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($teacherQuery) use ($search) {
+                    $teacherQuery->where('name->fr', 'like', '%' . $search . '%')
+                        ->orWhere('name->ar', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('email', 'like', '%' . $search . '%');
+                        });
+                });
+            })
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
-        $data['Specializations'] = Specialization::all();
+        $data['Specializations'] = Specialization::query()->orderBy('name')->get();
         $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('teacher.teacherlist')],
+        ];
 
         return view('admin.teacher', $data);
     }
@@ -52,38 +81,13 @@ class TeacherController extends Controller
      */
     public function store(StoreTeacher $request)
     {
+        $this->authorize('create', Teacher::class);
         $request->validated();
 
         $schoolId = $this->currentSchoolId();
 
         try {
-            DB::transaction(function () use ($request, $schoolId) {
-                $user = User::create([
-                    'name' => [
-                        'fr' => $request->name_teacherfr,
-                        'ar' => $request->name_teacherar,
-                        'en' => $request->name_teacherfr,
-                    ],
-                    'email' => $request->email,
-                    'password' => Hash::make('profsobolnajah2022'),
-                    'school_id' => $schoolId,
-                ]);
-
-                $user->attachRole('teacher');
-
-                Teacher::create([
-                    'user_id' => $user->id,
-                    'specialization_id' => $request->specialization_id,
-                    'name' => [
-                        'fr' => $request->name_teacherfr,
-                        'ar' => $request->name_teacherar,
-                        'en' => $request->name_teacherfr,
-                    ],
-                    'gender' => $request->gender,
-                    'joining_date' => $request->joining_date,
-                    'address' => $request->address,
-                ]);
-            });
+            $this->createTeacherEnrollmentAction->execute($request->all(), $schoolId);
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
@@ -128,36 +132,11 @@ class TeacherController extends Controller
 
         $schoolId = $this->currentSchoolId();
 
-        $teacher = Teacher::query()
-            ->forSchool($schoolId)
-            ->with('user')
-            ->findOrFail($id);
+        $teacher = Teacher::query()->with('user')->findOrFail($id);
+        $this->authorize('update', $teacher);
 
         try {
-            DB::transaction(function () use ($teacher, $request, $schoolId) {
-                $teacher->update([
-                    'name' => [
-                        'fr' => $request->name_teacherfr,
-                        'ar' => $request->name_teacherar,
-                        'en' => $request->name_teacherfr,
-                    ],
-                    'gender' => $request->gender,
-                    'joining_date' => $request->joining_date,
-                    'address' => $request->address,
-                ]);
-
-                if ($teacher->user) {
-                    $teacher->user->update([
-                        'name' => [
-                            'fr' => $request->name_teacherfr,
-                            'ar' => $request->name_teacherar,
-                            'en' => $request->name_teacherfr,
-                        ],
-                        'email' => $request->email,
-                        'school_id' => $schoolId,
-                    ]);
-                }
-            });
+            $this->updateTeacherEnrollmentAction->execute($teacher, $request->all(), $schoolId);
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
@@ -178,22 +157,16 @@ class TeacherController extends Controller
         $schoolId = $this->currentSchoolId();
 
         $teacher = Teacher::query()
-            ->forSchool($schoolId)
             ->with(['user', 'sections'])
             ->findOrFail($id);
+        $this->authorize('delete', $teacher);
 
         if ($teacher->sections()->exists()) {
             toastr()->error('هذا المعلم ينتمي لقسم لا يمكن حذفه');
             return redirect()->route('Teachers.index');
         }
 
-        DB::transaction(function () use ($teacher) {
-            $teacher->delete();
-
-            if ($teacher->user) {
-                $teacher->user->delete();
-            }
-        });
+        $this->deleteTeacherEnrollmentAction->execute($teacher);
 
         toastr()->error(trans('messages.delete'));
 

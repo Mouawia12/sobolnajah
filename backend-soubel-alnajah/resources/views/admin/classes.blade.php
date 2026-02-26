@@ -23,8 +23,40 @@
         </div>
         <!-- /.box-header -->
         <div class="box-body">
+           <form method="GET" action="{{ route('Classes.index') }}" class="admin-form-panel mb-15">
+             <div class="row">
+               <div class="col-md-3">
+                 <label class="form-label">بحث</label>
+                 <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم القسم الدراسي">
+               </div>
+               @if(!$currentSchoolId)
+               <div class="col-md-3">
+                 <label class="form-label">{{ trans('inscription.ecole') }}</label>
+                 <select name="school_id" class="form-select">
+                   <option value="">الكل</option>
+                   @foreach ($School as $sc)
+                     <option value="{{ $sc->id }}" @selected((string) request('school_id') === (string) $sc->id)>{{ $sc->name_school }}</option>
+                   @endforeach
+                 </select>
+               </div>
+               @endif
+               <div class="col-md-3">
+                 <label class="form-label">{{ trans('inscription.niveau') }}</label>
+                 <select name="grade_id" class="form-select">
+                   <option value="">الكل</option>
+                   @foreach ($Schoolgradee as $grade)
+                     <option value="{{ $grade->id }}" @selected((string) request('grade_id') === (string) $grade->id)>{{ $grade->name_grade }}</option>
+                   @endforeach
+                 </select>
+               </div>
+               <div class="col-md-3 d-flex align-items-end gap-2">
+                 <button type="submit" class="btn btn-primary">بحث</button>
+                 <a href="{{ route('Classes.index') }}" class="btn btn-light">Reset</a>
+               </div>
+             </div>
+           </form>
            <div class="table-responsive">
-             <table id="example5" class="table table-bordered table-striped text-center" style="width:100%">
+             <table class="table table-bordered table-striped text-center" style="width:100%">
               <thead>
                  <tr>
                     <th>#</th>              
@@ -37,9 +69,9 @@
               </thead>
               <tbody>
 
-               <?php $i = 0; ?>
-               @foreach ($Classroom as $cr)
-               <?php $i++; ?>
+               @php($i = ($Classroom->currentPage() - 1) * $Classroom->perPage())
+               @forelse ($Classroom as $cr)
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>                    
                     <td>{{ $cr->schoolgrade->school->name_school }}</td>
@@ -143,7 +175,11 @@
    </div>
   </div>
   </div>
-                 @endforeach
+               @empty
+                 <tr>
+                   <td colspan="5"><div class="admin-empty-state">لا توجد أقسام دراسية مطابقة.</div></td>
+                 </tr>
+               @endforelse
 
               </tbody>
               <tfoot>
@@ -156,6 +192,9 @@
                </tr>
             </tfoot>
            </table>
+           <div class="mt-15 d-flex justify-content-end">
+            {{ $Classroom->links() }}
+           </div>
            </div>
         </div>
         <!-- /.box-body -->
@@ -241,7 +280,7 @@
           var school_id = $(this).val();
           if (school_id) {
               $.ajax({
-                  url: "{{ URL::to('getgrade') }}/" + school_id,
+                  url: "{{ route('lookup.schoolGrades', ['id' => '__ID__']) }}".replace('__ID__', school_id),
                   type: "GET",
                   dataType: "json",
                   success: function (data) {
@@ -260,9 +299,4 @@
 
 </script>
 
-
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-@include('layoutsadmin.datatabels')
 @endsection
-
-

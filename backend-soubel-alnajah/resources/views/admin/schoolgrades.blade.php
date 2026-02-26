@@ -22,8 +22,31 @@
         </div>
         <!-- /.box-header -->
         <div class="box-body">
+           <form method="GET" action="{{ route('Schoolgrades.index') }}" class="admin-form-panel mb-15">
+             <div class="row">
+               <div class="col-md-4">
+                 <label class="form-label">بحث</label>
+                 <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم المستوى">
+               </div>
+               @if(!$currentSchoolId)
+               <div class="col-md-4">
+                 <label class="form-label">{{ trans('inscription.ecole') }}</label>
+                 <select name="school_id" class="form-select">
+                   <option value="">الكل</option>
+                   @foreach ($School as $sc)
+                     <option value="{{ $sc->id }}" @selected((string) request('school_id') === (string) $sc->id)>{{ $sc->name_school }}</option>
+                   @endforeach
+                 </select>
+               </div>
+               @endif
+               <div class="col-md-4 d-flex align-items-end gap-2">
+                 <button type="submit" class="btn btn-primary">بحث</button>
+                 <a href="{{ route('Schoolgrades.index') }}" class="btn btn-light">Reset</a>
+               </div>
+             </div>
+           </form>
            <div class="table-responsive">
-            <table id="example5" class="table table-bordered text-center" style="width:100%">
+            <table class="table table-bordered text-center" style="width:100%">
                <thead>
                  <tr>
                     <th>#</th>
@@ -36,9 +59,9 @@
               </thead>
               <tbody>
 
-               <?php $i = 0; ?>
-               @foreach ($Schoolgrade as $gr)
-               <?php $i++; ?>
+               @php($i = ($Schoolgrade->currentPage() - 1) * $Schoolgrade->perPage())
+               @forelse ($Schoolgrade as $gr)
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>
                     <td>{{ $gr->name_grade }}</td>
@@ -139,7 +162,11 @@
     </div>
    </div>
    </div>
-                 @endforeach
+               @empty
+                <tr>
+                  <td colspan="5"><div class="admin-empty-state">لا توجد مستويات مطابقة للفلترة.</div></td>
+                </tr>
+               @endforelse
 
               </tbody>
               <tfoot>
@@ -153,6 +180,9 @@
                </tr>
             </tfoot>
            </table>
+           <div class="mt-15 d-flex justify-content-end">
+            {{ $Schoolgrade->links() }}
+           </div>
            </div>
         </div>
         <!-- /.box-body -->
@@ -228,11 +258,7 @@
 
 
 @section('jsa')
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-@include('layoutsadmin.datatabels')
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup.min.js')}}"></script>
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup-init.js')}}"></script>
 
 @endsection
-
-

@@ -9,14 +9,6 @@
 @section('contenta')
 <div class="row">
     <div class="col-12">
-
-        @if ($errors->any())
-            @foreach ($errors->all() as $error)
-                <div class="alert alert-danger col-md-6">
-                    <p>{{ $error }}</p>
-                </div>
-            @endforeach
-        @endif
         <div class="box">
 
             <!-- /.box-header -->
@@ -25,8 +17,37 @@
                 <h3 class="box-title"><a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-danger"
                         id="btn_delete_all">{{ trans('opt.deleteall') }}</a></h3>
 
+                <form method="GET" class="row mb-3">
+                    <div class="col-md-4">
+                        <input type="text" name="q" class="form-control" value="{{ request('q') }}"
+                            placeholder="بحث: الاسم / البريد / الهاتف">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">كل الحالات</option>
+                            <option value="procec" @selected(request('status') === 'procec')>{{ trans('inscription.undefined') }}</option>
+                            <option value="accept" @selected(request('status') === 'accept')>{{ trans('inscription.accept') }}</option>
+                            <option value="noaccept" @selected(request('status') === 'noaccept')>{{ trans('inscription.noaccept') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="classroom_id" class="form-select">
+                            <option value="">كل الأقسام الدراسية</option>
+                            @foreach ($Classrooms as $classroom)
+                                <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>
+                                    {{ $classroom->schoolgrade->name_grade ?? '' }} / {{ $classroom->name_class }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-1">
+                        <button class="btn btn-primary" type="submit">تصفية</button>
+                        <a href="{{ route('Inscriptions.index') }}" class="btn btn-outline-secondary">إعادة</a>
+                    </div>
+                </form>
+
                 <div class="table-responsive">
-                    <table id="example5" class="table table-bordered text-center" style="width:100%">
+                    <table class="table table-bordered text-center js-inscriptions-table" style="width:100%">
                         <thead>
                             <tr>
                                 <th>
@@ -57,15 +78,14 @@
                         </thead>
                         <tbody>
 
-                            <?php $i = 0; ?>
-                            @foreach ($Inscription as $ins)
-                                <?php $i++; ?>
+                            @foreach ($Inscription as $index => $ins)
+                                @php $rowNumber = $Inscription->firstItem() + $index; @endphp
                                 <tr>
 
                                     <td>
-                                        <input type="checkbox" id="md_checkbox_{{ $i }}"
+                                        <input type="checkbox" id="md_checkbox_{{ $rowNumber }}"
                                             value="{{ $ins->id }}" class="chk-col-primary" />
-                                        <label for="md_checkbox_{{ $i }}">{{ $i }}</label>
+                                        <label for="md_checkbox_{{ $rowNumber }}">{{ $rowNumber }}</label>
                                     </td>
                                     <td>
                                         <a href="#"
@@ -144,9 +164,8 @@
                                         <div class="modal-content">
                                             <div class="modal-body">
                                                 <form id="store-form{{ $ins->id }}"
-                                                    action="{{ route('Inscriptions.show', $ins->id) }}" method="POST">
+                                                    action="{{ route('Inscriptions.approve', $ins->id) }}" method="POST">
 
-                                                    {{ method_field('GET') }}
                                                     @csrf
                                                     <div class="col-md-4">
                                                         <div class="form-group">
@@ -828,10 +847,9 @@
                                         <div class="modal-content">
                                             <div class="modal-body">
                                                 <form id="status-form{{ $ins->id }}"
-                                                    action="{{ route('Inscriptions.edit', $ins->id) }}"
+                                                    action="{{ route('Inscriptions.status', $ins->id) }}"
                                                     method="POST">
 
-                                                    {{ method_field('GET') }}
                                                     @csrf
                                                     <div class="box-body">
                                                         <div class="row">
@@ -881,6 +899,12 @@
                             </tr>
                         </tfoot>
                     </table>
+                    @if($Inscription->isEmpty())
+                        <div class="admin-empty-state mt-10">لا توجد تسجيلات مطابقة للفلترة الحالية.</div>
+                    @endif
+                    <div class="mt-3">
+                        {{ $Inscription->links() }}
+                    </div>
                 </div>
             </div>
             <!-- /.box-body -->
@@ -895,8 +919,7 @@
         <div class="modal-content">
             <div class="modal-body">
 
-                <form id="delete_all2" action="{{ route('delete_all') }}" method="GET">
-                    {{ method_field('GET') }}
+                <form id="delete_all2" action="{{ route('delete_all') }}" method="POST">
                     @csrf
                     <div class="modal-body">
                         <h1>{{ trans('opt.deletemsg') }}</h1>
@@ -930,7 +953,7 @@
     $(function() {
         $("#btn_delete_all").click(function() {
             var selected = new Array();
-            $("#example5 input[type=checkbox]:checked").each(function() {
+            $(".js-inscriptions-table input[type=checkbox]:checked").each(function() {
                 selected.push(this.value);
             });
 
@@ -940,170 +963,6 @@
             }
         });
     });
-</script>
-
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js') }}"></script>
-
-<script>
-    $(function() {
-        "use strict";
-
-        $('#example1').DataTable();
-        $('#example2').DataTable({
-            'paging': true,
-            'lengthChange': false,
-            'searching': false,
-            'ordering': true,
-            'info': true,
-            'autoWidth': false
-        });
-
-
-        $('#example').DataTable({
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ]
-        });
-
-        $('#tickets').DataTable({
-            'paging': true,
-            'lengthChange': true,
-            'searching': true,
-            'ordering': true,
-            'info': true,
-            'autoWidth': false,
-        });
-
-        $('#productorder').DataTable({
-            'paging': true,
-            'lengthChange': true,
-            'searching': true,
-            'ordering': true,
-            'info': true,
-            'autoWidth': false,
-        });
-
-
-        $('#complex_header').DataTable();
-
-
-
-
-
-        // Setup - add a text input to each footer cell
-        $('#example5 tfoot th').each(function() {
-
-            var title = $(this).text();
-            $(this).html('<input type="text" placeholder=" ' + title + '" />');
-
-        });
-        // DataTable
-        var table = $('#example5').DataTable({
-            "pageLength": 100,
-            "language": {
-                "paginate": {
-                    "next": "{{ trans('inscription.next') }}",
-                    "last": "Last page",
-                    "previous": "{{ trans('inscription.Previous') }}",
-                },
-                "info": "{{ trans('inscription.show') }} _START_ {{ trans('inscription.to') }} _END_ {{ trans('inscription.of') }} _TOTAL_ {{ trans('inscription.entries') }}",
-                "infoEmpty": "{{ trans('inscription.noentries') }}",
-                "emptyTable": "{{ trans('inscription.nodata') }}",
-                "search": "{{ trans('inscription.search') }}",
-                "infoFiltered": " - {{ trans('inscription.filteringfrom') }} _MAX_ {{ trans('inscription.records') }}",
-                "lengthMenu": "{{ trans('inscription.show') }} _MENU_ {{ trans('inscription.records') }}",
-                "zeroRecords": "{{ trans('inscription.norecords') }}",
-
-
-            }
-        });
-
-        // Apply the search
-        table.columns().every(function() {
-            var that = this;
-
-            $('input', this.footer()).on('keyup change', function() {
-                if (that.search() !== this.value) {
-                    that
-                        .search(this.value)
-                        .draw();
-                }
-
-            });
-
-        });
-
-
-
-
-
-
-        for (let i = 0; i < 10; i++) {
-
-            // Setup - add a text input to each footer cell
-            $('#example5' + i + ' tfoot th').each(function() {
-
-                var title = $(this).text();
-                $(this).html('<input type="text" placeholder=" ' + title + '" />');
-
-            });
-            // DataTable
-            var table = $('#example5' + i + '').DataTable({
-                "language": {
-                    "paginate": {
-                        "next": "{{ trans('inscription.next') }}",
-                        "last": "Last page",
-                        "previous": "{{ trans('inscription.Previous') }}",
-                    },
-                    "info": "{{ trans('inscription.show') }} _START_ {{ trans('inscription.to') }} _END_ {{ trans('inscription.of') }} _TOTAL_ {{ trans('inscription.entries') }}",
-                    "infoEmpty": "{{ trans('inscription.noentries') }}",
-                    "emptyTable": "{{ trans('inscription.nodata') }}",
-                    "search": "{{ trans('inscription.search') }}",
-                    "infoFiltered": " - {{ trans('inscription.filteringfrom') }} _MAX_ {{ trans('inscription.records') }}",
-                    "lengthMenu": "{{ trans('inscription.show') }} _MENU_ {{ trans('inscription.records') }}",
-                    "zeroRecords": "{{ trans('inscription.norecords') }}"
-
-                }
-            });
-
-            // Apply the search
-            table.columns().every(function() {
-                var that = this;
-
-                $('input', this.footer()).on('keyup change', function() {
-                    if (that.search() !== this.value) {
-                        that
-                            .search(this.value)
-                            .draw();
-                    }
-
-                });
-
-            });
-
-        }
-
-
-
-
-
-        //---------------Form inputs
-        var table = $('#example6').DataTable();
-
-        $('button').click(function() {
-            var data = table.$('input, select').serialize();
-            alert(
-                "The following data would have been submitted to the server: \n\n" +
-                data.substr(0, 120) + '...'
-            );
-            return false;
-        });
-
-
-
-
-    }); // End of use strict
 </script>
 
 @include('layoutsadmin.DeleteCheckbox')

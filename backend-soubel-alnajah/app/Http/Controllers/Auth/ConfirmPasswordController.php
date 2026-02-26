@@ -42,6 +42,11 @@ class ConfirmPasswordController extends Controller
     }
 
     public function studentChangePassword(Request $request){
+            $validated = $request->validate([
+                'password' => ['required', 'string'],
+                'newPassword' => ['required', 'string', 'min:8', 'different:password'],
+                'confirmNewPassword' => ['required', 'same:newPassword'],
+            ]);
 
             if (!(Hash::check($request->get('password'), Auth::user()->password))) {
                 return redirect()->back()->withErrors(['كلمة السر القديمة غير صحيحة']);
@@ -60,6 +65,7 @@ class ConfirmPasswordController extends Controller
             //Change Password
             $user = Auth::user();
             $user->password = Hash::make($request->get('newPassword'));
+            $user->must_change_password = false;
             $user->save();
     
             return redirect()->back()->withSuccess("b");

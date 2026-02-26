@@ -9,14 +9,16 @@ use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class StudentEnrollmentService
 {
-    public const DEFAULT_STUDENT_PASSWORD = 'sobolnajah2022';
-    public const DEFAULT_GUARDIAN_PASSWORD = 'sobolnajah2022';
+    public function __construct(private UserOnboardingService $onboardingService)
+    {
+    }
 
     public function createStudent(array $studentData, array $guardianData, Section $section): StudentInfo
     {
@@ -126,7 +128,6 @@ class StudentEnrollmentService
             $this->normalizeName($guardianData['first_name'] ?? []),
             $email,
             $schoolId,
-            self::DEFAULT_GUARDIAN_PASSWORD,
             'guardian'
         );
 
@@ -159,12 +160,11 @@ class StudentEnrollmentService
             $name,
             $email,
             $schoolId,
-            self::DEFAULT_STUDENT_PASSWORD,
             'student'
         );
     }
 
-    protected function createUser(array $name, ?string $email, int $schoolId, string $defaultPassword, string $role): User
+    protected function createUser(array $name, ?string $email, int $schoolId, string $role): User
     {
         if (!$email) {
             throw ValidationException::withMessages([
@@ -175,13 +175,17 @@ class StudentEnrollmentService
         $user = User::create([
             'name' => $name,
             'email' => $email,
-            'password' => Hash::make($defaultPassword),
+            // Create unpredictable temporary password instead of static defaults.
+            'password' => Hash::make(Str::random(40)),
+            'must_change_password' => true,
             'school_id' => $schoolId,
         ]);
 
         if (!$user->hasRole($role)) {
             $user->attachRole($role);
         }
+
+        $this->onboardingService->dispatchPasswordSetupLink($user);
 
         return $user;
     }

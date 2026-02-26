@@ -24,12 +24,13 @@ class StorePublication extends FormRequest
     public function rules()
     {
         return [
-            'school_id2' => 'required',
-            'grade_id2' => 'required',
-            'agenda_id' => 'required',
-            'titlear' => 'required',
-            'bodyar' => 'required',
-            'img_url' => 'required',
+            'school_id2' => 'required|integer|exists:schools,id',
+            'grade_id2' => 'required|integer|exists:grades,id',
+            'agenda_id' => 'required|integer|exists:agenda,id',
+            'titlear' => 'required|string|max:255',
+            'bodyar' => 'required|string',
+            'img_url' => 'required|array|min:1',
+            'img_url.*' => 'file|image|mimes:jpeg,png,jpg,webp|max:5120',
            
         ];
     }

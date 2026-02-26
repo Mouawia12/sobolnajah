@@ -3,22 +3,20 @@
 namespace App\Http\Controllers\AgendaScolaire;
 
 
-use Illuminate\Http\Request;
-
+use App\Http\Requests\StoreNoteStudentRequest;
 use App\Models\AgendaScolaire\NoteStudent;
 use App\Models\Inscription\StudentInfo;
-
-
-
+use App\Models\School\Section;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
-
-use File;
-
-
+use Illuminate\Support\Facades\Storage;
 
 class NoteStudentController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth', 'role:admin']);
+    }
 
     /**
      * Display the specified resource.
@@ -41,8 +39,42 @@ class NoteStudentController extends Controller
      */
     public function show($id)
     {
-        $data['NoteStudents'] = NoteStudent::all();
-        $data['StudentInfo']  = StudentInfo::where("section_id",$id)->get();
+        $this->authorize('viewAny', NoteStudent::class);
+
+        $schoolId = $this->currentSchoolId();
+        $search = trim((string) request('q'));
+        $hasNotes = request('has_notes');
+
+        $section = Section::query()
+            ->forSchool($schoolId)
+            ->with('classroom.schoolgrade')
+            ->findOrFail($id);
+
+        $data['section'] = $section;
+        $data['StudentInfo'] = StudentInfo::query()
+            ->forSchool($schoolId)
+            ->where("section_id", $id)
+            ->with(['user', 'noteStudent'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($studentQuery) use ($search) {
+                    $studentQuery->where('prenom->fr', 'like', '%' . $search . '%')
+                        ->orWhere('prenom->ar', 'like', '%' . $search . '%')
+                        ->orWhere('nom->fr', 'like', '%' . $search . '%')
+                        ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                        ->orWhere('numtelephone', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', fn ($userQuery) => $userQuery->where('email', 'like', '%' . $search . '%'));
+                });
+            })
+            ->when($hasNotes === '1', fn ($query) => $query->whereHas('noteStudent'))
+            ->when($hasNotes === '0', fn ($query) => $query->whereDoesntHave('noteStudent'))
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+        $data['UploadStudents'] = StudentInfo::query()
+            ->forSchool($schoolId)
+            ->where('section_id', $id)
+            ->orderBy('id')
+            ->get(['id', 'prenom', 'nom']);
         $data['notify'] = $this->notifications();
         return view('admin.addnotestudent',$data);
     }
@@ -63,63 +95,69 @@ class NoteStudentController extends Controller
 
     //store file notestudent
 
-    public function store(Request $request)
+    public function store(StoreNoteStudentRequest $request)
      {
+        $this->authorize('create', NoteStudent::class);
+        $notestudent = NoteStudent::where('student_id', $request->student_id)->first();
+        $noteColumn = "urlfile{$request->Anneescolaire}";
 
-    //$validated = $request->validated();
-    
-    $notestudent = NoteStudent::where('student_id', $request->student_id)->first();
-    $note ="urlfile{$request->Anneescolaire}";
-    
-    // $notepdf = $request->note_file;
-    // return $notepdf->extension();
+        try {
+            $file = $request->file('note_file');
+            $safeName = time() . '_' . Str::random(16) . '.' . $file->getClientOriginalExtension();
+            $notePath = $this->localNotePath($safeName);
+            Storage::disk('local')->put($notePath, file_get_contents($file->getRealPath()));
 
-    try {
+            if (is_null($notestudent)) {
+                $noteStudent = new NoteStudent();
+                $noteStudent->student_id = $request->student_id;
+                $noteStudent->{$noteColumn} = $safeName;
+                $noteStudent->save();
+            } else {
+                $oldValue = $notestudent->{$noteColumn};
+                $oldPath = $this->localNotePath($oldValue);
+                if ($oldValue && Storage::disk('local')->exists($oldPath)) {
+                    Storage::disk('local')->delete($oldPath);
+                }
+                if ($oldValue && file_exists(public_path('note/' . $oldValue))) {
+                    @unlink(public_path('note/' . $oldValue));
+                }
 
-        $randint = rand(4, 10);
-        $randstr = Str::random($randint);
-        $notepdf = $request->note_file;
-        $note_url = time().$randstr.'.'.$notepdf->extension();
+                NoteStudent::updateOrCreate(
+                    ['student_id' => $request->student_id],
+                    [
+                        'student_id' => $request->student_id,
+                        $noteColumn => $safeName,
+                    ]
+                );
+            }
 
-        if(is_null($notestudent)){
-         $NoteStudent = new NoteStudent();
-
-         $NoteStudent-> student_id = $request->student_id ;
-         $NoteStudent-> $note = $note_url;
-         $NoteStudent->save();
-
-        }
-        else{
-            File::delete(public_path('note/'.$notestudent->$note));
-
-            NoteStudent::updateOrCreate([
-                'student_id'=>$request->student_id ,
-            ],[
-                'student_id'=>$request->student_id ,
-                "urlfile{$request->Anneescolaire}"=>$note_url,     
-            ]);
-        }
-        if($request->hasfile('note_file'))
-        {
-            $notepdf -> move(public_path('note'), $note_url);
-        }
-       
-             toastr()->success(trans('messages.success'));
-             return redirect()->back();
+            toastr()->success(trans('messages.success'));
+            return redirect()->back();
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
-
-
-}
+    }
     
 
 
 
-    public function destroy(Request $request,$id)
+    public function destroy($id)
     {
-    
-        NoteStudent::where('id',$id)->delete();
+        $noteStudent = NoteStudent::findOrFail($id);
+        $this->authorize('delete', $noteStudent);
+
+        foreach (['urlfile1', 'urlfile2', 'urlfile3'] as $column) {
+            $path = $noteStudent->{$column};
+            $localPath = $this->localNotePath($path);
+            if ($path && Storage::disk('local')->exists($localPath)) {
+                Storage::disk('local')->delete($localPath);
+            }
+            if ($path && file_exists(public_path('note/' . $path))) {
+                @unlink(public_path('note/' . $path));
+            }
+        }
+
+        $noteStudent->delete();
         toastr()->error(trans('messages.delete'));
         return redirect()->back();
 
@@ -131,28 +169,61 @@ class NoteStudentController extends Controller
 
     public function DownloadNoteFromAdmin($url)
     {
-    
-        $Notestudent =  NoteStudent::where('urlfile1',$url)->first();
+        $this->assertSafeNoteFilename((string) $url);
+
+        $Notestudent = NoteStudent::where('urlfile1', $url)
+            ->orWhere('urlfile2', $url)
+            ->orWhere('urlfile3', $url)
+            ->firstOrFail();
+        $this->authorize('view', $Notestudent);
         
         $Student =  StudentInfo::where("id",$Notestudent->student_id)->first();
-        $headers = array(
-            'Content-Type: application/pdf',
-          );
+        $downloadName = ($Student?->prenom ?? 'student') . ' ' . ($Student?->nom ?? 'note') . '.pdf';
 
-        $file = public_path()."/note/".$url;
-        return \Response::download($file,$Student->prenom.' '.$Student->nom.'.pdf');
+        $localPath = $this->localNotePath($url);
+        if (Storage::disk('local')->exists($localPath)) {
+            return Storage::disk('local')->download($localPath, $downloadName, [
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+
+        $legacyFile = public_path() . "/note/" . $url;
+        if (!file_exists($legacyFile)) {
+            abort(404, 'الملف غير موجود');
+        }
+
+        return \Response::download($legacyFile, $downloadName);
     }
 
 
-    public function DisplqyNoteFromAdmin($url)
+    public function displayNoteFromAdmin($url)
     {
         try {
-            $headers = array(
-                'Content-Type: application/pdf',
-              );
-    
-            $file = public_path()."/note/".$url;
-            return response()->file($file);
+            $this->assertSafeNoteFilename((string) $url);
+
+            $notestudent = NoteStudent::where('urlfile1', $url)
+                ->orWhere('urlfile2', $url)
+                ->orWhere('urlfile3', $url)
+                ->firstOrFail();
+            $this->authorize('view', $notestudent);
+
+            $localPath = $this->localNotePath($url);
+            if (Storage::disk('local')->exists($localPath)) {
+                return Storage::disk('local')->response($localPath, null, [
+                    'Content-Type' => 'application/pdf',
+                    'X-Content-Type-Options' => 'nosniff',
+                ]);
+            }
+
+            $legacyFile = public_path() . "/note/" . $url;
+            if (!file_exists($legacyFile)) {
+                abort(404, 'الملف غير موجود');
+            }
+
+            return response()->file($legacyFile, [
+                'Content-Type' => 'application/pdf',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
 
             toastr()->success(trans('messages.success'));
             return redirect()->back();
@@ -162,6 +233,33 @@ class NoteStudentController extends Controller
             }
     
         
+    }
+
+    // Backward-compatible alias for legacy route/method naming.
+    public function DisplqyNoteFromAdmin($url)
+    {
+        return $this->displayNoteFromAdmin($url);
+    }
+
+    private function localNotePath(?string $value): string
+    {
+        if (!$value) {
+            return '';
+        }
+
+        return 'private/notes/' . $value;
+    }
+
+    private function assertSafeNoteFilename(string $value): void
+    {
+        $isSafe = preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $value) === 1
+            && !str_contains($value, '..')
+            && !str_contains($value, '/')
+            && !str_contains($value, '\\');
+
+        if (!$isSafe) {
+            abort(404);
+        }
     }
 
 

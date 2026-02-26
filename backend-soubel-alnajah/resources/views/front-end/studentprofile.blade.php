@@ -108,9 +108,7 @@
     <div class="modal-dialog">
      <div class="modal-content">
        <div class="modal-body">
-          <form id="status-form" action="{{ route('notify', Auth::user()->id)}}" method="GET" > 
-             
-            {{ method_field('GET') }}
+          <form id="status-form" action="{{ route('notify', Auth::user()->id)}}" method="POST" > 
             @csrf
              <div class="box-body">
                 <div class="row">

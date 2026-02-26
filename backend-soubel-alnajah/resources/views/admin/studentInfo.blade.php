@@ -9,14 +9,6 @@
 @section('contenta')
 <div class="row">
     <div class="col-12">
-
-        @if ($errors->any())
-            @foreach ($errors->all() as $error)
-                <div class="alert alert-danger col-md-6">
-                    <p>{{ $error }}</p>
-                </div>
-            @endforeach
-        @endif
         <div class="box box-slided-up">
             <div class="box-header with-border bg-info">
                 <h4 class="box-title"><strong>{{ trans('student.studentspromotion') }}</strong></h4>
@@ -127,8 +119,51 @@
 
         <!-- /.box-header -->
         <div class="box-body">
+            <form method="GET" class="row mb-3">
+                <div class="col-md-3">
+                    <input type="text" name="q" class="form-control" value="{{ request('q') }}"
+                        placeholder="بحث: الاسم / البريد / الهاتف">
+                </div>
+                <div class="col-md-3">
+                    <select name="section_id" class="form-select">
+                        <option value="">كل الأقسام</option>
+                        @foreach ($Sections as $section)
+                            <option value="{{ $section->id }}" @selected((string) request('section_id') === (string) $section->id)>
+                                {{ $section->classroom->schoolgrade->name_grade ?? '' }} /
+                                {{ $section->classroom->name_class ?? '' }} /
+                                {{ $section->name_section ?? '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="classroom_id" class="form-select">
+                        <option value="">كل الأقسام الدراسية</option>
+                        @foreach ($Sections->pluck('classroom')->filter()->unique('id') as $classroom)
+                            <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>
+                                {{ $classroom->name_class }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="grade_id" class="form-select">
+                        <option value="">كل المستويات</option>
+                        @foreach ($Sections->pluck('classroom.schoolgrade')->filter()->unique('id') as $grade)
+                            <option value="{{ $grade->id }}" @selected((string) request('grade_id') === (string) $grade->id)>
+                                {{ $grade->name_grade }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button class="btn btn-primary" type="submit">تصفية</button>
+                    <a href="{{ route('Students.index') }}" class="btn btn-outline-secondary">إعادة</a>
+                </div>
+            </form>
+
             <div class="table-responsive">
-                <table id="example5" class="table table-bordered text-center" style="width:100%">
+                <table class="table table-bordered text-center" style="width:100%">
                     <thead>
                         <tr>
                             <th></th>
@@ -143,16 +178,14 @@
                     </thead>
                     <tbody>
 
-                        <?php $i = 0; ?>
-                        @foreach ($StudentInfo as $ins)
-                            <?php $i++; ?>
+                        @foreach ($StudentInfo as $index => $ins)
                             <tr>
 
-                                <td>{{ $i }}</td>
+                                <td>{{ $StudentInfo->firstItem() + $index }}</td>
                                 <td class="col-md-2">
                                     <a href="#" class="text-dark fw-600 hover-primary fs-16">{{ $ins->prenom }}
                                         {{ $ins->nom }}</a><span
-                                        class="text-fade d-block">{{ $ins->email }}</span>
+                                        class="text-fade d-block">{{ optional($ins->user)->email }}</span>
                                     <span class="text-fade d-block">0{{ $ins->numtelephone }}</span>
                                 </td>
 
@@ -458,6 +491,9 @@
                         </tr>
                     </tfoot>
                 </table>
+                <div class="mt-3">
+                    {{ $StudentInfo->links() }}
+                </div>
                 <!-- مودال الغيابات المشترك -->
                 <div class="modal fade" id="attendanceModal" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-lg">
@@ -633,7 +669,4 @@
         });
     });
 </script>
-
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js') }}"></script>
-@include('layoutsadmin.datatabels')
 @endsection

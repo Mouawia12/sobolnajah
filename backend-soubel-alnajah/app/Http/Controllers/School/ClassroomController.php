@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\School;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DeleteBulkInscriptionsRequest;
 use Illuminate\Http\Request;
 use App\Models\School\School;
 use App\Models\School\Schoolgrade;
@@ -9,6 +10,7 @@ use App\Models\School\Classroom;
 use App\Models\Inscription\Inscription;
 use App\Http\Requests\StoreClassroom;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 
@@ -19,6 +21,11 @@ use Throwable;
 
 class ClassroomController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth', 'role:admin'])->except(['getClasse', 'listByGrade']);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -26,7 +33,15 @@ class ClassroomController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', Classroom::class);
         $schoolId = $this->currentSchoolId();
+        $query = trim((string) request('q'));
+        $schoolFilter = request('school_id');
+        $gradeFilter = request('grade_id');
+
+        if ($schoolId) {
+            $schoolFilter = $schoolId;
+        }
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
@@ -41,9 +56,20 @@ class ClassroomController extends Controller
 
         $data['Classroom'] = Classroom::query()
             ->forSchool($schoolId)
-            ->with('schoolgrade')
+            ->with('schoolgrade.school')
+            ->when($schoolFilter, fn ($classroomQuery) => $classroomQuery->where('school_id', (int) $schoolFilter))
+            ->when($gradeFilter, fn ($classroomQuery) => $classroomQuery->where('grade_id', (int) $gradeFilter))
+            ->when($query !== '', function ($classroomQuery) use ($query) {
+                $classroomQuery->where(function ($textQuery) use ($query) {
+                    $textQuery->where('name_class->fr', 'like', '%' . $query . '%')
+                        ->orWhere('name_class->ar', 'like', '%' . $query . '%')
+                        ->orWhere('name_class->en', 'like', '%' . $query . '%');
+                });
+            })
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
+        $data['currentSchoolId'] = $schoolId;
 
         $data['notify'] = $this->notifications();
 
@@ -68,6 +94,7 @@ class ClassroomController extends Controller
      */
     public function store(StoreClassroom $request)
     {
+        $this->authorize('create', Classroom::class);
         $request->validated();
 
         $schoolId = $this->currentSchoolId();
@@ -78,7 +105,7 @@ class ClassroomController extends Controller
 
         try {
             DB::transaction(function () use ($request) {
-                Classroom::create([
+                $classroom = Classroom::create([
                     'school_id' => $request->school_id,
                     'grade_id' => $request->grade_id,
                     'name_class' => [
@@ -87,6 +114,7 @@ class ClassroomController extends Controller
                         'en' => $request->name_classfr,
                     ],
                 ]);
+                $this->forgetGradeClassesLookupCache((int) $classroom->school_id, (int) $classroom->grade_id);
             });
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()]);
@@ -137,13 +165,15 @@ class ClassroomController extends Controller
         $classroom = Classroom::query()
             ->forSchool($schoolId)
             ->findOrFail($id);
+        $this->authorize('update', $classroom);
 
         if ($schoolId && (int) $request->school_id !== $classroom->school_id) {
             return back()->withErrors(['school_id' => trans('messages.error')]);
         }
 
         try {
-            DB::transaction(function () use ($classroom, $request) {
+            $originalGradeId = (int) $classroom->grade_id;
+            DB::transaction(function () use ($classroom, $request, $originalGradeId) {
                 $classroom->update([
                     'name_class' => [
                         'fr' => $request->name_classfr,
@@ -152,6 +182,8 @@ class ClassroomController extends Controller
                     ],
                     'grade_id' => $request->grade_id,
                 ]);
+                $this->forgetGradeClassesLookupCache((int) $classroom->school_id, $originalGradeId);
+                $this->forgetGradeClassesLookupCache((int) $classroom->school_id, (int) $request->grade_id);
             });
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()]);
@@ -173,6 +205,7 @@ class ClassroomController extends Controller
         $classroom = Classroom::query()
             ->forSchool($this->currentSchoolId())
             ->findOrFail($id);
+        $this->authorize('delete', $classroom);
 
         $hasInscriptions = Inscription::where('classroom_id', $classroom->id)->exists();
 
@@ -182,6 +215,7 @@ class ClassroomController extends Controller
         }
 
         $classroom->delete();
+        $this->forgetGradeClassesLookupCache((int) $classroom->school_id, (int) $classroom->grade_id);
 
         toastr()->error(trans('messages.delete'));
 
@@ -190,21 +224,52 @@ class ClassroomController extends Controller
 
 
     
-    public function getClasse($id){
-        $list_class = Classroom::query()
-            ->forSchool($this->currentSchoolId())
-            ->where("grade_id", $id)
-            ->pluck("name_class", "id");
+    public function listByGrade($id)
+    {
+        $schoolId = (int) ($this->currentSchoolId() ?? 0);
+        $cacheKey = sprintf('lookup:school:%d:grade:%d:classes', $schoolId, (int) $id);
 
-        return $list_class;
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($id) {
+            return Classroom::query()
+                ->forSchool($this->currentSchoolId())
+                ->where("grade_id", $id)
+                ->pluck("name_class", "id");
+        });
+    }
+
+    private function forgetGradeClassesLookupCache(int $schoolId, int $gradeId): void
+    {
+        Cache::forget(sprintf('lookup:school:%d:grade:%d:classes', $schoolId, $gradeId));
+        Cache::forget(sprintf('exam:school:%d:classrooms', $schoolId));
+    }
+
+    // Backward-compatible alias for legacy naming.
+    public function getClasse($id){
+        return $this->listByGrade($id);
     }
 
 
-    public function delete_all(Request $request)
+    public function delete_all(DeleteBulkInscriptionsRequest $request)
     {
-        $delete_all_id = explode(",", $request->delete_all_id);
+        $validated = $request->validated();
 
-        Inscription::whereIn('id', $delete_all_id)->Delete();
+        $delete_all_id = collect(explode(",", $validated['delete_all_id']))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($delete_all_id)) {
+            return redirect()->route('Inscriptions.index')
+                ->withErrors(['delete_all_id' => trans('messages.error')]);
+        }
+
+        Inscription::query()
+            ->where('school_id', $this->currentSchoolId())
+            ->whereIn('id', $delete_all_id)
+            ->delete();
+
         toastr()->error(trans('messages.delete'));
         return redirect()->route('Inscriptions.index');
     }

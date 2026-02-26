@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\AgendaScolaire;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAbsenceStatusRequest;
 
 use App\Models\School\School;
+use App\Models\School\Section;
 use App\Models\Inscription\StudentInfo;
 
 use App\Models\AgendaScolaire\Absence;
@@ -12,6 +14,10 @@ use Illuminate\Http\Request;
 
 class AbsenceController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth', 'role:admin']);
+    }
 
 
     /**
@@ -21,8 +27,46 @@ class AbsenceController extends Controller
      */
     public function index()
     {
-        $data['Absence'] = Absence::orderBy('date', 'desc')->get(); // ترتيب بالتاريخ تنازلي
+        $this->authorize('viewAny', Absence::class);
+        $schoolId = $this->currentSchoolId();
+        $search = trim((string) request('q'));
+        $from = request('date_from');
+        $to = request('date_to');
+        $sectionId = request('section_id');
+
+        $data['Absence'] = Absence::query()
+            ->whereHas('student.section', function ($query) use ($schoolId) {
+                if ($schoolId) {
+                    $query->where('school_id', $schoolId);
+                }
+            })
+            ->when($sectionId, function ($query) use ($sectionId) {
+                $query->whereHas('student', fn ($studentQuery) => $studentQuery->where('section_id', $sectionId));
+            })
+            ->when($from, fn ($query) => $query->whereDate('date', '>=', $from))
+            ->when($to, fn ($query) => $query->whereDate('date', '<=', $to))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->whereHas('student', function ($studentQuery) use ($search) {
+                    $studentQuery->where('prenom', 'like', '%' . $search . '%')
+                        ->orWhere('nom', 'like', '%' . $search . '%')
+                        ->orWhere('numtelephone', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', fn ($userQuery) => $userQuery->where('email', 'like', '%' . $search . '%'));
+                });
+            })
+            ->with(['student.user', 'student.section'])
+            ->orderBy('date', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+        $data['Sections'] = Section::query()
+            ->forSchool($schoolId)
+            ->with('classroom.schoolgrade')
+            ->orderBy('id')
+            ->get();
         $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('student.abdence')],
+        ];
 
         return view('admin.AbsenceStudent',$data);
      
@@ -31,22 +75,25 @@ class AbsenceController extends Controller
 
 
 
-    public function storeOrUpdate(Request $request)
+public function storeOrUpdate(StoreAbsenceStatusRequest $request)
 {
-    $request->validate([
-        'student_id' => 'required|integer',
-        'hour' => 'required|string',
-        'status' => 'required|boolean',
-    ]);
+    $this->authorize('create', Absence::class);
+    $schoolId = $this->currentSchoolId();
+
+    $student = StudentInfo::query()
+        ->forSchool($schoolId)
+        ->findOrFail((int) $request->student_id);
 
     $absence = Absence::firstOrCreate(
-        ['student_id' => $request->student_id, 'date' => now()->toDateString()],
+        ['student_id' => $student->id, 'date' => now()->toDateString()],
         ['hour_1' => true, 'hour_2' => true, 'hour_3' => true, 'hour_4' => true,
          'hour_5' => true, 'hour_6' => true, 'hour_7' => true, 'hour_8' => true, 
          'hour_9' => true]
     );
 
-    // تحديث العمود (مثلاً hour_1 أو hour_5)
+    $this->authorize('update', $absence);
+
+    // تحديث عمود مسموح فقط عبر whitelist من FormRequest.
     $absence->{$request->hour} = $request->status;
     $absence->save();
 
@@ -61,6 +108,11 @@ class AbsenceController extends Controller
             if (!$studentId) {
                 return response()->json([], 200);
             }
+
+            $schoolId = $this->currentSchoolId();
+            StudentInfo::query()
+                ->forSchool($schoolId)
+                ->findOrFail((int) $studentId);
 
             $absence = Absence::where('student_id', $studentId)
                 ->where('date', date('Y-m-d'))

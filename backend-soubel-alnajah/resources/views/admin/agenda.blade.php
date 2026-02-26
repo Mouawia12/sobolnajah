@@ -26,8 +26,20 @@
         </div>
         <!-- /.box-header -->
         <div class="box-body">
+           <form method="GET" action="{{ route('Agendas.index') }}" class="admin-form-panel mb-15">
+             <div class="row">
+               <div class="col-md-4">
+                 <label class="form-label">بحث</label>
+                 <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="{{ trans('opt.nameagenda') }}">
+               </div>
+               <div class="col-md-4 d-flex align-items-end gap-2">
+                 <button class="btn btn-primary" type="submit">بحث</button>
+                 <a href="{{ route('Agendas.index') }}" class="btn btn-light">Reset</a>
+               </div>
+             </div>
+           </form>
            <div class="table-responsive">
-             <table id="example5" class="table table-bordered text-center" style="width:100%">
+             <table class="table table-bordered text-center" style="width:100%">
               <thead>
                  <tr>
                     <th>#</th>
@@ -38,9 +50,9 @@
               </thead>
               <tbody>
 
-               <?php $i = 0; ?>
-               @foreach ($Agenda as $ag)
-               <?php $i++; ?>
+               @php($i = ($Agenda->currentPage() - 1) * $Agenda->perPage())
+               @forelse ($Agenda as $ag)
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>
                     <td>{{ $ag->name_agenda }}</td>
@@ -108,7 +120,11 @@
     </div>
    </div>
    </div>
-   @endforeach
+               @empty
+                <tr>
+                  <td colspan="3"><div class="admin-empty-state">لا توجد نتائج مطابقة.</div></td>
+                </tr>
+               @endforelse
 
               </tbody>
               <tfoot>
@@ -119,6 +135,9 @@
                </tr>
             </tfoot>
            </table>
+           <div class="mt-15 d-flex justify-content-end">
+             {{ $Agenda->links() }}
+           </div>
            </div>
         </div>
         <!-- /.box-body -->
@@ -154,8 +173,6 @@
 
 
 @section('jsa')
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-@include('layoutsadmin.datatabels')
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup.min.js')}}"></script>
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup-init.js')}}"></script>
 

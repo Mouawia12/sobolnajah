@@ -30,6 +30,8 @@
 	  <div class="container-full">
 		<!-- Main content -->
 		<section class="content">
+				@include('layoutsadmin.partials.page_header')
+				@include('layoutsadmin.partials.status_alerts')
 				
 				@yield('contenta')
 

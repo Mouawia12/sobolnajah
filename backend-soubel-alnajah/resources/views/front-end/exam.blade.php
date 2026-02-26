@@ -30,7 +30,7 @@
 <section class="py-50">
 
     <div class="table-responsive">
-        <table id="example5" class="table table-bordered text-center"  style="width:100%">
+        <table class="table table-bordered text-center"  style="width:100%">
          <thead>
             <tr>
                <th></th>          
@@ -47,9 +47,9 @@
             </tr>
          </thead>
          <tbody>
-            <?php $i = 0; ?>
-            @foreach ($Exames as $ex)
-            <?php $i++; ?>
+            @php($i = ($Exames->currentPage() - 1) * $Exames->perPage())
+            @forelse ($Exames as $ex)
+            @php($i++)
               <tr>
                 
                  <td>{{ $i }}</td> 
@@ -65,7 +65,11 @@
                   <a href="{{ route('Exames.show',$ex->id) }}" class="waves-effect waves-light btn btn-info-light btn-circle"><span class="fa fa-download"><span class="path1"></span><span class="path2"></span></span></a>
                  </td>
               </tr>  
-              @endforeach
+              @empty
+              <tr>
+                <td colspan="7" class="text-muted py-3">لا توجد امتحانات متاحة حالياً.</td>
+              </tr>
+              @endforelse
 
          </tbody>
          <tfoot>
@@ -83,6 +87,9 @@
           </tr>
        </tfoot>
       </table>
+      <div class="mt-3 d-flex justify-content-center">
+        {{ $Exames->links() }}
+      </div>
       </div>
 
 </section>
@@ -92,8 +99,4 @@
 
 
 @section('js')
- 
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-
-@include('layoutsadmin.datatabels')
 @endsection

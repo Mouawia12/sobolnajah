@@ -75,8 +75,31 @@
         
          <!-- /.box-header -->
          <div class="box-body">
+            <form method="GET" action="{{ route('graduated.index') }}" class="admin-form-panel mb-15">
+              <div class="row">
+                <div class="col-md-4">
+                  <label class="form-label">بحث</label>
+                  <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم التلميذ أو البريد أو الهاتف">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">{{ trans('inscription.section') }}</label>
+                  <select name="section_id" class="form-select">
+                    <option value="">الكل</option>
+                    @foreach ($Sections as $section)
+                      <option value="{{ $section->id }}" @selected((string) request('section_id') === (string) $section->id)>
+                        {{ $section->classroom->schoolgrade->name_grade ?? '' }} / {{ $section->classroom->name_class ?? '' }} / {{ $section->name_section ?? '' }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                  <button class="btn btn-primary" type="submit">بحث</button>
+                  <a href="{{ route('graduated.index') }}" class="btn btn-light">Reset</a>
+                </div>
+              </div>
+            </form>
             <div class="table-responsive">
-              <table id="example5" class="table table-bordered text-center"  style="width:100%">
+              <table class="table table-bordered text-center"  style="width:100%">
                <thead>
                   <tr>
                      <th></th>          
@@ -91,9 +114,9 @@
                </thead>
                <tbody>
  
-                <?php $i = 0; ?>
-                @foreach ($StudentInfo as $ins)
-                <?php $i++; ?>
+                @php($i = ($StudentInfo->currentPage() - 1) * $StudentInfo->perPage())
+                @forelse ($StudentInfo as $ins)
+                @php($i++)
                   <tr>
                     
                      <td>{{ $i }}</td> 
@@ -177,7 +200,11 @@
 
              
   
-@endforeach
+                @empty
+                <tr>
+                  <td colspan="7"><div class="admin-empty-state">لا توجد سجلات تلاميذ محذوفين مطابقة للفلترة.</div></td>
+                </tr>
+                @endforelse
  
                </tbody>
                <tfoot>
@@ -192,6 +219,9 @@
                 </tr>
              </tfoot>
             </table>
+            <div class="mt-15 d-flex justify-content-end">
+              {{ $StudentInfo->links() }}
+            </div>
             </div>
          </div>
          <!-- /.box-body -->
@@ -232,9 +262,4 @@
       });
   });
 </script>
-    
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-
-@include('layoutsadmin.datatabels')
-
 @endsection

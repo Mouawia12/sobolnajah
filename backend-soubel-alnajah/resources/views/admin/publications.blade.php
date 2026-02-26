@@ -10,15 +10,6 @@
 <div class="row">
    
    <div class="col-12">
-      @if ($errors->any())
-            @foreach ($errors->all() as $error)
-               <div class="alert alert-danger col-md-6">     
-                     <p>{{ $error }}</p>
-               </div>
-            @endforeach
-      @endif
-      
-
       <div class="box">
         <div class="box-header with-border">
           <h3 class="box-title"><a class="popup-with-form btn btn-success" href="#addPublications-form">{{ trans('opt.addpublication') }}</a>
@@ -26,8 +17,39 @@
         </div>
         <!-- /.box-header -->
         <div class="box-body">
+           <form method="GET" class="row mb-3">
+             <div class="col-md-3">
+               <input type="text" name="q" class="form-control" value="{{ request('q') }}"
+                 placeholder="بحث: عنوان / محتوى">
+             </div>
+             <div class="col-md-2">
+               <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+             </div>
+             <div class="col-md-2">
+               <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+             </div>
+             <div class="col-md-2">
+               <select name="grade_id" class="form-select">
+                 <option value="">كل المستويات</option>
+                 @foreach ($Grade as $g)
+                   <option value="{{ $g->id }}" @selected((string) request('grade_id') === (string) $g->id)>{{ $g->name_grades }}</option>
+                 @endforeach
+               </select>
+             </div>
+             <div class="col-md-2">
+               <select name="agenda_id" class="form-select">
+                 <option value="">كل الأجندات</option>
+                 @foreach ($Agenda as $ag)
+                   <option value="{{ $ag->id }}" @selected((string) request('agenda_id') === (string) $ag->id)>{{ $ag->name_agenda }}</option>
+                 @endforeach
+               </select>
+             </div>
+             <div class="col-md-1 d-flex gap-1">
+               <button class="btn btn-primary" type="submit">فلترة</button>
+             </div>
+           </form>
            <div class="table-responsive">
-             <table id="example5" class="table table-bordered text-center" style="width:100%">
+             <table class="table table-bordered text-center" style="width:100%">
               <thead>
                  <tr>
                     <th>#</th>
@@ -39,11 +61,9 @@
               </thead>
               <tbody>
 
-               <?php $i = 0; ?>
-               @foreach ($Publications as $pub)
-               <?php $i++; ?>
+               @foreach ($Publications as $index => $pub)
                  <tr>
-                    <td>{{ $i }}</td>
+                    <td>{{ $Publications->firstItem() + $index }}</td>
                     <td>{{ $pub->title }}</td>
                     <td>{{ $pub->created_at }}</td>
 
@@ -194,6 +214,9 @@
                </tr>
             </tfoot>
            </table>
+           <div class="mt-3">
+            {{ $Publications->links() }}
+           </div>
            </div>
         </div>
         <!-- /.box-body -->
@@ -276,8 +299,6 @@
 
 
 @section('jsa')
-<script src="{{ asset('assets/vendor_components/datatable/datatables.min.js')}}"></script>
-@include('layoutsadmin.datatabels')
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup.min.js')}}"></script>
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup-init.js')}}"></script>
 
@@ -291,5 +312,3 @@
     <script src="{{ asset('jsadmin/pages/toastr.js')}}"></script>
     <script src="{{ asset('jsadmin/pages/notification.js')}}"></script>
 @endsection
-
-

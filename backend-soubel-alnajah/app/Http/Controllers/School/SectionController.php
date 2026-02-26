@@ -7,16 +7,25 @@ use App\Http\Controllers\Controller;
 
 use App\Models\School\School;
 use App\Models\School\Schoolgrade;
+use App\Models\School\Classroom;
 use App\Models\School\Section;
 
 use App\Models\Inscription\Teacher;
 
 use App\Http\Requests\StoreSection;
+use App\Http\Requests\SyncSectionTeachersRequest;
+use App\Http\Requests\UpdateSectionStatusRequest;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class SectionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth', 'role:admin'])->except(['getSection', 'getSection2', 'listByClassroom', 'getSectionById']);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -24,7 +33,17 @@ class SectionController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', Section::class);
         $schoolId = $this->currentSchoolId();
+        $query = trim((string) request('q'));
+        $gradeFilter = request('grade_id');
+        $classroomFilter = request('classroom_id');
+        $statusFilter = request('status');
+
+        if ($schoolId) {
+            $gradeFilter = $gradeFilter ?: null;
+            $classroomFilter = $classroomFilter ?: null;
+        }
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
@@ -32,16 +51,50 @@ class SectionController extends Controller
             ->orderBy('name_school')
             ->get();
 
-        $data['Schoolgrade'] = Schoolgrade::query()
+        $data['SchoolgradeFilterOptions'] = Schoolgrade::query()
             ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
             ->orderBy('name_grade')
             ->get();
 
-        $data['Section'] = Section::query()
+        $data['ClassroomFilterOptions'] = Classroom::query()
             ->forSchool($schoolId)
-            ->with(['classroom', 'teachers'])
-            ->orderBy('created_at', 'desc')
+            ->with('schoolgrade')
+            ->orderBy('name_class')
             ->get();
+
+        $sectionFilters = function ($sectionsQuery) use ($schoolId, $gradeFilter, $classroomFilter, $statusFilter, $query) {
+            $sectionsQuery
+                ->forSchool($schoolId)
+                ->with(['classroom.schoolgrade.school', 'teachers'])
+                ->when($gradeFilter, fn ($q) => $q->where('grade_id', (int) $gradeFilter))
+                ->when($classroomFilter, fn ($q) => $q->where('classroom_id', (int) $classroomFilter))
+                ->when($statusFilter !== null && $statusFilter !== '', fn ($q) => $q->where('Status', (int) $statusFilter))
+                ->when($query !== '', function ($q) use ($query) {
+                    $q->where(function ($textQuery) use ($query) {
+                        $textQuery->where('name_section->fr', 'like', '%' . $query . '%')
+                            ->orWhere('name_section->ar', 'like', '%' . $query . '%')
+                            ->orWhere('name_section->en', 'like', '%' . $query . '%')
+                            ->orWhereHas('classroom', function ($classroomQuery) use ($query) {
+                                $classroomQuery->where('name_class->fr', 'like', '%' . $query . '%')
+                                    ->orWhere('name_class->ar', 'like', '%' . $query . '%')
+                                    ->orWhere('name_class->en', 'like', '%' . $query . '%');
+                            });
+                    });
+                })
+                ->orderByDesc('created_at');
+        };
+
+        $data['Schoolgrade'] = Schoolgrade::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($gradeFilter, fn ($q) => $q->whereKey((int) $gradeFilter))
+            ->whereHas('sections', $sectionFilters)
+            ->with([
+                'school',
+                'sections' => $sectionFilters,
+            ])
+            ->orderBy('name_grade')
+            ->paginate(6)
+            ->withQueryString();
 
         $data['Teacher'] = Teacher::query()
             ->forSchool($schoolId)
@@ -50,6 +103,7 @@ class SectionController extends Controller
             ->get();
 
         $data['notify'] = $this->notifications();
+        $data['currentSchoolId'] = $schoolId;
 
         return view('admin.sections', $data);
     }
@@ -72,6 +126,7 @@ class SectionController extends Controller
      */
     public function store(StoreSection $request)
     {
+        $this->authorize('create', Section::class);
         $request->validated();
 
         $schoolId = $this->currentSchoolId();
@@ -107,6 +162,9 @@ class SectionController extends Controller
                 if (!empty($teacherIds)) {
                     $section->teachers()->sync($teacherIds);
                 }
+
+                $this->forgetClassSectionsLookupCache((int) $section->school_id, (int) $section->classroom_id);
+                $this->forgetSectionByIdLookupCache((int) $section->school_id, (int) $section->id);
             });
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()]);
@@ -136,32 +194,46 @@ class SectionController extends Controller
      */
     public function edit(Request $request, $id)
     {
-        if ($request->teacher_test == 1) {
-            $Sections = Section::query()
+        abort(405);
+    }
+
+    public function updateStatus(UpdateSectionStatusRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        $section = Section::query()
+            ->forSchool($this->currentSchoolId())
+            ->findOrFail($id);
+        $this->authorize('update', $section);
+
+        $section->update([
+            'Status' => (int) $validated['statu'],
+        ]);
+        $this->forgetSectionByIdLookupCache((int) $section->school_id, (int) $section->id);
+
+        toastr()->success(trans('messages.Update'));
+        return redirect()->route('Sections.index');
+    }
+
+    public function syncTeachers(SyncSectionTeachersRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        $section = Section::query()
+            ->forSchool($this->currentSchoolId())
+            ->findOrFail($id);
+        $this->authorize('update', $section);
+
+            $teacherIds = Teacher::query()
                 ->forSchool($this->currentSchoolId())
-                ->findOrFail($id);
-            //update pivot tABLE
-            if (isset($request->teacher_id)) {
-                $teacherIds = Teacher::query()
-                    ->forSchool($this->currentSchoolId())
-                    ->whereIn('id', (array) $request->teacher_id)
-                    ->pluck('id')
-                    ->all();
-                $Sections->teachers()->sync($teacherIds);
-            } else {
-                $Sections->teachers()->sync([]);
-            }
-            $Sections->save();
-        } else {
-            try {
-                Section::query()
-                    ->forSchool($this->currentSchoolId())
-                    ->where('id', $id)
-                    ->update(['Status' => $request->statu]);
-            } catch (\Exception $e) {
-                return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-            }
-        }
+                ->whereIn('id', (array) ($validated['teacher_id'] ?? []))
+                ->pluck('id')
+                ->all();
+
+        $section->teachers()->sync($teacherIds);
+        $section->save();
+        $this->forgetSectionByIdLookupCache((int) $section->school_id, (int) $section->id);
+
         toastr()->success(trans('messages.Update'));
         return redirect()->route('Sections.index');
     }
@@ -181,6 +253,8 @@ class SectionController extends Controller
             $Sections = Section::query()
                 ->forSchool($this->currentSchoolId())
                 ->findOrFail($id);
+            $this->authorize('update', $Sections);
+            $originalClassroomId = (int) $Sections->classroom_id;
 
             if ($this->currentSchoolId() && (int) $request->school_id !== $Sections->school_id) {
                 return back()->withErrors(['school_id' => trans('messages.error')]);
@@ -206,6 +280,9 @@ class SectionController extends Controller
             $Sections->teachers()->sync($teacherIds);
 
             $Sections->save();
+            $this->forgetClassSectionsLookupCache((int) $Sections->school_id, $originalClassroomId);
+            $this->forgetClassSectionsLookupCache((int) $Sections->school_id, (int) $Sections->classroom_id);
+            $this->forgetSectionByIdLookupCache((int) $Sections->school_id, (int) $Sections->id);
 
             toastr()->success(trans('messages.Update'));
             return redirect()->route('Sections.index');
@@ -222,29 +299,65 @@ class SectionController extends Controller
      */
     public function destroy($id)
     {
-        Section::query()
+        $section = Section::query()
             ->forSchool($this->currentSchoolId())
-            ->where('id', $id)
-            ->delete();
+            ->findOrFail($id);
+        $this->authorize('delete', $section);
+
+        $schoolId = (int) $section->school_id;
+        $classroomId = (int) $section->classroom_id;
+        $sectionId = (int) $section->id;
+        $section->delete();
+        $this->forgetClassSectionsLookupCache($schoolId, $classroomId);
+        $this->forgetSectionByIdLookupCache($schoolId, $sectionId);
         toastr()->error(trans('messages.delete'));
         return redirect()->route('Sections.index');
     }
 
+    public function listByClassroom($id)
+    {
+        $schoolId = (int) ($this->currentSchoolId() ?? 0);
+        $cacheKey = sprintf('lookup:school:%d:classroom:%d:sections', $schoolId, (int) $id);
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($id) {
+            return Section::query()
+                ->forSchool($this->currentSchoolId())
+                ->where("classroom_id", $id)
+                ->pluck("name_section", "id");
+        });
+    }
+
+    public function getSectionById($id)
+    {
+        $schoolId = (int) ($this->currentSchoolId() ?? 0);
+        $cacheKey = sprintf('lookup:school:%d:section:%d', $schoolId, (int) $id);
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($id) {
+            return Section::query()
+                ->forSchool($this->currentSchoolId())
+                ->where("id", $id)
+                ->pluck("name_section", "id");
+        });
+    }
+
+    // Backward-compatible aliases for legacy naming.
     public function getSection($id)
     {
-        $list_section = Section::query()
-            ->forSchool($this->currentSchoolId())
-            ->where("classroom_id", $id)
-            ->pluck("name_section", "id");
-        return $list_section;
+        return $this->listByClassroom($id);
     }
 
     public function getSection2($id)
     {
-        $list_section = Section::query()
-            ->forSchool($this->currentSchoolId())
-            ->where("id", $id)
-            ->pluck("name_section", "id");
-        return $list_section;
+        return $this->getSectionById($id);
+    }
+
+    private function forgetClassSectionsLookupCache(int $schoolId, int $classroomId): void
+    {
+        Cache::forget(sprintf('lookup:school:%d:classroom:%d:sections', $schoolId, $classroomId));
+    }
+
+    private function forgetSectionByIdLookupCache(int $schoolId, int $sectionId): void
+    {
+        Cache::forget(sprintf('lookup:school:%d:section:%d', $schoolId, $sectionId));
     }
 }

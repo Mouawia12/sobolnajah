@@ -1,0 +1,232 @@
+:root {
+  --admin-primary: #0f6cbf;
+  --admin-primary-soft: #e8f2fb;
+  --admin-success: #1f9d63;
+  --admin-danger: #c0392b;
+  --admin-warning: #c17a00;
+  --admin-info: #0f8398;
+  --admin-text: #1f2a37;
+  --admin-muted: #6b7280;
+  --admin-border: #dbe3ef;
+  --admin-surface: #ffffff;
+  --admin-surface-soft: #f7f9fc;
+  --admin-radius: 12px;
+  --admin-shadow: 0 8px 22px rgba(15, 40, 80, 0.08);
+}
+
+.content-header {
+  background: linear-gradient(135deg, #ffffff 0%, #f2f7ff 100%);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 12px 16px;
+  box-shadow: var(--admin-shadow);
+}
+
+.content-header h3 {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.breadcrumb {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item,
+.breadcrumb-item a {
+  color: var(--admin-muted);
+  font-size: 0.86rem;
+}
+
+.breadcrumb-item.active {
+  color: var(--admin-primary);
+  font-weight: 700;
+}
+
+.alert {
+  border-radius: 10px;
+  border-width: 1px;
+  box-shadow: 0 4px 14px rgba(20, 40, 90, 0.06);
+}
+
+.alert-success {
+  border-color: rgba(31, 157, 99, 0.25);
+}
+
+.alert-danger {
+  border-color: rgba(192, 57, 43, 0.25);
+}
+
+.alert-warning {
+  border-color: rgba(193, 122, 0, 0.25);
+}
+
+.alert-info {
+  border-color: rgba(15, 131, 152, 0.25);
+}
+
+.box {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+}
+
+.box .box-header {
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.box .box-title {
+  color: var(--admin-text);
+  font-weight: 700;
+}
+
+.box .box-body {
+  background: var(--admin-surface);
+}
+
+.box .box-body .row.mb-3 {
+  background: var(--admin-surface-soft);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-inline: 0;
+}
+
+.form-control,
+.form-select {
+  border-color: var(--admin-border);
+  border-radius: 10px;
+  min-height: 40px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: rgba(15, 108, 191, 0.5);
+  box-shadow: 0 0 0 0.18rem rgba(15, 108, 191, 0.12);
+}
+
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-primary,
+.btn-info {
+  box-shadow: 0 4px 10px rgba(15, 108, 191, 0.2);
+}
+
+.table {
+  border-color: var(--admin-border);
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.65rem 0.55rem;
+  vertical-align: middle;
+}
+
+.table thead th {
+  background: #f0f5fc;
+  color: #293241;
+  font-weight: 700;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.admin-form-panel {
+  background: var(--admin-surface-soft);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.admin-form-grid {
+  margin-inline: 0;
+}
+
+.admin-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.admin-section-title {
+  color: #24354d;
+  font-weight: 700;
+}
+
+.admin-entry-table thead th {
+  background: #eef4fb;
+}
+
+.admin-empty-state {
+  color: var(--admin-muted);
+  font-weight: 600;
+  padding: 0.35rem 0;
+}
+
+.admin-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 86px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.admin-status-draft {
+  background: #f7f7f8;
+  color: #505868;
+  border-color: #d6dae2;
+}
+
+.admin-status-published,
+.admin-status-accepted,
+.admin-status-paid {
+  background: #eaf8f1;
+  color: #1d7d54;
+  border-color: #bfe6d2;
+}
+
+.admin-status-active,
+.admin-status-partial,
+.admin-status-in_review,
+.admin-status-new {
+  background: #edf4ff;
+  color: #215eaa;
+  border-color: #c7daf7;
+}
+
+.admin-status-overdue,
+.admin-status-rejected,
+.admin-status-closed {
+  background: #fdeeee;
+  color: #a53737;
+  border-color: #f3c9c9;
+}
+
+.pagination {
+  gap: 6px;
+}
+
+.pagination .page-link {
+  border-radius: 8px;
+  border-color: var(--admin-border);
+  color: var(--admin-primary);
+}
+
+.pagination .active .page-link,
+.pagination .page-item.active .page-link {
+  background-color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}

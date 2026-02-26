@@ -17,6 +17,9 @@ return [
     'signin' => 'sign in',
     'question' => 'question',
     'gallrey' => 'album scolaire',
+    'gallery' => 'album scolaire',
+    'recruitment' => 'Recrutement',
+    'timetables' => 'Emplois du temps',
     'profile'=>'profile',
     'setting'=>'paramètre',
     

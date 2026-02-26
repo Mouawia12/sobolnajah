@@ -19,10 +19,17 @@ use App\Http\Controllers\AgendaScolaire\AbsenceController;
 
 use App\Http\Controllers\Promotion\PromotionController;
 use App\Http\Controllers\Promotion\GraduatedController;
-use App\Http\Controllers\Functionn\FunctionController;
+use App\Http\Controllers\Function\FunctionController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Application\ChatController;
 use App\Http\Controllers\OpenAIService\OpenAIServiceController;
+use App\Http\Controllers\Recruitment\JobApplicationController;
+use App\Http\Controllers\Recruitment\JobPostController;
+use App\Http\Controllers\Recruitment\PublicJobController;
+use App\Http\Controllers\Timetable\PublicTimetableController;
+use App\Http\Controllers\Timetable\TimetableController;
+use App\Http\Controllers\Accounting\ContractController;
+use App\Http\Controllers\Accounting\PaymentController;
 
 
 
@@ -67,19 +74,32 @@ Route::group(
 
 
         ]);
-        Route::get('/getgrade/{id}',[SchoolgradeController::class,'getGrade']);
-        Route::get('/getclasse/{id}',[ClassroomController::class,'getClasse']);
-        Route::get('/getsection/{id}',[SectionController::class,'getSection']);
-        Route::get('/getsection2/{id}',[SectionController::class,'getSection2']);
-        Route::get('delete_all',[ClassroomController::class,'delete_all'])->name('delete_all');
+        Route::get('/lookup/schools/{id}/grades',[SchoolgradeController::class,'listBySchool'])->name('lookup.schoolGrades');
+        Route::get('/lookup/grades/{id}/classes',[ClassroomController::class,'listByGrade'])->name('lookup.gradeClasses');
+        Route::get('/lookup/classes/{id}/sections',[SectionController::class,'listByClassroom'])->name('lookup.classSections');
+        Route::get('/lookup/sections/{id}',[SectionController::class,'getSectionById'])->name('lookup.sectionById');
+        Route::get('/getgrade/{id}',[SchoolgradeController::class,'getGrade'])->name('legacy.lookup.schoolGrades');
+        Route::get('/getclasse/{id}',[ClassroomController::class,'getClasse'])->name('legacy.lookup.gradeClasses');
+        Route::get('/getsection/{id}',[SectionController::class,'getSection'])->name('legacy.lookup.classSections');
+        Route::get('/getsection2/{id}',[SectionController::class,'getSection2'])->name('legacy.lookup.sectionById');
 
 
 
-        Route::get('/agenda/{id}',[FunctionController::class,'getAgenda']);
-        Route::get('/getgrades/{id}',[FunctionController::class,'getGrade']);
-        Route::get('/album',[FunctionController::class,'getAlbum']);
+        Route::get('/school-agenda/{id}',[FunctionController::class,'showAgenda'])->name('public.agenda.show');
+        Route::get('/agenda/{id}',[FunctionController::class,'getAgenda'])->name('legacy.public.agenda.show');
+        Route::get('/agenda-grades/{id?}',[FunctionController::class,'listAgendaGrades'])->name('public.agenda.grades');
+        Route::get('/getgrades/{id}',[FunctionController::class,'getGrade'])->name('legacy.public.agenda.grades');
+        Route::get('/gallery',[FunctionController::class,'showGallery'])->name('public.gallery.index');
+        Route::get('/album',[FunctionController::class,'getAlbum'])->name('legacy.public.gallery.index');
+        Route::get('/jobs', [PublicJobController::class, 'index'])->name('public.jobs.index');
+        Route::get('/jobs/{jobPost:slug}', [PublicJobController::class, 'show'])->name('public.jobs.show');
+        Route::post('/jobs/{jobPost:slug}/apply', [PublicJobController::class, 'apply'])
+            ->middleware('throttle:6,1')
+            ->name('public.jobs.apply');
+        Route::get('/school-timetables', [PublicTimetableController::class, 'index'])->name('public.timetables.index');
+        Route::get('/school-timetables/{timetable}', [PublicTimetableController::class, 'show'])->name('public.timetables.show');
 
-        Route::middleware('auth')->group(function () {
+        Route::middleware(['auth', 'force.password.change'])->group(function () {
             Route::get('/chat-gpt', [OpenAIServiceController::class, 'index'])->name('chat.ai');
             Route::post('/chat-gpt', [OpenAIServiceController::class, 'send'])->name('chat.send');
 
@@ -101,21 +121,33 @@ Route::group(
         Auth::routes();
 
         Route::get('/home', [HomeController::class, 'index'])->name('home');
-        Route::get('/notify/{id}', [FunctionController::class, 'notify'])->name('notify');
+        Route::post('/notify/{id}', [FunctionController::class, 'notify'])->name('notify');
 
         Route::Post('changePassword', [ConfirmPasswordController::class, 'studentChangePassword'])->name('changePassword');
 
 
-        Route::group(['middleware' => ['role:admin','auth','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
+        Route::group(['middleware' => ['role:admin','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
             Route::get('/admin', [AdminController::class, 'indexadmin']);
-            Route::get('/markasread/{id}', [FunctionController::class, 'markasread'])->name('markasread');
-            Route::get('/store/{id}',[FunctionController::class,'store']);
+            Route::post('/mark-as-read/{id}', [FunctionController::class, 'markAsRead'])->name('markAsRead');
+            Route::post('/markasread/{id}', [FunctionController::class, 'markAsRead'])->name('markasread');
+            Route::post('/delete_all',[ClassroomController::class,'delete_all'])->name('delete_all');
+            Route::post('/store/{id}',[FunctionController::class,'store']);
+            Route::get('/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('admin.password.change.page');
             Route::get('/changepass', [FunctionController::class, 'changepass'])->name('changepass');
             Route::get('/DownloadNoteFromAdmin/{url}', [NoteStudentController::class, 'DownloadNoteFromAdmin'])->name('DownloadNoteFromAdmin');
+            Route::get('/DisplayNoteFromAdmin/{url}', [NoteStudentController::class, 'displayNoteFromAdmin'])->name('DisplayNoteFromAdmin');
             Route::get('/DisplqyNoteFromAdmin/{url}', [NoteStudentController::class, 'DisplqyNoteFromAdmin'])->name('DisplqyNoteFromAdmin');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');
             Route::get('/absences/today', [AbsenceController::class, 'getToday'])->name('absence.today');
+            Route::post('/Inscriptions/{id}/approve', [InscriptionController::class, 'approve'])->name('Inscriptions.approve');
+            Route::post('/Inscriptions/{id}/status', [InscriptionController::class, 'updateStatus'])->name('Inscriptions.status');
+            Route::post('/Sections/{id}/status', [SectionController::class, 'updateStatus'])->name('Sections.status');
+            Route::post('/Sections/{id}/teachers', [SectionController::class, 'syncTeachers'])->name('Sections.teachers');
+            Route::get('/recruitment/applications', [JobApplicationController::class, 'index'])->name('recruitment.applications.index');
+            Route::patch('/recruitment/applications/{jobApplication}/status', [JobApplicationController::class, 'updateStatus'])->name('recruitment.applications.status');
+            Route::get('/recruitment/applications/{jobApplication}/cv', [JobApplicationController::class, 'downloadCv'])->name('recruitment.applications.cv');
+            Route::get('/timetables/{timetable}/print', [TimetableController::class, 'print'])->name('timetables.print');
 
             Route::resources([
                 'Schools'=>SchoolController::class,
@@ -128,13 +160,27 @@ Route::group(
                 'Teachers'=>TeacherController::class,
                 'Promotions'=>PromotionController::class,
                 'graduated'=>GraduatedController::class,
+                'NoteStudents'=>NoteStudentController::class,
                 'Addnotestudents'=>NoteStudentController::class,
                 'Absences'=>AbsenceController::class,
+                'JobPosts'=>JobPostController::class,
+                'timetables'=>TimetableController::class,
 
 
             ]);
 
 
 
+        });
+
+        Route::group(['middleware' => ['auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
+            Route::get('/accounting', fn () => redirect()->route('accounting.contracts.index'))->name('accounting.dashboard');
+            Route::get('/accounting/contracts', [ContractController::class, 'index'])->name('accounting.contracts.index');
+            Route::post('/accounting/contracts', [ContractController::class, 'store'])->name('accounting.contracts.store');
+            Route::patch('/accounting/contracts/{contract}', [ContractController::class, 'update'])->name('accounting.contracts.update');
+
+            Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
+            Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
+            Route::get('/accounting/payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('accounting.payments.receipt');
         });
     });

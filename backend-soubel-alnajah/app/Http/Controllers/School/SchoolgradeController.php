@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\School;
 
-
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Validator;
 use App\Models\School\School;
 use App\Models\School\Schoolgrade;
 use App\Models\School\Classroom;
 use App\Http\Requests\StoreSchoolgrade;
 use App\Http\Requests\UpdateScoolgrade;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 
 
@@ -21,6 +19,10 @@ use Illuminate\Support\Facades\Auth;
 
 class SchoolgradeController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth', 'role:admin'])->except(['getGrade', 'listBySchool']);
+    }
 
 
 
@@ -34,8 +36,33 @@ class SchoolgradeController extends Controller
      */
     public function index()
     {
-        $data['School'] = School::all();
-        $data['Schoolgrade'] = Schoolgrade::all();
+        $this->authorize('viewAny', Schoolgrade::class);
+        $schoolId = $this->currentSchoolId();
+        $query = trim((string) request('q'));
+        $schoolFilter = request('school_id');
+        if ($schoolId) {
+            $schoolFilter = $schoolId;
+        }
+
+        $data['School'] = School::query()
+            ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
+            ->orderBy('name_school')
+            ->get();
+        $data['Schoolgrade'] = Schoolgrade::query()
+            ->forSchool($schoolId)
+            ->with('school')
+            ->when($schoolFilter, fn ($gradesQuery) => $gradesQuery->where('school_id', (int) $schoolFilter))
+            ->when($query !== '', function ($gradesQuery) use ($query) {
+                $gradesQuery->where(function ($textQuery) use ($query) {
+                    $textQuery->where('name_grade->fr', 'like', '%' . $query . '%')
+                        ->orWhere('name_grade->ar', 'like', '%' . $query . '%')
+                        ->orWhere('name_grade->en', 'like', '%' . $query . '%');
+                });
+            })
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+        $data['currentSchoolId'] = $schoolId;
         $data['notify'] = $this->notifications();
 
         return view('admin.schoolgrades',$data);
@@ -59,8 +86,13 @@ class SchoolgradeController extends Controller
      */
     public function store(StoreSchoolgrade $request)
     {
-       
+        $this->authorize('create', Schoolgrade::class);
         $validated = $request->validated();
+        $schoolId = $this->currentSchoolId();
+
+        if ($schoolId && (int) $request->school_id !== $schoolId) {
+            abort(403);
+        }
 
             try {
                 
@@ -71,6 +103,7 @@ class SchoolgradeController extends Controller
                 $Schoolgrade-> notes = ['fr' => $request->notesfr, 
                                         'ar' => $request->notesar];
                 $Schoolgrade->save();
+                $this->forgetSchoolGradesLookupCache((int) $Schoolgrade->school_id);
                 toastr()->success(trans('messages.success'));
                 return redirect()->route('Schoolgrades.index');
             }
@@ -112,17 +145,22 @@ class SchoolgradeController extends Controller
     public function update(UpdateScoolgrade $request, $id)
     {
         $validated = $request->validated();
+        $schoolgrade = Schoolgrade::query()
+            ->forSchool($this->currentSchoolId())
+            ->findOrFail($id);
+        $this->authorize('update', $schoolgrade);
 
             try {
-                Schoolgrade::where('id', $id)->
-                             update(['name_grade->fr'=> $request->name_gradefr,
-                                     'name_grade->ar'=> $request->name_gradear,
-                                     'notes->fr'=> $request->notesfr,
-                                     'notes->ar'=> $request->notesar,
-                                    ]);
+            $schoolgrade->update([
+                'name_grade->fr'=> $request->name_gradefr,
+                'name_grade->ar'=> $request->name_gradear,
+                'notes->fr'=> $request->notesfr,
+                'notes->ar'=> $request->notesar,
+            ]);
+            $this->forgetSchoolGradesLookupCache((int) $schoolgrade->school_id);
 
-                toastr()->success(trans('messages.Update'));
-                return redirect()->route('Schoolgrades.index');
+            toastr()->success(trans('messages.Update'));
+            return redirect()->route('Schoolgrades.index');
             }
             catch
             (\Exception $e) {
@@ -136,13 +174,20 @@ class SchoolgradeController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Request $request,$id)
+    public function destroy($id)
     {
+       $schoolgrade = Schoolgrade::query()
+           ->forSchool($this->currentSchoolId())
+           ->findOrFail($id);
+       $this->authorize('delete', $schoolgrade);
 
-       $MyClassroom_id = Classroom::where('grade_id',$id)->pluck('grade_id');
-       if($MyClassroom_id->count() == 0){
-
-          Schoolgrade::where('id',$id)->delete();
+       $MyClassroom_id = Classroom::query()
+           ->forSchool($this->currentSchoolId())
+           ->where('grade_id', $id)
+           ->pluck('grade_id');
+      if($MyClassroom_id->count() == 0){
+          $this->forgetSchoolGradesLookupCache((int) $schoolgrade->school_id);
+          $schoolgrade->delete();
           toastr()->error(trans('messages.delete'));
           return redirect()->route('Schoolgrades.index');
       }
@@ -156,10 +201,31 @@ class SchoolgradeController extends Controller
 
 
 
-    public function getGrade($id){
-        $list_grade = Schoolgrade::where("school_id", $id)->pluck("name_grade", "id");
+    public function listBySchool($id)
+    {
+        if (Auth::check() && Auth::user()->school_id && (int) Auth::user()->school_id !== (int) $id) {
+            return collect();
+        }
 
-        return $list_grade;
+        $list_grade = Schoolgrade::query()
+            ->where("school_id", $id);
+
+        $cacheKey = sprintf('lookup:school:%d:grades', (int) $id);
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($list_grade) {
+            return $list_grade->pluck("name_grade", "id");
+        });
+    }
+
+    private function forgetSchoolGradesLookupCache(int $schoolId): void
+    {
+        Cache::forget(sprintf('lookup:school:%d:grades', $schoolId));
+        Cache::forget(sprintf('exam:school:%d:grades', $schoolId));
+    }
+
+    // Backward-compatible alias for legacy naming.
+    public function getGrade($id){
+        return $this->listBySchool($id);
     }
 
     

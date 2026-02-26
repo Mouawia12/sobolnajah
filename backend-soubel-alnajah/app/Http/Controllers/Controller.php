@@ -29,6 +29,14 @@ class Controller extends BaseController
      */
     protected function notifications(): Collection
     {
-        return DB::table('notifications')->orderByDesc('created_at')->get();
+        $userId = Auth::id();
+        if (!$userId) {
+            return collect();
+        }
+
+        return DB::table('notifications')
+            ->where('notifiable_id', $userId)
+            ->orderByDesc('created_at')
+            ->get();
     }
 }

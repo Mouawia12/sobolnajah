@@ -17,6 +17,9 @@ return [
     'signin' => 'Login',
     'question' => 'Ask a Question',
     'gallrey' => 'School Gallery',
+    'gallery' => 'School Gallery',
+    'recruitment' => 'Recruitment',
+    'timetables' => 'Timetables',
     'profile' => 'Profile',
     'setting' => 'Settings',
 ];

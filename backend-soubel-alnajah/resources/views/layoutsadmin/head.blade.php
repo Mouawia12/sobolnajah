@@ -32,6 +32,7 @@
 <!-- Style-->  
 <link rel="stylesheet" href="{{ asset('cssadmin/style.css') }}">
 <link rel="stylesheet" href="{{ asset('cssadmin/skin_color.css') }}">
+<link rel="stylesheet" href="{{ asset('cssadmin/admin-modern.css') }}">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cairo">
 
 @toastr_css

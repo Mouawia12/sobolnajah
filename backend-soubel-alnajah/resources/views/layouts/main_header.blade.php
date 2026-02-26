@@ -92,7 +92,13 @@
 				</li>
 
 				<li >
-					<a href="{{ LaravelLocalization::localizeUrl('/album') }}">{{ trans('main_header.gallrey') }}</a>
+					<a href="{{ route('public.gallery.index') }}">{{ trans('main_header.gallery') }}</a>
+				</li>
+				<li>
+					<a href="{{ route('public.jobs.index') }}">{{ trans('main_header.recruitment') }}</a>
+				</li>
+				<li>
+					<a href="{{ route('public.timetables.index') }}">{{ trans('main_header.timetables') }}</a>
 				</li>
 
 
@@ -202,9 +208,6 @@
 			</div>
 		</nav>
 	</header>
-
-
-
 
 
 

@@ -4,6 +4,7 @@ namespace App\Models\School;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Spatie\Translatable\HasTranslations;
@@ -40,5 +41,14 @@ class School extends Model
     public function students(): HasManyThrough
     {
         return $this->hasManyThrough(StudentInfo::class, Section::class, 'school_id', 'section_id');
+    }
+
+    public function scopeForSchool(Builder $query, ?int $schoolId): Builder
+    {
+        if (!$schoolId) {
+            return $query;
+        }
+
+        return $query->where('id', $schoolId);
     }
 }

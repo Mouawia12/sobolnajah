@@ -2,22 +2,38 @@
 
 namespace App\Http\Controllers\Inscription;
 
+use App\Actions\Inscription\ApproveInscriptionAction;
+use App\Actions\Inscription\BuildInscriptionPayloadAction;
+use App\Actions\Inscription\CreateInscriptionAction;
+use App\Actions\Inscription\DeleteInscriptionAction;
+use App\Actions\Inscription\UpdateInscriptionAction;
+use App\Actions\Inscription\UpdateInscriptionStatusAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApproveInscriptionRequest;
 use App\Http\Requests\StoreInscription;
+use App\Http\Requests\UpdateInscriptionStatusRequest;
 use App\Models\Inscription\Inscription;
+use App\Models\School\Classroom;
 use App\Models\School\School;
 use App\Models\School\Section;
-use App\Services\StudentEnrollmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class InscriptionController extends Controller
 {
-    public function __construct(private StudentEnrollmentService $enrollmentService)
+    public function __construct(
+        private ApproveInscriptionAction $approveInscriptionAction,
+        private BuildInscriptionPayloadAction $buildInscriptionPayloadAction,
+        private CreateInscriptionAction $createInscriptionAction,
+        private UpdateInscriptionAction $updateInscriptionAction,
+        private UpdateInscriptionStatusAction $updateInscriptionStatusAction,
+        private DeleteInscriptionAction $deleteInscriptionAction
+    )
     {
+        $this->middleware(['auth', 'role:admin', 'force.password.change'])
+            ->only(['show', 'approve', 'edit', 'update', 'destroy', 'updateStatus']);
     }
 
     /**
@@ -27,7 +43,16 @@ class InscriptionController extends Controller
      */
     public function index()
     {
+        $isAdmin = Auth::check() && Auth::user()->hasRole('admin');
+
+        if ($isAdmin) {
+            $this->authorize('viewAny', Inscription::class);
+        }
+
         $schoolId = $this->currentSchoolId();
+        $search = trim((string) request('q'));
+        $status = request('status');
+        $classroomId = request('classroom_id');
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
@@ -35,23 +60,50 @@ class InscriptionController extends Controller
             ->orderBy('name_school')
             ->get();
 
-        $data['Inscription'] = Inscription::query()
-            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
-            ->with(['Classroom.Schoolgrade.School', 'Classroom.Sections'])
-            ->orderByDesc('created_at')
-            ->get();
+        if ($isAdmin) {
+            $inscriptionQuery = Inscription::query()
+                ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+                ->with(['Classroom.Schoolgrade.School', 'Classroom.Sections'])
+                ->when($classroomId, fn ($query) => $query->where('classroom_id', $classroomId))
+                ->when($status, fn ($query) => $query->where('statu', $status))
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($inscriptionQuery) use ($search) {
+                        $inscriptionQuery->where('prenom->fr', 'like', '%' . $search . '%')
+                            ->orWhere('prenom->ar', 'like', '%' . $search . '%')
+                            ->orWhere('prenom', 'like', '%' . $search . '%')
+                            ->orWhere('nom->fr', 'like', '%' . $search . '%')
+                            ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                            ->orWhere('nom', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%')
+                            ->orWhere('numtelephone', 'like', '%' . $search . '%');
+                    });
+                })
+                ->orderByDesc('created_at');
+
+            $data['Inscription'] = $inscriptionQuery->paginate(20)->withQueryString();
+
+            $data['Classrooms'] = Classroom::query()
+                ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+                ->with('schoolgrade')
+                ->orderBy('id')
+                ->get();
+        }
 
         $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('inscription.inscriptionstudent')],
+        ];
 
-        if(Auth::user()){
-        if(Auth::user()->hasRole('admin')){
-            return view('admin.studentsinscription',$data);
-        }else {
-            return view('front-end.inscription',$data);
+        if (Auth::user()) {
+            if ($isAdmin) {
+                return view('admin.studentsinscription', $data);
+            } else {
+                return view('front-end.inscription', $data);
+            }
         }
-        }else {
-        return view('front-end.inscription',$data);
-        }
+
+        return view('front-end.inscription', $data);
     }
 
 
@@ -68,70 +120,12 @@ class InscriptionController extends Controller
      */
     public function store(StoreInscription $request)
     {
+        $this->authorize('create', Inscription::class);
         $validated = $request->validated();
 
         try {
-            $Inscription = new Inscription();
-
-            $Inscription->school_id = $request->school_id;
-            $Inscription->grade_id = $request->grade_id;
-            $Inscription->classroom_id = $request->classroom_id;
-            $Inscription->inscriptionetat  = $request->inscriptionetat;
-            $Inscription->nomecoleprecedente  = $request->nomecoleprecedente;
-            $Inscription->dernieresection  = $request->dernieresection;
-            $Inscription->moyensannuels  = $request->moyensannuels;
-            $Inscription->numeronationaletudiant  = $request->numeronationaletudiant;
-
-            // ✅ تعديل الحقول القابلة للترجمة
-            $Inscription->prenom = [
-                'fr' => $request->prenomfr,
-                'ar' => $request->prenomar,
-                'en' => $request->prenomfr,
-            ];
-            $Inscription->nom = [
-                'fr' => $request->nomfr,
-                'ar' => $request->nomar,
-                'en' => $request->nomfr,
-            ];
-
-            $Inscription->email = $request->email;
-            $Inscription->gender = $request->gender;
-            $Inscription->numtelephone  = $request->numtelephone;
-            $Inscription->datenaissance = $request->datenaissance;
-            $Inscription->lieunaissance = $request->lieunaissance;
-            $Inscription->wilaya = $request->wilaya;
-            $Inscription->dayra = $request->dayra;
-            $Inscription->baladia = $request->baladia;
-            $Inscription->adresseactuelle = $request->adresseactuelle;
-            $Inscription->codepostal = $request->codepostal;
-            $Inscription->residenceactuelle = $request->residenceactuelle;
-            $Inscription->etatsante = $request->etatsante;
-            $Inscription->identificationmaladie = $request->identificationmaladie;
-            $Inscription->alfdlprsaldr = $request->alfdlprsaldr;
-            $Inscription->autresnotes = $request->autresnotes;
-
-            // ✅ إضافة اللغة الإنجليزية لولي الأمر
-            $Inscription->prenomwali = [
-                'fr' => $request->prenomfrwali,
-                'ar' => $request->prenomarwali,
-                'en' => $request->prenomfrwali,
-            ];
-            $Inscription->nomwali = [
-                'fr' => $request->nomfrwali,
-                'ar' => $request->nomarwali,
-                'en' => $request->nomfrwali,
-            ];
-
-            $Inscription->relationetudiant = $request->relationetudiant;
-            $Inscription->adressewali = $request->adressewali;
-            $Inscription->numtelephonewali = $request->numtelephonewali;
-            $Inscription->emailwali = $request->emailwali;
-            $Inscription->wilayawali = $request->wilayawali;
-            $Inscription->dayrawali = $request->dayrawali;
-            $Inscription->baladiawali = $request->baladiawali;
-            $Inscription->statu = "procec";
-
-            $Inscription->save();
+            $payload = $this->buildInscriptionPayloadAction->forStore($request->all());
+            $this->createInscriptionAction->execute($payload);
 
             toastr()->success(trans('messages.success'));
             return redirect()->route('Inscriptions.index')->withSuccess('Bien ajouté');
@@ -150,10 +144,12 @@ class InscriptionController extends Controller
      */
     public function show(Request $request,$id)
     {
+        abort(405);
+    }
 
-        $request->validate([
-            'section_id2' => 'required|exists:sections,id',
-        ]);
+    public function approve(ApproveInscriptionRequest $request, $id)
+    {
+        $validated = $request->validated();
 
         if (!Auth::user() || !Auth::user()->hasRole('admin')) {
             abort(403);
@@ -164,56 +160,14 @@ class InscriptionController extends Controller
         try {
             $section = Section::query()
                 ->forSchool($schoolId)
-                ->findOrFail($request->section_id2);
+                ->findOrFail($validated['section_id2']);
 
-            $inscription = Inscription::findOrFail($id);
+            $inscription = Inscription::query()
+                ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+                ->findOrFail($id);
+            $this->authorize('approve', $inscription);
 
-            DB::transaction(function () use ($inscription, $section) {
-                $inscription->update(['statu' => 'accept']);
-
-                $studentPayload = [
-                    'first_name' => [
-                        'fr' => $inscription->getTranslation('prenom', 'fr'),
-                        'ar' => $inscription->getTranslation('prenom', 'ar'),
-                        'en' => $inscription->getTranslation('prenom', 'fr'),
-                    ],
-                    'last_name' => [
-                        'fr' => $inscription->getTranslation('nom', 'fr'),
-                        'ar' => $inscription->getTranslation('nom', 'ar'),
-                        'en' => $inscription->getTranslation('nom', 'fr'),
-                    ],
-                    'email' => $inscription->email,
-                    'gender' => $inscription->gender,
-                    'phone' => $inscription->numtelephone,
-                    'birth_date' => $inscription->datenaissance,
-                    'birth_place' => $inscription->lieunaissance,
-                    'wilaya' => $inscription->wilaya,
-                    'dayra' => $inscription->dayra,
-                    'baladia' => $inscription->baladia,
-                ];
-
-                $guardianPayload = [
-                    'first_name' => [
-                        'fr' => $inscription->getTranslation('prenomwali', 'fr'),
-                        'ar' => $inscription->getTranslation('prenomwali', 'ar'),
-                        'en' => $inscription->getTranslation('prenomwali', 'fr'),
-                    ],
-                    'last_name' => [
-                        'fr' => $inscription->getTranslation('nomwali', 'fr'),
-                        'ar' => $inscription->getTranslation('nomwali', 'ar'),
-                        'en' => $inscription->getTranslation('nomwali', 'fr'),
-                    ],
-                    'relation' => $inscription->relationetudiant,
-                    'address' => $inscription->adressewali,
-                    'wilaya' => $inscription->wilayawali,
-                    'dayra' => $inscription->dayrawali,
-                    'baladia' => $inscription->baladiawali,
-                    'phone' => $inscription->numtelephonewali,
-                    'email' => $inscription->emailwali,
-                ];
-
-                $this->enrollmentService->createStudent($studentPayload, $guardianPayload, $section);
-            });
+            $this->approveInscriptionAction->execute($inscription, $section);
         } catch (ValidationException $exception) {
             return back()->withErrors($exception->errors());
         } catch (Throwable $exception) {
@@ -233,17 +187,22 @@ class InscriptionController extends Controller
      */
     public function edit(Request $request,$id)
     {
+        abort(405);
+    }
 
-        try{
-        Inscription::where('id', $id)->
-            update(['statu'=> $request->statu,]);
-            toastr()->success(trans('messages.Update'));
-            return redirect()->route('Inscriptions.index');
-        }
-        catch
-        (\Exception $e) {
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
+    public function updateStatus(UpdateInscriptionStatusRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        $inscription = Inscription::query()
+            ->when($this->currentSchoolId(), fn ($query, $schoolId) => $query->where('school_id', $schoolId))
+            ->findOrFail($id);
+        $this->authorize('update', $inscription);
+
+        $this->updateInscriptionStatusAction->execute($inscription, $validated['statu']);
+
+        toastr()->success(trans('messages.Update'));
+        return redirect()->route('Inscriptions.index');
     }
 
     /**
@@ -255,67 +214,15 @@ class InscriptionController extends Controller
      */
     public function update(StoreInscription $request, $id)
     {
+        $inscription = Inscription::query()
+            ->when($this->currentSchoolId(), fn ($query, $schoolId) => $query->where('school_id', $schoolId))
+            ->findOrFail($id);
+        $this->authorize('update', $inscription);
         $validated = $request->validated();
 
         try {
-            Inscription::where('id', $id)->update([
-                'school_id' => $request->school_id,
-                'grade_id' => $request->grade_id,
-                'classroom_id' => $request->classroom_id,
-                'inscriptionetat'  => $request->inscriptionetat,
-                'nomecoleprecedente'  => $request->nomecoleprecedente,
-                'dernieresection'  => $request->dernieresection,
-                'moyensannuels'  => $request->moyensannuels,
-                'numeronationaletudiant'  => $request->numeronationaletudiant,
-
-                // ✅ نضيف الإنجليزية مثل الفرنسية
-                'prenom' => [
-                    'fr' => $request->prenomfr,
-                    'ar' => $request->prenomar,
-                    'en' => $request->prenomfr,
-                ],
-                'nom' => [
-                    'fr' => $request->nomfr,
-                    'ar' => $request->nomar,
-                    'en' => $request->nomfr,
-                ],
-
-                'email' => $request->email,
-                'numtelephone'  => $request->numtelephone,
-                'datenaissance' => $request->datenaissance,
-                'lieunaissance' => $request->lieunaissance,
-                'wilaya' => $request->wilaya,
-                'dayra' => $request->dayra,
-                'baladia' => $request->baladia,
-                'adresseactuelle' => $request->adresseactuelle,
-                'codepostal' => $request->codepostal,
-                'residenceactuelle' => $request->residenceactuelle,
-                'etatsante' => $request->etatsante,
-                'identificationmaladie' => $request->identificationmaladie,
-                'alfdlprsaldr' => $request->alfdlprsaldr,
-                'autresnotes' => $request->autresnotes,
-
-                // ✅ نفس الشي لولي الأمر
-                'prenomwali' => [
-                    'fr' => $request->prenomfrwali,
-                    'ar' => $request->prenomarwali,
-                    'en' => $request->prenomfrwali,
-                ],
-                'nomwali' => [
-                    'fr' => $request->nomfrwali,
-                    'ar' => $request->nomarwali,
-                    'en' => $request->nomfrwali,
-                ],
-
-                'relationetudiant' => $request->relationetudiant,
-                'adressewali' => $request->adressewali,
-                'numtelephonewali' => $request->numtelephonewali,
-                'emailwali' => $request->emailwali,
-                'wilayawali' => $request->wilayawali,
-                'dayrawali' => $request->dayrawali,
-                'baladiawali' => $request->baladiawali,
-                'statu' => $request->statu,
-            ]);
+            $payload = $this->buildInscriptionPayloadAction->forUpdate($request->all());
+            $this->updateInscriptionAction->execute($inscription, $payload);
 
             toastr()->success(trans('messages.Update'));
             return redirect()->route('Inscriptions.index');
@@ -332,21 +239,15 @@ class InscriptionController extends Controller
      * @param  \App\Models\Inscription\Inscription  $inscription
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Request $request,$id)
+    public function destroy($id)
     {
-    //     $MySchoolgrade_id = Schoolgrade::where('school_id',$id)->pluck('school_id');
-    //    if($MySchoolgrade_id->count() == 0){
+        $inscription = Inscription::query()
+            ->when($this->currentSchoolId(), fn ($query, $schoolId) => $query->where('school_id', $schoolId))
+            ->findOrFail($id);
+        $this->authorize('delete', $inscription);
 
-          Inscription::where('id',$id)->delete();
-          toastr()->error(trans('messages.delete'));
-          return redirect()->route('Inscriptions.index');
-    //   }
-
-    //   else{
-
-    //       toastr()->error('Error');
-    //       return redirect()->route('Schoolgrades.index');
-
-    //   }
+        $this->deleteInscriptionAction->execute($inscription);
+        toastr()->error(trans('messages.delete'));
+        return redirect()->route('Inscriptions.index');
     }
 }
