@@ -4,6 +4,10 @@ namespace App\Actions\Inscription;
 
 class BuildStudentEnrollmentPayloadAction
 {
+    public function __construct(private BuildLocalizedNameAction $buildLocalizedNameAction)
+    {
+    }
+
     /**
      * @return array{student: array<string, mixed>, guardian: array<string, mixed>}
      */
@@ -11,16 +15,14 @@ class BuildStudentEnrollmentPayloadAction
     {
         return [
             'student' => [
-                'first_name' => [
-                    'fr' => $input['prenomfr'] ?? null,
-                    'ar' => $input['prenomar'] ?? null,
-                    'en' => $input['prenomfr'] ?? null,
-                ],
-                'last_name' => [
-                    'fr' => $input['nomfr'] ?? null,
-                    'ar' => $input['nomar'] ?? null,
-                    'en' => $input['nomfr'] ?? null,
-                ],
+                'first_name' => $this->buildLocalizedNameAction->execute(
+                    $input['prenomfr'] ?? null,
+                    $input['prenomar'] ?? null
+                ),
+                'last_name' => $this->buildLocalizedNameAction->execute(
+                    $input['nomfr'] ?? null,
+                    $input['nomar'] ?? null
+                ),
                 'email' => $input['email'] ?? null,
                 'gender' => isset($input['gender']) ? (int) $input['gender'] : null,
                 'phone' => $input['numtelephone'] ?? null,
@@ -31,16 +33,14 @@ class BuildStudentEnrollmentPayloadAction
                 'baladia' => $input['baladia'] ?? null,
             ],
             'guardian' => [
-                'first_name' => [
-                    'fr' => $input['prenomfrwali'] ?? null,
-                    'ar' => $input['prenomarwali'] ?? null,
-                    'en' => $input['prenomfrwali'] ?? null,
-                ],
-                'last_name' => [
-                    'fr' => $input['nomfrwali'] ?? null,
-                    'ar' => $input['nomarwali'] ?? null,
-                    'en' => $input['nomfrwali'] ?? null,
-                ],
+                'first_name' => $this->buildLocalizedNameAction->execute(
+                    $input['prenomfrwali'] ?? null,
+                    $input['prenomarwali'] ?? null
+                ),
+                'last_name' => $this->buildLocalizedNameAction->execute(
+                    $input['nomfrwali'] ?? null,
+                    $input['nomarwali'] ?? null
+                ),
                 'relation' => $input['relationetudiant'] ?? null,
                 'address' => $input['adressewali'] ?? null,
                 'wilaya' => $input['wilayawali'] ?? null,
@@ -52,4 +52,3 @@ class BuildStudentEnrollmentPayloadAction
         ];
     }
 }
-

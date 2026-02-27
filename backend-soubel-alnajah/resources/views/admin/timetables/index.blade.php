@@ -55,7 +55,7 @@
                                         {{ $timetable->is_published ? 'منشور' : 'مسودة' }}
                                     </span>
                                 </td>
-                                <td>{{ $timetable->entries->count() }}</td>
+                                <td>{{ (int) ($timetable->entries_count ?? 0) }}</td>
                                 <td>
                                     <a class="btn btn-sm btn-primary" href="{{ route('timetables.edit', $timetable) }}">تعديل</a>
                                     <a class="btn btn-sm btn-info" href="{{ route('timetables.print', $timetable) }}" target="_blank">طباعة</a>

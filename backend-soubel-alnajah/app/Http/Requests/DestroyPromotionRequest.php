@@ -7,6 +7,14 @@ use Illuminate\Validation\Rule;
 
 class DestroyPromotionRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'page_id' => $this->input('page_id', 2),
+            'id' => $this->input('id', $this->route('Promotion') ?? $this->route('promotion')),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;

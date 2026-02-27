@@ -10,6 +10,7 @@ use App\Actions\Inscription\UpdateInscriptionAction;
 use App\Actions\Inscription\UpdateInscriptionStatusAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ApproveInscriptionRequest;
+use App\Http\Requests\DestroyInscriptionRequest;
 use App\Http\Requests\StoreInscription;
 use App\Http\Requests\UpdateInscriptionStatusRequest;
 use App\Models\Inscription\Inscription;
@@ -62,8 +63,24 @@ class InscriptionController extends Controller
 
         if ($isAdmin) {
             $inscriptionQuery = Inscription::query()
+                ->select([
+                    'id',
+                    'school_id',
+                    'classroom_id',
+                    'prenom',
+                    'nom',
+                    'email',
+                    'numtelephone',
+                    'statu',
+                    'created_at',
+                ])
                 ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
-                ->with(['Classroom.Schoolgrade.School', 'Classroom.Sections'])
+                ->with([
+                    'Classroom:id,school_id,grade_id,name_class',
+                    'Classroom.Schoolgrade:id,school_id,name_grade',
+                    'Classroom.Schoolgrade.School:id,name_school',
+                    'Classroom.Sections:id,classroom_id,name_section',
+                ])
                 ->when($classroomId, fn ($query) => $query->where('classroom_id', $classroomId))
                 ->when($status, fn ($query) => $query->where('statu', $status))
                 ->when($search !== '', function ($query) use ($search) {
@@ -164,7 +181,7 @@ class InscriptionController extends Controller
 
             $inscription = Inscription::query()
                 ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
-                ->findOrFail($id);
+                ->findOrFail((int) $validated['id']);
             $this->authorize('approve', $inscription);
 
             $this->approveInscriptionAction->execute($inscription, $section);
@@ -196,7 +213,7 @@ class InscriptionController extends Controller
 
         $inscription = Inscription::query()
             ->when($this->currentSchoolId(), fn ($query, $schoolId) => $query->where('school_id', $schoolId))
-            ->findOrFail($id);
+            ->findOrFail((int) $validated['id']);
         $this->authorize('update', $inscription);
 
         $this->updateInscriptionStatusAction->execute($inscription, $validated['statu']);
@@ -239,11 +256,12 @@ class InscriptionController extends Controller
      * @param  \App\Models\Inscription\Inscription  $inscription
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroyInscriptionRequest $request, $id)
     {
+        $validated = $request->validated();
         $inscription = Inscription::query()
             ->when($this->currentSchoolId(), fn ($query, $schoolId) => $query->where('school_id', $schoolId))
-            ->findOrFail($id);
+            ->findOrFail((int) $validated['id']);
         $this->authorize('delete', $inscription);
 
         $this->deleteInscriptionAction->execute($inscription);

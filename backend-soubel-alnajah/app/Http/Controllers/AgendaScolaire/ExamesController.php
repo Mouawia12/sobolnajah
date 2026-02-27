@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AgendaScolaire;
 
 use Illuminate\Support\Facades\Auth;
 use App\Models\AgendaScolaire\Exames;
+use App\Http\Requests\DestroyExameRequest;
 use App\Http\Requests\StoreExameRequest;
 use App\Http\Requests\UpdateExameRequest;
 use App\Models\School\Classroom;
@@ -37,7 +38,21 @@ class ExamesController extends Controller
         $year = request('Annscolaire');
 
         $query = Exames::query()
-            ->with(['classroom.schoolgrade', 'schoolgrade', 'specialization'])
+            ->select([
+                'id',
+                'name',
+                'file',
+                'specialization_id',
+                'grade_id',
+                'classroom_id',
+                'Annscolaire',
+                'created_at',
+            ])
+            ->with([
+                'classroom:id,name_class',
+                'schoolgrade:id,name_grade',
+                'specialization:id,name',
+            ])
             ->when(Auth::check() && Auth::user()->hasRole('admin') && $schoolId, function ($query) use ($schoolId) {
                 $query->whereHas('classroom', fn ($classroomQuery) => $classroomQuery->where('school_id', $schoolId));
             })
@@ -64,6 +79,7 @@ class ExamesController extends Controller
                     now()->addMinutes(15),
                     fn () => Schoolgrade::query()
                         ->forSchool($schoolId)
+                        ->select(['id', 'name_grade'])
                         ->orderBy('name_grade')
                         ->get()
                 );
@@ -72,14 +88,17 @@ class ExamesController extends Controller
                     now()->addMinutes(15),
                     fn () => Classroom::query()
                         ->forSchool($schoolId)
-                        ->with('schoolgrade')
+                        ->select(['id', 'grade_id', 'name_class'])
                         ->orderBy('name_class')
                         ->get()
                 );
                 $data['Specializations'] = Cache::remember(
                     'exam:lookups:specializations',
                     now()->addMinutes(15),
-                    fn () => Specialization::query()->orderBy('name')->get()
+                    fn () => Specialization::query()
+                        ->select(['id', 'name'])
+                        ->orderBy('name')
+                        ->get()
                 );
                 return view('admin.exam',$data);
             } else {
@@ -193,6 +212,11 @@ class ExamesController extends Controller
         return Storage::disk('local')->download($Exames->file, $filename);
     }
 
+    $this->migrateLegacyExamIfExists($Exames);
+    if ($Exames->file && Storage::disk('local')->exists($Exames->file)) {
+        return Storage::disk('local')->download($Exames->file, $filename);
+    }
+
     $legacyFile = public_path("exames/" . $Exames->file);
     if (!file_exists($legacyFile)) {
         abort(404, 'الملف غير موجود');
@@ -204,9 +228,10 @@ class ExamesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Exames $exames, $id)
+    public function destroy(DestroyExameRequest $request, $id)
     {
-        $exam = Exames::findOrFail($id);
+        $validated = $request->validated();
+        $exam = Exames::findOrFail((int) $validated['id']);
         $this->authorize('delete', $exam);
 
         if ($exam->file && Storage::disk('local')->exists($exam->file)) {
@@ -219,5 +244,24 @@ class ExamesController extends Controller
         $exam->delete();
         toastr()->error(trans('messages.delete'));
         return redirect()->route('Exames.index');
+    }
+
+    private function migrateLegacyExamIfExists(Exames $exam): void
+    {
+        if (!$exam->file) {
+            return;
+        }
+
+        $legacyFile = public_path('exames/' . $exam->file);
+        if (!file_exists($legacyFile)) {
+            return;
+        }
+
+        $targetPath = 'private/exames/legacy/' . basename($exam->file);
+        Storage::disk('local')->put($targetPath, file_get_contents($legacyFile));
+        @unlink($legacyFile);
+
+        $exam->file = $targetPath;
+        $exam->save();
     }
 }

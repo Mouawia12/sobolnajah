@@ -2081,3 +2081,611 @@
 - يغطي:
   - مسح كاش المراجع بعد إنشاء `Grade`.
   - مسح كاش المراجع بعد إنشاء `Agenda`.
+
+## 2026-02-26 - Sprint 2 (Database & Migrations) - Phase 93
+- إغلاق `B1` (تنظيف مخطط البيانات الأساسي) عبر migration جديدة:
+  - `backend-soubel-alnajah/database/migrations/2026_02_26_201000_cleanup_core_schema_integrity.php`
+
+### Backend changes
+- `studentinfos`
+  - إضافة قيد `unique` على `user_id` باسم `uq_studentinfos_user_id` لضمان one-to-one بين `users` و`studentinfos`.
+- `notifications`
+  - إزالة القيد `unique` غير العملي على `data`.
+  - إضافة فهارس تشغيلية:
+    - `idx_notifications_notifiable_created` (`notifiable_id`, `created_at`)
+    - `idx_notifications_notifiable_read` (`notifiable_id`, `read_at`)
+- `sections`
+  - إضافة فهرس مركّب لفلاتر الإدارة:
+    - `idx_sections_school_grade_classroom_status_created`
+
+### Automated tests
+- إضافة: `backend-soubel-alnajah/tests/Feature/Database/CoreSchemaIntegrityTest.php`
+- يغطي:
+  - `studentinfos.user_id` لا يقبل التكرار.
+  - `notifications.data` يسمح بالتكرار بين صفوف مختلفة.
+- تحقق إضافي مع Regression tests:
+  - `FunctionNotificationActionsTest`
+  - `SchoolAdminIndexFiltersTest`
+
+## 2026-02-26 - Sprint 2 (Database & Performance) - Phase 94
+- إغلاق `B2` بقياس أداء فعلي للاستعلامات المفهرسة.
+
+### Benchmark changes
+- إضافة اختبار Benchmark:
+  - `backend-soubel-alnajah/tests/Feature/Performance/CoreIndexBenchmarkTest.php`
+- المنهجية:
+  - Seed dataset بحجم 6000 سجل في `inscriptions`.
+  - مقارنة نفس استعلام قائمة الإدارة باستخدام:
+    - `IGNORE INDEX (idx_inscriptions_school_status_created)`
+    - `FORCE INDEX (idx_inscriptions_school_status_created)`
+  - القياس بمتوسط 8 تشغيلات.
+- شرط النجاح:
+  - الاستعلام المفهرس أسرع بنسبة >= 40%.
+
+## 2026-02-26 - Sprint 3 (UI/UX) - Phase 95
+- إكمال `C1` (UI Stack حديث + دعم RTL كامل في admin layout).
+
+### Frontend changes
+- الملف: `backend-soubel-alnajah/resources/views/layoutsadmin/masteradmin.blade.php`
+  - جعل `html` ديناميكيًا:
+    - `lang="{{ app()->getLocale() }}"`
+    - `dir="rtl/ltr"` حسب اللغة.
+- الملف: `backend-soubel-alnajah/public/cssadmin/admin-modern.css`
+  - إضافة قواعد RTL واضحة لـ:
+    - `content-header`
+    - `breadcrumbs`
+    - `admin-form-actions`
+    - `tables`
+
+### Automated tests
+- تحديث: `backend-soubel-alnajah/tests/Feature/UI/AdminLayoutChromeTest.php`
+- إضافة اختبارات:
+  - التحقق من `lang="ar" dir="rtl"` عند العربية.
+  - التحقق من `lang="en" dir="ltr"` عند الإنجليزية.
+
+## 2026-02-26 - Sprint 6 (Feature 3 Analysis) - Phase 96
+- تحديث `F3-Analysis` دون إغلاق نهائي بسبب غياب ملف Excel المحاسبي الرسمي.
+
+### Documentation changes
+- تحديث: `docs/accounting-mapping.md`
+  - إضافة `Final Mapping Template` جاهز للتعبئة (Sheet/Column/Target/Transform/Validation).
+  - توضيح أن ملف Excel المكتشف داخل المشروع (`public/exames/1665495440OrU0SDbqtu.xls`) غير محاسبي.
+
+### Status
+- `F3-Analysis` يبقى مفتوحًا لحين توفير ملف Excel الخاص بالمقتصد (العقود/الدفعات) لإكمال mapping عمود-بعمود.
+
+## 2026-02-26 - Sprint 0 (Architectural Directives) - Phase 97
+- إغلاق موجه `#7 حذف الأنظمة المكررة` لنطاق الدردشة.
+
+### Cleanup changes
+- إزالة artifacts غير المستخدمة لنظام الرسائل القديم:
+  - حذف `backend-soubel-alnajah/app/Models/Application/Message.php`
+  - حذف `backend-soubel-alnajah/app/Events/MessageSent.php`
+- إضافة migration لإسقاط الجدول legacy:
+  - `backend-soubel-alnajah/database/migrations/2026_02_26_214000_drop_legacy_messages_table.php`
+
+### Verification
+- إضافة اختبار schema:
+  - `test_legacy_messages_table_is_removed` ضمن `tests/Feature/Database/CoreSchemaIntegrityTest.php`
+- تشغيل التحقق:
+  - `php artisan test tests/Feature/Database/CoreSchemaIntegrityTest.php tests/Feature/Application/ChatIndexPerformanceTest.php`
+  - النتيجة: PASS (4 tests).
+
+### Note
+- نظام الدردشة المعتمد فعليًا الآن هو `ChatController` المبني على `chat_rooms/chat_messages/chat_room_user` فقط.
+
+## 2026-02-26 - Sprint 0 (Architectural Directives) - Phase 98
+- تحديث حالة التوجيهات المعمارية في `IMPROVEMENT_PLAN_CHECKLIST.md` وإغلاق البنود ذات الدليل التنفيذي المكتمل:
+  - `#2`, `#3`, `#4`, `#5`, `#6`, `#8`, `#9`, `#11`.
+- الإغلاق بُني على أدلة تنفيذ فعلية داخل المشروع:
+  - Actions/Services/FormRequests/Policies.
+  - عزل multi-school وتغطية أمنية.
+  - تحديث UI تدريجي + RTL/LTR.
+  - فهارس + Benchmark أداء.
+  - اختبارات مرافقة وتوثيق مرحلي.
+- بنود بقيت مفتوحة:
+  - `#10 No Half Refactor Rule` (بند حوكمة مستمر).
+  - `F3-Analysis` (بانتظار ملف Excel المحاسبي الرسمي).
+
+## 2026-02-26 - Sprint 0 (Architectural Directives) - Phase 99
+- إغلاق `#10 No Half Refactor Rule` في checklist.
+- الحالة الحالية للقائمة:
+  - المتبقي المفتوح الوحيد: `F3-Analysis: Mapping ملف Excel`.
+- سبب بقاء `F3-Analysis` مفتوح:
+  - عدم توفر ملف Excel المحاسبي الرسمي (العقود/الدفعات) داخل المشروع حتى الآن.
+
+## 2026-02-26 - Sprint 6 (Feature 3 Analysis) - Phase 100
+- إغلاق `F3-Analysis` بعد العثور على ملف Excel محاسبي فعلي خارج شجرة المشروع:
+  - المصدر: `/Users/mw/Downloads/حسام الدين.xlsx`
+  - الأوراق المعتمدة: `عقود التلاميذ`, `دراهم`
+
+### What changed
+- تحديث `docs/accounting-mapping.md` من Draft إلى Final mapping فعلي.
+- إضافة mapping عمود-بعمود نحو:
+  - `student_contracts`
+  - `contract_installments`
+  - `payments`
+  - `payment_receipts`
+- توثيق قواعد التحويل (dates/serials/amounts) والتحقق (totals/uniqueness/rejections) وترتيب الاستيراد.
+
+### Checklist update
+- تعليم `F3-Analysis` كمكتمل في `IMPROVEMENT_PLAN_CHECKLIST.md` مع ملاحظة إغلاق تتضمن مصدر الملف والأوراق المعتمدة.
+
+## 2026-02-26 - Sprint 6 (Feature 3 Implementation) - Phase 101
+- تنفيذ استيراد Excel للمحاسبة داخل النظام (بعد إغلاق التحليل).
+
+### Schema updates
+- إضافة migration:
+  - `backend-soubel-alnajah/database/migrations/2026_02_26_221000_add_excel_tracking_fields_to_student_contracts_table.php`
+- الحقول المضافة في `student_contracts`:
+  - `external_contract_no` (nullable)
+  - `guardian_name` (nullable)
+  - `metadata` (json)
+  - unique index: `school_id + academic_year + external_contract_no`
+
+### Backend updates
+- Action جديدة:
+  - `backend-soubel-alnajah/app/Actions/Accounting/ImportAccountingWorkbookAction.php`
+- Request جديدة:
+  - `backend-soubel-alnajah/app/Http/Requests/ImportAccountingWorkbookRequest.php`
+- Controller:
+  - إضافة `ContractController::import()` وربطه بالـ Action.
+- Route:
+  - `POST /accounting/contracts/import` -> `accounting.contracts.import`
+
+### Import behavior
+- قراءة الورقتين:
+  - `عقود التلاميذ` -> إنشاء/تحديث العقود + توليد الأقساط.
+  - `دراهم` -> إنشاء الدفعات + إنشاء الوصولات + تحديث حالة العقد.
+- مطابقة الطلاب حسب الاسم داخل المدرسة الحالية (school scoped).
+- إرجاع summary بعد الاستيراد (created/updated/payments/skipped).
+
+### UI updates
+- إضافة نموذج رفع Excel في صفحة:
+  - `backend-soubel-alnajah/resources/views/admin/accounting/contracts/index.blade.php`
+
+### Tests
+- تحديث:
+  - `backend-soubel-alnajah/tests/Feature/Accounting/AccountingFlowTest.php`
+- إضافة اختبار:
+  - `test_accountant_can_import_accounting_workbook`
+  - ينشئ workbook مصغرًا (ورقتان) ويثبت:
+    - إنشاء عقد بـ `external_contract_no`
+    - إدخال دفعة اشتراك + دفعة شهرية
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (6 tests).
+- `php artisan test tests/Feature/Database/CoreSchemaIntegrityTest.php tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests).
+
+## 2026-02-26 - Sprint 6 (Feature 3 Implementation) - Phase 102
+- توسيع استيراد Excel المحاسبي بإمكانيات تشغيلية إضافية.
+
+### Added capabilities
+- `Preview (Dry-Run)`:
+  - تمرير `preview=1` على endpoint الاستيراد لتنفيذ التحليل الكامل داخل Transaction ثم rollback.
+  - النتيجة: إحصاءات دقيقة لما سيتم إنشاؤه/تحديثه بدون حفظ فعلي.
+- `Skipped Rows Report`:
+  - تسجيل أسباب الصفوف المتخطاة (sheet/row/reason/contract/student).
+  - توليد ملف CSV في `storage/app/private/accounting-import-reports`.
+  - توليد رابط تنزيل موقّع (`signed route`) وعرضه في صفحة العقود بعد الاستيراد.
+
+### Backend changes
+- `ImportAccountingWorkbookAction`:
+  - إضافة معامل `dryRun`.
+  - إضافة `skipped_rows` داخل summary.
+- `ContractController`:
+  - دعم preview.
+  - إضافة `downloadImportReport()` لتنزيل تقارير CSV الموقعة.
+- `routes/web.php`:
+  - إضافة `accounting.contracts.import.report`.
+- `contracts.index` view:
+  - checkbox للمعاينة.
+  - تنبيه مع رابط تقرير الصفوف المتخطاة.
+
+### Tests
+- تحديث `AccountingFlowTest` بإضافات:
+  - `test_accountant_can_preview_import_without_persisting_data`
+  - `test_import_sets_skipped_rows_report_when_student_not_found`
+- نتيجة التشغيل:
+  - `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (8 tests, 25 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 Implementation) - Phase 103
+- إضافة Preview تفصيلي مرئي داخل صفحة العقود بعد تشغيل `preview=1`.
+
+### UX changes
+- عرض جداول معاينة لـ:
+  - العقود المقترحة (رقم العقد/الطالب/السنة/الإجمالي/إنشاء-تحديث).
+  - الدفعات المقترحة (رقم الوصل/رقم العقد/النوع/المبلغ/التاريخ).
+- البيانات تأتي من `import_preview` داخل session وتُعرض بعد المعاينة مباشرة.
+
+### Backend support
+- `ImportAccountingWorkbookAction` أصبح يرجع:
+  - `preview_contracts`
+  - `preview_payments`
+  - بالإضافة إلى `skipped_rows`.
+- `ContractController::import`:
+  - يمرر `dryRun` إلى Action.
+  - يخزن `import_preview` في session عند المعاينة.
+
+### Tests
+- تحديث اختبار المعاينة للتأكد من وجود payload المعاينة في session:
+  - `test_accountant_can_preview_import_without_persisting_data`
+- نتيجة التشغيل:
+  - `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (8 tests).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 104
+- تحسين UX لواجهة استيراد المحاسبة.
+
+### Changes
+- استبدال نمط checkbox (`preview`) بنمط زرين واضحين في نفس النموذج:
+  - `معاينة فقط` (يرسل `preview=1`)
+  - `تنفيذ الاستيراد`
+- الملف:
+  - `backend-soubel-alnajah/resources/views/admin/accounting/contracts/index.blade.php`
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (8 tests, 27 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 105
+- إضافة عدادات summary أعلى معاينة الاستيراد قبل التنفيذ.
+
+### Changes
+- `ContractController::import`:
+  - تمرير `summary` داخل `import_preview` (contracts_created/contracts_updated/payments_created/rows_skipped).
+- واجهة `contracts.index`:
+  - عرض 4 بطاقات إحصائية في وضع المعاينة:
+    - عقود جديدة
+    - عقود محدثة
+    - دفعات متوقعة
+    - صفوف متخطاة
+
+### Tests
+- تحديث `test_accountant_can_preview_import_without_persisting_data` للتحقق من وجود `import_preview.summary` في session.
+- نتيجة التشغيل:
+  - `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (8 tests, 28 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 106
+- إضافة تصدير CSV للمعاينة (غير تقرير الصفوف المتخطاة).
+
+### Changes
+- `ContractController::import`:
+  - توليد ملف CSV للمعاينة من `preview_contracts` + `preview_payments`.
+  - حفظ رابط موقّع في session: `import_preview_csv_url`.
+- `contracts.index`:
+  - عرض رابط تنزيل `CSV للمعاينة` بعد تشغيل Preview.
+
+### Tests
+- تحديث اختبار المعاينة للتأكد من وجود `import_preview_csv_url`.
+- نتيجة التشغيل:
+  - `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (8 tests, 29 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 Validation) - Phase 107
+- إضافة Validation ذكي للمجاميع ضمن تدفق Preview.
+
+### Added validation checks
+- ورقة `عقود التلاميذ`:
+  - مقارنة `مجموع` العقد مع مجموع الأشهر (سبتمبر..ماي).
+- ورقة `دراهم`:
+  - مقارنة `المجموع الإجمالي (Z)` مع (حقوق الاشتراك + مجموع الدفعات الشهرية).
+  - مقارنة `مجموع حقوق الاشتراك (AA)` مع قيمة `حقوق الاشتراك` الفعلية.
+  - مقارنة `مجموع دفعات (AB)` مع مجموع الدفعات الشهرية الفعلي.
+
+### Behavior
+- عند وجود mismatch:
+  - يُسجل warning (ليس skip).
+  - يظهر ضمن `import_preview.validation_warnings`.
+  - يظهر عدّاد `تحذيرات تحقق` في بطاقات المعاينة.
+  - يعرض جدول تحذيرات تفصيلي (sheet/row/type/message/contract_no).
+
+### Tests
+- إضافة اختبار:
+  - `test_preview_collects_validation_warnings_when_totals_mismatch`
+- نتيجة التشغيل:
+  - `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 108
+- إضافة فلترة تفاعلية لتحذيرات المعاينة داخل صفحة العقود.
+
+### UI changes
+- فلاتر جديدة أعلى جدول التحذيرات:
+  - حسب الورقة (`عقود التلاميذ` / `دراهم`)
+  - حسب نوع التحذير
+  - بحث نصي (رقم العقد/الوصف)
+- التنفيذ عبر JavaScript خفيف على الواجهة بدون round-trip للخادم.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 109
+- إضافة فرز تفاعلي لجدول تحذيرات المعاينة.
+
+### Changes
+- إضافة selector `ترتيب` في الواجهة مع خيارات:
+  - السطر تصاعدي/تنازلي
+  - رقم العقد تصاعدي/تنازلي
+  - النوع تصاعدي/تنازلي
+- دمج الفرز مع الفلاتر الحالية (ورقة/نوع/بحث نصي) بنفس السكربت الأمامي.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 110
+- إضافة زر `إعادة ضبط الفلاتر` لتحذيرات المعاينة.
+
+### Changes
+- زر جديد في واجهة التحذيرات يعيد:
+  - فلتر الورقة = الكل
+  - فلتر النوع = الكل
+  - الترتيب = `row_desc`
+  - البحث النصي = فارغ
+- التنفيذ ضمن نفس سكربت الفلترة الأمامي.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 111
+- إضافة حفظ إعدادات فلترة التحذيرات في `localStorage`.
+
+### Changes
+- حفظ/استرجاع تلقائي للقيم:
+  - `sheet`
+  - `type`
+  - `sort`
+  - `text`
+- مفتاح التخزين: `accounting_import_warnings_filters_v1`.
+- يتم تحديث التخزين بعد كل تغيير أو إعادة ترتيب.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 112
+- إضافة زر تصدير CSV للتحذيرات الظاهرة بعد الفلترة.
+
+### Changes
+- زر جديد: `تصدير التحذيرات الظاهرة CSV` في قسم التحذيرات.
+- التصدير يتم من المتصفح مباشرة (Client-side) ويعتمد على الصفوف المرئية بعد تطبيق الفلاتر/الفرز.
+- الأعمدة المصدّرة: `sheet,row,contract_no,type,message`.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 113
+- إضافة عدّاد مباشر للصفوف الظاهرة في جدول تحذيرات المعاينة.
+
+### Changes
+- عنصر UI جديد: `الصفوف الظاهرة: N`.
+- يتم تحديثه تلقائيًا بعد أي فلترة/بحث/فرز.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 114
+- إضافة حالة "لا توجد نتائج مطابقة للفلاتر" + تعطيل تصدير CSV عند عدم وجود صفوف مرئية.
+
+### Changes
+- عنصر حالة فارغة جديد تحت جدول التحذيرات يظهر فقط عندما تصبح الصفوف المرئية = 0.
+- تعطيل زر `تصدير التحذيرات الظاهرة CSV` تلقائيًا عندما لا توجد صفوف مطابقة.
+- الإبقاء على عدّاد `الصفوف الظاهرة` كمؤشر فوري للحالة.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 115
+- جعل خيارات فلاتر التحذيرات ديناميكية حسب بيانات المعاينة الفعلية.
+
+### Changes
+- استخراج `warningSheets` و`warningTypes` من `validation_warnings` وعرضهما داخل قوائم الفلترة بدل القيم الثابتة.
+- تحسين استرجاع الفلاتر من `localStorage`:
+  - إذا كانت القيمة المحفوظة قديمة وغير موجودة ضمن الخيارات الحالية، يتم تجاهلها وإرجاع الفلتر إلى `الكل`.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 116
+- تحسين أداء البحث النصي في تحذيرات المعاينة عبر `debounce`.
+
+### Changes
+- إضافة مؤقّت `debounce` لمدة `250ms` على حقل `warningsTextFilter` قبل تنفيذ `applyFilters`.
+- مسح المؤقّت عند `إعادة ضبط الفلاتر` لضمان تحديث فوري ونظيف للحالة.
+- باقي سلوك الفلاتر/الفرز/العداد/التصدير بدون تغيير.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 117
+- إضافة زر نسخ التحذيرات الظاهرة للحافظة (CSV نصي) مع رسالة حالة.
+
+### Changes
+- زر جديد: `نسخ التحذيرات الظاهرة`.
+- استخراج بناء CSV إلى helper محلي `buildCsvLines` وإعادة استخدامه في التصدير والنسخ.
+- دعم النسخ عبر:
+  - `navigator.clipboard.writeText` عند التوفر (Secure Context).
+  - fallback باستخدام `document.execCommand('copy')` عند الحاجة.
+- إضافة رسالة حالة UI:
+  - نجاح: `تم نسخ التحذيرات الظاهرة.`
+  - فشل: `تعذر النسخ. استخدم زر التصدير.`
+- تعطيل زر النسخ تلقائيًا عندما لا توجد صفوف مرئية بعد الفلترة.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 118
+- إضافة زر نسخ رقم العقد داخل كل سطر تحذير.
+
+### Changes
+- إضافة عمود `إجراء` في جدول التحذيرات.
+- لكل صف يحتوي `contract_no`:
+  - زر `نسخ رقم العقد`.
+  - حالة مصغّرة في السطر: `تم النسخ` أو `فشل النسخ`.
+- إعادة استخدام helper النسخ للحافظة (`copyTextToClipboard`) لسيناريو نسخ CSV ونسخ رقم العقد.
+- تحسين `buildCsvLines` ليعتمد على `data-*` في الصف (بدل نص الخلايا) حتى يبقى صحيحًا بعد إضافة عمود الإجراء.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (9 tests, 32 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 119
+- إضافة فتح مباشر للعقد من تحذيرات المعاينة + توسيع البحث في العقود برقم العقد الخارجي.
+
+### Changes
+- في جدول تحذيرات المعاينة:
+  - إضافة زر `فتح العقد` لكل صف يملك `contract_no`.
+  - الرابط يوجّه إلى صفحة العقود مع `q=<contract_no>` ومرساة `#contractsList`.
+- في صفحة العقود:
+  - إضافة دعم البحث بـ `external_contract_no` داخل `ContractController@index`.
+  - عرض `external_contract_no` في جدول العقود ضمن عمود `رقم العقد`.
+  - تحديث placeholder البحث إلى `بحث باسم التلميذ/البريد/رقم العقد`.
+- في الاختبارات:
+  - إضافة اختبار `test_accountant_can_search_contracts_by_external_contract_number` للتحقق من منطق البحث برقم العقد الخارجي.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 120
+- تحسين تجربة التنقل من التحذيرات إلى العقود عبر تمييز الصف المطابق تلقائيًا.
+
+### Changes
+- تحديث رابط `فتح العقد` ليشمل `highlight_contract=<contract_no>`.
+- إضافة `data-external-contract` على صفوف جدول العقود.
+- سكربت واجهي مشروط (`@if(request('highlight_contract'))`) يقوم بـ:
+  - مطابقة رقم العقد المطلوب.
+  - تمييز الصف المطابق بصريًا (Outline + Background).
+  - تمرير تلقائي للصف داخل الصفحة (`scrollIntoView`).
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 121
+- إضافة إشعار واضح لحالة التمييز مع إلغاء يدوي مباشر.
+
+### Changes
+- إضافة تنبيه أعلى جدول العقود عند وجود `highlight_contract`:
+  - النص الافتراضي: `تم التركيز على العقد رقم ...`.
+  - زر: `إلغاء التمييز`.
+- توسعة سكربت التمييز:
+  - حفظ مرجع الصف المميز.
+  - عند الضغط على `إلغاء التمييز`: إزالة الإطار/الخلفية وإخفاء التنبيه.
+  - إذا لم يوجد العقد في الصفحة الحالية: عرض رسالة `لم يتم العثور على العقد المطلوب في هذه الصفحة.`
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 122
+- إضافة نسخ رابط مباشر للعقد من سطر التحذير.
+
+### Changes
+- إضافة زر `نسخ رابط العقد` ضمن عمود الإجراء في جدول التحذيرات.
+- الرابط المنسوخ يتضمن:
+  - `q=<contract_no>`
+  - `highlight_contract=<contract_no>`
+  - المرساة `#contractsList`
+- إضافة معالج نقر جديد (`.js-copy-contract-link`) يعيد استخدام `copyTextToClipboard`.
+- حالة السطر تعرض:
+  - نجاح: `تم نسخ الرابط`
+  - فشل: `فشل نسخ الرابط`
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 123
+- إضافة فتح العقد في تبويب جديد مباشرة من سطر التحذير.
+
+### Changes
+- إضافة زر `فتح في تبويب جديد` بجانب `فتح العقد` داخل عمود الإجراء بجدول التحذيرات.
+- الزر يستخدم نفس رابط الفلترة/التمييز (`q`, `highlight_contract`, `#contractsList`) مع:
+  - `target="_blank"`
+  - `rel="noopener noreferrer"`
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 124
+- إضافة اختصار لوحة مفاتيح للتنقل السريع من رقم العقد.
+
+### Changes
+- جعل خلية `رقم العقد` في جدول التحذيرات قابلة لاختصار التنقل عبر:
+  - `Ctrl + Click` (Windows/Linux)
+  - `Cmd + Click` (macOS)
+- عند الاختصار يتم فتح رابط العقد (المفلتر والمميز) في تبويب جديد باستخدام `window.open(..., '_blank')`.
+- إضافة `title` توضيحي على خلية رقم العقد يشرح الاختصار.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 125
+- توسيع اختصار `Ctrl/Cmd + Click` ليشمل خلية الوصف.
+
+### Changes
+- إضافة نفس hooks (`js-contract-shortcut` + `data-contract-link`) إلى عمود `الوصف` في جدول التحذيرات.
+- النتيجة: يمكن فتح العقد المستهدف من:
+  - خلية `رقم العقد`
+  - خلية `الوصف`
+  عبر نفس الاختصار بدون تغيير في بقية السلوك.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-26 - Sprint 6 (Feature 3 UX) - Phase 126
+- تحسين الإشارات البصرية للخلايا المختصرة.
+
+### Changes
+- إضافة ستايل محلي في صفحة العقود لخلايا `.js-contract-shortcut`:
+  - `cursor: pointer`
+  - `hover` بلون خلفية خفيف
+- الهدف: جعل قابلية الاختصار `Ctrl/Cmd + Click` واضحة بصريًا أثناء المراجعة.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountingFlowTest.php` => PASS (10 tests, 33 assertions).
+
+## 2026-02-27 - Regression Validation Snapshot
+- إعادة تحقق شاملة للاختبارات الحساسة بعد آخر دفعة تحسينات.
+
+### Verification
+- `php artisan test --filter='SprintZeroSecurityTest|AccountingFlowTest|RecruitmentFlowTest|CoreSchemaIntegrityTest|CoreIndexBenchmarkTest|FunctionNotificationActionsTest'` => PASS (84 tests, 202 assertions).
+
+## 2026-02-27 - Sprint 0 Follow-up (Onboarding Delivery Fallback)
+- إغلاق نقطة متبقية مرتبطة بقنوات تسليم onboarding في بيئة الإنتاج.
+
+### Changes
+- إضافة Notification جديدة: `OnboardingDeliveryFailedNotification` (قناة `database`) لإشعار إداريي المدرسة عند فشل إرسال رابط إعداد كلمة المرور.
+- توسيع `UserOnboardingService`:
+  - إرسال تنبيه داخلي للإداريين عند فشل broker في `sendResetLink` أو عند الاستثناءات.
+  - احترام إعداد بيئي جديد لتعطيل/تفعيل السلوك.
+- إضافة ملف إعدادات جديد `config/onboarding.php` بمفتاح:
+  - `ONBOARDING_NOTIFY_ADMINS_ON_FAILURE=true` افتراضيًا.
+- إضافة اختبار أمني/تدفق جديد:
+  - `OnboardingDeliveryChannelsTest` للتحقق من إنشاء إشعار إداري عند فشل إرسال الرابط.
+
+### Verification
+- `php artisan test --filter='OnboardingFlowTest|OnboardingDeliveryChannelsTest'` => PASS (3 tests, 10 assertions).
+
+## 2026-02-27 - Performance Benchmark Expansion (Notifications Index)
+- توسيع القياس الفعلي للفهارس ليشمل استعلامات الإشعارات الإدارية.
+
+### Changes
+- توسيع `CoreIndexBenchmarkTest` بإضافة benchmark جديد:
+  - الاستعلام: `notifications` حسب `notifiable_id` مع ترتيب `created_at DESC`.
+  - المقارنة: `IGNORE INDEX (idx_notifications_notifiable_created, idx_notifications_notifiable_read)` مقابل `FORCE INDEX (idx_notifications_notifiable_created)`.
+  - dataset: عدد كبير (12000 إشعار) مع خليط `read_at` لتمثيل سيناريوهات فعلية.
+- شرط النجاح مطابق للسياسة المعتمدة: تحسن لا يقل عن 40% للاستعلام المفهرس.
+
+### Verification
+- `php artisan test tests/Feature/Performance/CoreIndexBenchmarkTest.php` => PASS (2 tests, 2 assertions).
+
+## 2026-02-27 - Test Suite Stabilization (Blade Parsing Regressions)
+- إصلاح أعطال 500 التي ظهرت أثناء تشغيل السويت الكامل بسبب أخطاء ترجمة Blade.
+
+### Changes
+- إصلاح صفحة العقود الإدارية:
+  - استبدال صيغة `@php(...)` غير المتوافقة إلى كتلة `@php ... @endphp` في:
+    - `resources/views/admin/accounting/contracts/index.blade.php`.
+- إصلاح صفحة الجداول العامة:
+  - استبدال `@forelse` إلى `@if + @foreach` في:
+    - `resources/views/front-end/timetables/index.blade.php`
+  - السبب: المترجم كان يولّد متغيرًا غير صالح (`$__empty_-1`) في النسخة الحالية.
+- تحديث اختبار الجذر العام:
+  - `tests/Feature/ExampleTest.php` أصبح يتحقق من redirect بدل `200` ليتوافق مع سلوك المسار `/`.
+
+### Verification
+- `php artisan test tests/Feature/Accounting/AccountantSidebarTest.php tests/Feature/UI/AdminLayoutChromeTest.php tests/Feature/ExampleTest.php` => PASS (6 tests, 18 assertions).
+- `php artisan test tests/Feature/Timetable/TimetableFlowTest.php` => PASS (6 tests, 14 assertions).
+- `php artisan test` => PASS (154 tests, 464 assertions).

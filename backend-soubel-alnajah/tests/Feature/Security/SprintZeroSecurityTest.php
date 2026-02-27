@@ -4,11 +4,14 @@ namespace Tests\Feature\Security;
 
 use App\Models\Role;
 use App\Models\Specialization\Specialization;
+use App\Models\Chat\ChatRoom;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class SprintZeroSecurityTest extends TestCase
@@ -43,6 +46,128 @@ class SprintZeroSecurityTest extends TestCase
 
         $response->assertStatus(302);
         $this->assertFalse($user->fresh()->must_change_password);
+    }
+
+    public function test_chat_send_route_rejects_missing_message_payload(): void
+    {
+        $user = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+
+        $response = $this->actingAs($user)->post('/chat-gpt', []);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('message');
+    }
+
+    public function test_chat_room_message_send_rejects_missing_body_payload(): void
+    {
+        $user = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        $room = ChatRoom::query()->create([
+            'is_group' => false,
+            'created_by' => $user->id,
+        ]);
+        $room->addParticipants([$user->id]);
+
+        $response = $this->actingAs($user)->postJson(
+            route('chat.rooms.messages.send', ['room' => $room->id]),
+            []
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('body');
+    }
+
+    public function test_chat_direct_start_rejects_missing_user_id_payload(): void
+    {
+        $user = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('chat.direct.start'), []);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('user_id');
+    }
+
+    public function test_chat_group_create_rejects_too_few_members(): void
+    {
+        $user = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        $member = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('chat.groups.create'), [
+            'name' => 'Team Group',
+            'members' => [$member->id],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('members');
+    }
+
+    public function test_chat_mark_room_as_read_rejects_non_existing_room_id(): void
+    {
+        $user = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+
+        $response = $this->actingAs($user)->postJson(
+            route('chat.rooms.read', ['room' => 999999]),
+            []
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('room_id');
+    }
+
+    public function test_chat_room_messages_and_send_are_forbidden_for_non_participant(): void
+    {
+        $owner = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        $intruder = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+
+        $room = ChatRoom::query()->create([
+            'is_group' => false,
+            'created_by' => $owner->id,
+        ]);
+        $room->addParticipants([$owner->id]);
+
+        $readResponse = $this->actingAs($intruder)->getJson(
+            route('chat.rooms.messages', ['room' => $room->id])
+        );
+        $this->assertTrue(in_array($readResponse->status(), [302, 403, 404], true));
+
+        $sendResponse = $this->actingAs($intruder)->postJson(
+            route('chat.rooms.messages.send', ['room' => $room->id]),
+            ['body' => 'Unauthorized message']
+        );
+        $this->assertTrue(in_array($sendResponse->status(), [302, 403, 404], true));
+    }
+
+    public function test_publication_media_route_requires_valid_signature(): void
+    {
+        $filename = 'publication-test.jpg';
+        Storage::disk('local')->put('private/publications/' . $filename, 'fake image');
+
+        $unsigned = $this->get(route('publications.media', ['filename' => $filename]));
+        $this->assertTrue(in_array($unsigned->status(), [302, 403, 404], true));
+
+        $signedUrl = URL::temporarySignedRoute(
+            'publications.media',
+            now()->addMinutes(10),
+            ['filename' => $filename]
+        );
+
+        $signed = $this->get($signedUrl);
+        $this->assertTrue(in_array($signed->status(), [200, 302], true));
     }
 
     public function test_exam_upload_rejects_unsupported_file_types(): void
@@ -237,6 +362,132 @@ class SprintZeroSecurityTest extends TestCase
         $this->assertDatabaseHas('teachers', ['id' => $teacherId]);
     }
 
+    public function test_teacher_destroy_route_rejects_non_existing_teacher_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Teachers.destroy', ['Teacher' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_student_destroy_route_rejects_non_existing_student_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Students.destroy', ['Student' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_grade_destroy_route_rejects_non_existing_grade_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Grades.destroy', ['Grade' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_agenda_destroy_route_rejects_non_existing_agenda_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Agendas.destroy', ['Agenda' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_publication_destroy_route_rejects_non_existing_publication_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Publications.destroy', ['Publication' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_note_student_destroy_route_rejects_non_existing_note_student_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('NoteStudents.destroy', ['NoteStudent' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_exame_destroy_route_rejects_non_existing_exame_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Exames.destroy', ['Exame' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_job_post_destroy_route_rejects_non_existing_job_post_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('JobPosts.destroy', ['JobPost' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_timetable_destroy_route_rejects_non_existing_timetable_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('timetables.destroy', ['timetable' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
     public function test_admin_cannot_approve_inscription_from_another_school(): void
     {
         $admin = User::factory()->create([
@@ -334,6 +585,85 @@ class SprintZeroSecurityTest extends TestCase
             'id' => $inscriptionId,
             'statu' => 'procec',
         ]);
+    }
+
+    public function test_inscription_approve_route_rejects_non_existing_inscription_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $schoolId = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'S', 'ar' => 'س', 'en' => 'S']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin->update(['school_id' => $schoolId]);
+
+        $gradeId = DB::table('schoolgrades')->insertGetId([
+            'school_id' => $schoolId,
+            'name_grade' => json_encode(['fr' => 'G', 'ar' => 'م', 'en' => 'G']),
+            'notes' => json_encode(['fr' => 'N', 'ar' => 'ن', 'en' => 'N']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $classroomId = DB::table('classrooms')->insertGetId([
+            'school_id' => $schoolId,
+            'grade_id' => $gradeId,
+            'name_class' => json_encode(['fr' => 'C', 'ar' => 'ق', 'en' => 'C']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $sectionId = DB::table('sections')->insertGetId([
+            'school_id' => $schoolId,
+            'grade_id' => $gradeId,
+            'classroom_id' => $classroomId,
+            'name_section' => json_encode(['fr' => 'S1', 'ar' => 'ف1', 'en' => 'S1']),
+            'Status' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('Inscriptions.approve', ['id' => 999999]), [
+            'section_id2' => $sectionId,
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_inscription_status_route_rejects_non_existing_inscription_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->post(route('Inscriptions.status', ['id' => 999999]), [
+            'statu' => 'accept',
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_inscription_destroy_route_rejects_non_existing_inscription_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Inscriptions.destroy', ['Inscription' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
     }
 
     public function test_absence_update_rejects_invalid_hour_field(): void
@@ -498,6 +828,49 @@ class SprintZeroSecurityTest extends TestCase
 
         $response->assertStatus(302);
         $response->assertSessionHasErrors('section_id_new');
+    }
+
+    public function test_legacy_store_route_rejects_non_existing_inscription_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->post('/store/999999');
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
+    public function test_promotion_update_endpoint_is_not_exposed(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->put('/ar/Promotions/1', [
+            'section_id_new' => 999,
+        ]);
+
+        $this->assertTrue(in_array($response->getStatusCode(), [404, 405], true));
+    }
+
+    public function test_promotion_destroy_route_rejects_non_existing_id_without_page_id_payload(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Promotions.destroy', ['Promotion' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
     }
 
     public function test_students_import_rejects_non_excel_files(): void
@@ -812,6 +1185,20 @@ class SprintZeroSecurityTest extends TestCase
         $this->assertDatabaseHas('schoolgrades', ['id' => $gradeId]);
     }
 
+    public function test_schoolgrade_destroy_route_rejects_non_existing_schoolgrade_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Schoolgrades.destroy', ['Schoolgrade' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
     public function test_admin_cannot_delete_school_from_another_school(): void
     {
         $admin = User::factory()->create([
@@ -836,6 +1223,20 @@ class SprintZeroSecurityTest extends TestCase
 
         $this->assertTrue(in_array($response->status(), [403, 404], true));
         $this->assertDatabaseHas('schools', ['id' => $schoolB]);
+    }
+
+    public function test_school_destroy_route_rejects_non_existing_school_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Schools.destroy', ['School' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
     }
 
     public function test_admin_cannot_delete_section_from_another_school(): void
@@ -888,6 +1289,20 @@ class SprintZeroSecurityTest extends TestCase
         $this->assertDatabaseHas('sections', ['id' => $sectionId]);
     }
 
+    public function test_section_destroy_route_rejects_non_existing_section_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Sections.destroy', ['Section' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
     public function test_admin_cannot_delete_classroom_from_another_school(): void
     {
         $admin = User::factory()->create([
@@ -927,6 +1342,20 @@ class SprintZeroSecurityTest extends TestCase
 
         $this->assertTrue(in_array($response->status(), [403, 404], true));
         $this->assertDatabaseHas('classrooms', ['id' => $classroomId]);
+    }
+
+    public function test_classroom_destroy_route_rejects_non_existing_classroom_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->delete(route('Classes.destroy', ['Class' => 999999]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
     }
 
     public function test_non_admin_cannot_create_grade(): void

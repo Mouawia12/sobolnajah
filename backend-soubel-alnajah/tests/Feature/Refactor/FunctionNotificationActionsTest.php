@@ -38,6 +38,24 @@ class FunctionNotificationActionsTest extends TestCase
         ]);
     }
 
+    public function test_notify_endpoint_rejects_non_existing_target_user_id(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->post(route('notify', ['id' => 999999]), [
+            'year' => '2026-' . Str::random(4),
+            'namefr' => 'Demande Certificat',
+            'namear' => 'طلب شهادة',
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
+    }
+
     public function test_mark_as_read_marks_owned_notification_as_read(): void
     {
         $admin = User::factory()->create([
@@ -126,5 +144,19 @@ class FunctionNotificationActionsTest extends TestCase
 
         $readAt = DB::table('notifications')->where('id', $notificationId)->value('read_at');
         $this->assertNotNull($readAt);
+    }
+
+    public function test_mark_as_read_rejects_invalid_notification_id_format(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+        ]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $response = $this->actingAs($admin)->post(route('markAsRead', ['id' => 'not-a-uuid']));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('id');
     }
 }

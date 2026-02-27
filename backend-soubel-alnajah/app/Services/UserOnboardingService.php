@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Notifications\OnboardingDeliveryFailedNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Throwable;
@@ -15,6 +16,7 @@ class UserOnboardingService
     public function dispatchPasswordSetupLink(User $user): bool
     {
         if (!$user->email) {
+            $this->notifySchoolAdminsOfDeliveryFailure($user, 'missing_email');
             return false;
         }
 
@@ -23,7 +25,13 @@ class UserOnboardingService
                 'email' => $user->email,
             ]);
 
-            return $status === Password::RESET_LINK_SENT;
+            $isSent = $status === Password::RESET_LINK_SENT;
+
+            if (!$isSent) {
+                $this->notifySchoolAdminsOfDeliveryFailure($user, 'reset_link_not_sent');
+            }
+
+            return $isSent;
         } catch (Throwable $exception) {
             Log::warning('Failed to dispatch password setup link.', [
                 'user_id' => $user->id,
@@ -31,7 +39,25 @@ class UserOnboardingService
                 'error' => $exception->getMessage(),
             ]);
 
+            $this->notifySchoolAdminsOfDeliveryFailure($user, 'dispatch_exception');
+
             return false;
+        }
+    }
+
+    private function notifySchoolAdminsOfDeliveryFailure(User $targetUser, string $reason): void
+    {
+        if (!config('onboarding.notify_admins_on_failure', true) || !$targetUser->school_id) {
+            return;
+        }
+
+        $admins = User::query()
+            ->where('school_id', $targetUser->school_id)
+            ->get()
+            ->filter(fn (User $candidate) => $candidate->hasRole('admin'));
+
+        foreach ($admins as $admin) {
+            $admin->notify(new OnboardingDeliveryFailedNotification($targetUser, $reason));
         }
     }
 }

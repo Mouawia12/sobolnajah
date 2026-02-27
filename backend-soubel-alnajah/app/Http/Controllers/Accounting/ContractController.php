@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Accounting;
 
+use App\Actions\Accounting\ImportAccountingWorkbookAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ImportAccountingWorkbookRequest;
 use App\Http\Requests\StoreStudentContractRequest;
 use App\Http\Requests\UpdateStudentContractRequest;
 use App\Models\Accounting\ContractInstallment;
@@ -10,12 +12,16 @@ use App\Models\Accounting\PaymentPlan;
 use App\Models\Accounting\StudentContract;
 use App\Models\Inscription\StudentInfo;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ContractController extends Controller
 {
-    public function __construct()
+    public function __construct(private ImportAccountingWorkbookAction $importAccountingWorkbookAction)
     {
         $this->middleware(['auth', 'force.password.change']);
     }
@@ -31,14 +37,35 @@ class ContractController extends Controller
 
         $contracts = StudentContract::query()
             ->forSchool($schoolId)
-            ->with(['student.user', 'student.section.classroom.schoolgrade', 'plan'])
+            ->select([
+                'id',
+                'student_id',
+                'payment_plan_id',
+                'academic_year',
+                'total_amount',
+                'external_contract_no',
+                'plan_type',
+                'installments_count',
+                'starts_on',
+                'ends_on',
+                'status',
+                'notes',
+                'created_at',
+            ])
+            ->with([
+                'student:id,user_id',
+                'student.user:id,name,email',
+            ])
             ->withSum('payments as paid_total', 'amount')
             ->when($status, fn ($query) => $query->where('status', $status))
             ->when($search, function ($query) use ($search) {
-                $query->whereHas('student.user', function ($userQuery) use ($search) {
-                    $userQuery->where('name->fr', 'like', '%' . $search . '%')
-                        ->orWhere('name->ar', 'like', '%' . $search . '%')
-                        ->orWhere('email', 'like', '%' . $search . '%');
+                $query->where(function ($wrappedQuery) use ($search) {
+                    $wrappedQuery->where('external_contract_no', 'like', '%' . $search . '%')
+                        ->orWhereHas('student.user', function ($userQuery) use ($search) {
+                            $userQuery->where('name->fr', 'like', '%' . $search . '%')
+                                ->orWhere('name->ar', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%');
+                        });
                 });
             })
             ->orderByDesc('created_at')
@@ -47,19 +74,26 @@ class ContractController extends Controller
 
         $students = StudentInfo::query()
             ->forSchool($schoolId)
-            ->with('user')
+            ->select(['id', 'user_id', 'created_at'])
+            ->with('user:id,name')
             ->orderByDesc('created_at')
             ->limit(200)
             ->get();
 
-        $plans = PaymentPlan::query()->forSchool($schoolId)->where('is_active', true)->orderBy('name')->get();
+        $plans = PaymentPlan::query()
+            ->forSchool($schoolId)
+            ->where('is_active', true)
+            ->select(['id', 'name'])
+            ->orderBy('name')
+            ->get();
 
         $overdueContracts = StudentContract::query()
             ->forSchool($schoolId)
+            ->select(['id', 'student_id', 'academic_year'])
             ->whereHas('installments', function ($query) {
                 $query->where('status', 'overdue');
             })
-            ->with('student.user')
+            ->with(['student:id,user_id', 'student.user:id,name'])
             ->limit(20)
             ->get();
 
@@ -147,6 +181,99 @@ class ContractController extends Controller
         return redirect()->route('accounting.contracts.index');
     }
 
+    public function import(ImportAccountingWorkbookRequest $request)
+    {
+        $this->authorize('create', StudentContract::class);
+        $this->ensureAccountingRole();
+
+        $schoolId = $this->currentSchoolId();
+        if (!$schoolId) {
+            return back()->withErrors(['file' => 'يجب تحديد مدرسة المستخدم قبل الاستيراد.']);
+        }
+
+        $isPreview = (bool) $request->boolean('preview');
+
+        try {
+            $summary = $this->importAccountingWorkbookAction->execute(
+                $request->file('file'),
+                (int) $schoolId,
+                (int) auth()->id(),
+                $isPreview
+            );
+        } catch (Throwable $exception) {
+            return back()->withErrors(['file' => $exception->getMessage()]);
+        }
+
+        if (!empty($summary['skipped_rows'])) {
+            $filename = $this->writeSkippedRowsReport((array) $summary['skipped_rows']);
+            session()->flash('import_report_url', URL::signedRoute('accounting.contracts.import.report', ['filename' => $filename]));
+        }
+
+        if ($isPreview) {
+            $previewContracts = (array) ($summary['preview_contracts'] ?? []);
+            $previewPayments = (array) ($summary['preview_payments'] ?? []);
+            $warnings = (array) ($summary['validation_warnings'] ?? []);
+            session()->flash('import_preview', [
+                'contracts' => $previewContracts,
+                'payments' => $previewPayments,
+                'validation_warnings' => $warnings,
+                'summary' => [
+                    'contracts_created' => (int) ($summary['contracts_created'] ?? 0),
+                    'contracts_updated' => (int) ($summary['contracts_updated'] ?? 0),
+                    'payments_created' => (int) ($summary['payments_created'] ?? 0),
+                    'rows_skipped' => (int) ($summary['rows_skipped'] ?? 0),
+                    'warnings_count' => count($warnings),
+                ],
+            ]);
+
+            $previewFilename = $this->writePreviewSnapshotReport($previewContracts, $previewPayments);
+            session()->flash('import_preview_csv_url', URL::signedRoute('accounting.contracts.import.report', ['filename' => $previewFilename]));
+        }
+
+        $message = sprintf(
+            '%s عقود جديدة: %d، عقود محدثة: %d، دفعات: %d، صفوف متخطاة: %d، تحذيرات: %d',
+            $isPreview ? 'تم تنفيذ معاينة بدون حفظ.' : 'تم استيراد الملف.',
+            $summary['contracts_created'],
+            $summary['contracts_updated'],
+            $summary['payments_created'],
+            $summary['rows_skipped'],
+            count((array) ($summary['validation_warnings'] ?? []))
+        );
+
+        if ($isPreview) {
+            toastr()->info($message);
+        } else {
+            toastr()->success($message);
+        }
+
+        return redirect()->route('accounting.contracts.index');
+    }
+
+    public function downloadImportReport(Request $request, string $filename)
+    {
+        if (!$request->hasValidSignature()) {
+            abort(403);
+        }
+
+        $this->authorize('viewAny', StudentContract::class);
+        $this->ensureAccountingRole();
+
+        if (!preg_match('/^[A-Za-z0-9._-]+\\.csv$/', $filename)) {
+            abort(404);
+        }
+
+        $path = 'private/accounting-import-reports/' . $filename;
+        if (!Storage::exists($path)) {
+            abort(404);
+        }
+
+        return response()->download(
+            storage_path('app/' . $path),
+            'accounting-import-skipped-rows.csv',
+            ['Content-Type' => 'text/csv']
+        );
+    }
+
     private function regenerateInstallments(StudentContract $contract): void
     {
         $contract->installments()->delete();
@@ -187,5 +314,83 @@ class ContractController extends Controller
         if (!$user || (!$user->hasRole('admin') && !$user->hasRole('accountant'))) {
             abort(403);
         }
+    }
+
+    /**
+     * @param array<int,array{sheet:string,row:int,reason:string,contract_no:string,student_name:string}> $rows
+     */
+    private function writeSkippedRowsReport(array $rows): string
+    {
+        $filename = 'skipped_rows_' . now()->format('Ymd_His') . '_' . Str::lower(Str::random(6)) . '.csv';
+        $path = 'private/accounting-import-reports/' . $filename;
+
+        $lines = ['sheet,row,reason,contract_no,student_name'];
+        foreach ($rows as $row) {
+            $lines[] = implode(',', [
+                $this->csvValue((string) ($row['sheet'] ?? '')),
+                $this->csvValue((string) ($row['row'] ?? '')),
+                $this->csvValue((string) ($row['reason'] ?? '')),
+                $this->csvValue((string) ($row['contract_no'] ?? '')),
+                $this->csvValue((string) ($row['student_name'] ?? '')),
+            ]);
+        }
+
+        Storage::put($path, implode(PHP_EOL, $lines) . PHP_EOL);
+
+        return $filename;
+    }
+
+    private function csvValue(string $value): string
+    {
+        $escaped = str_replace('"', '""', $value);
+
+        return '"' . $escaped . '"';
+    }
+
+    /**
+     * @param array<int,array{contract_no:string,student_name:string,academic_year:string,total_amount:float,is_new:bool}> $contracts
+     * @param array<int,array{receipt_number:string,contract_no:string,type:string,amount:float,paid_on:string}> $payments
+     */
+    private function writePreviewSnapshotReport(array $contracts, array $payments): string
+    {
+        $filename = 'preview_snapshot_' . now()->format('Ymd_His') . '_' . Str::lower(Str::random(6)) . '.csv';
+        $path = 'private/accounting-import-reports/' . $filename;
+
+        $lines = [];
+        $lines[] = '"section","contract_no","student_name","academic_year","total_amount","operation","receipt_number","payment_type","payment_amount","paid_on"';
+
+        foreach ($contracts as $contract) {
+            $lines[] = implode(',', [
+                $this->csvValue('contracts_preview'),
+                $this->csvValue((string) ($contract['contract_no'] ?? '')),
+                $this->csvValue((string) ($contract['student_name'] ?? '')),
+                $this->csvValue((string) ($contract['academic_year'] ?? '')),
+                $this->csvValue((string) ($contract['total_amount'] ?? 0)),
+                $this->csvValue(!empty($contract['is_new']) ? 'create' : 'update'),
+                $this->csvValue(''),
+                $this->csvValue(''),
+                $this->csvValue(''),
+                $this->csvValue(''),
+            ]);
+        }
+
+        foreach ($payments as $payment) {
+            $lines[] = implode(',', [
+                $this->csvValue('payments_preview'),
+                $this->csvValue((string) ($payment['contract_no'] ?? '')),
+                $this->csvValue(''),
+                $this->csvValue(''),
+                $this->csvValue(''),
+                $this->csvValue(''),
+                $this->csvValue((string) ($payment['receipt_number'] ?? '')),
+                $this->csvValue((string) ($payment['type'] ?? '')),
+                $this->csvValue((string) ($payment['amount'] ?? 0)),
+                $this->csvValue((string) ($payment['paid_on'] ?? '')),
+            ]);
+        }
+
+        Storage::put($path, implode(PHP_EOL, $lines) . PHP_EOL);
+
+        return $filename;
     }
 }

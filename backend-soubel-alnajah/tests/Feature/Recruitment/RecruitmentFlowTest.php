@@ -135,6 +135,66 @@ class RecruitmentFlowTest extends TestCase
         $this->assertTrue(in_array($response->status(), [302, 403, 404], true));
     }
 
+    public function test_admin_cannot_update_application_status_for_another_school(): void
+    {
+        Storage::fake('local');
+
+        $admin = User::factory()->create(['must_change_password' => false]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $schoolA = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'A', 'ar' => 'أ', 'en' => 'A']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $schoolB = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'B', 'ar' => 'ب', 'en' => 'B']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin->update(['school_id' => $schoolA]);
+
+        $post = JobPost::query()->create([
+            'school_id' => $schoolB,
+            'slug' => 'physics-teacher-' . Str::random(4),
+            'title' => 'Physics Teacher',
+            'description' => 'Hiring',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+
+        $path = 'private/recruitment/' . $schoolB . '/' . $post->id . '/cv-status.pdf';
+        Storage::disk('local')->put($path, 'pdf-content');
+
+        $applicationId = DB::table('job_applications')->insertGetId([
+            'school_id' => $schoolB,
+            'job_post_id' => $post->id,
+            'full_name' => 'Candidate B',
+            'phone' => '0551111222',
+            'email' => 'candidate.status@example.test',
+            'status' => 'new',
+            'cv_path' => $path,
+            'cv_original_name' => 'cv-status.pdf',
+            'cv_mime' => 'application/pdf',
+            'cv_size' => 11,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->patch(route('recruitment.applications.status', ['jobApplication' => $applicationId]), [
+            'status' => 'accepted',
+            'review_notes' => 'Approved by foreign school admin',
+        ]);
+
+        $this->assertTrue(in_array($response->status(), [302, 403, 404], true));
+        $this->assertDatabaseHas('job_applications', [
+            'id' => $applicationId,
+            'school_id' => $schoolB,
+            'status' => 'new',
+        ]);
+    }
+
     public function test_non_admin_cannot_access_job_posts_admin_page(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);

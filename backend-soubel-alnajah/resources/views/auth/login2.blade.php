@@ -29,7 +29,17 @@
                             <label for="password" class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
 
                             <div class="col-md-6">
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
+                                <div class="input-group">
+                                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
+                                    <button
+                                        class="btn btn-outline-secondary"
+                                        type="button"
+                                        id="toggle-password"
+                                        aria-label="Show password"
+                                    >
+                                        <span id="toggle-password-text">Show</span>
+                                    </button>
+                                </div>
 
                                 @error('password')
                                     <span class="invalid-feedback" role="alert">
@@ -70,4 +80,21 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var passwordInput = document.getElementById('password');
+    var toggleButton = document.getElementById('toggle-password');
+    var toggleText = document.getElementById('toggle-password-text');
+
+    if (!passwordInput || !toggleButton || !toggleText) {
+        return;
+    }
+
+    toggleButton.addEventListener('click', function () {
+        var isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        toggleText.textContent = isPassword ? 'Hide' : 'Show';
+    });
+});
+</script>
 @endsection

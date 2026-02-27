@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\School;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroySchoolRequest;
 use App\Models\School\School;
 use App\Models\School\Schoolgrade;
 use App\Models\School\Classroom;
@@ -25,6 +26,7 @@ class SchoolController extends Controller
         $data['notify'] = $this->notifications();
         $data['School'] = School::query()
             ->forSchool($schoolId)
+            ->select(['id', 'name_school', 'created_at'])
             ->when($query !== '', function ($schoolsQuery) use ($query) {
                 $schoolsQuery->where(function ($textQuery) use ($query) {
                     $textQuery->where('name_school->fr', 'like', '%' . $query . '%')
@@ -102,11 +104,12 @@ class SchoolController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroySchoolRequest $request, $id)
     {
+       $validated = $request->validated();
        $school = School::query()
            ->forSchool($this->currentSchoolId())
-           ->findOrFail($id);
+           ->findOrFail((int) $validated['id']);
        $this->authorize('delete', $school);
 
        $MySchoolgrade_id = Schoolgrade::query()
@@ -143,8 +146,14 @@ class SchoolController extends Controller
     public function test()
     {
         $schoolId = $this->currentSchoolId();
-        $Schoolgrade = Schoolgrade::query()->forSchool($schoolId)->get();
-        $School = School::query()->forSchool($schoolId)->get();
+        $Schoolgrade = Schoolgrade::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'school_id', 'name_grade'])
+            ->get();
+        $School = School::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'name_school'])
+            ->get();
         
         return view('admin.test',compact('Schoolgrade','School'));
     }

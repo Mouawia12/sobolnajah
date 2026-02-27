@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\ConfirmsPasswords;
-use Illuminate\Http\Request;
 use App\Models\User;
 use Hash;
 use Auth;
@@ -41,30 +41,16 @@ class ConfirmPasswordController extends Controller
         $this->middleware('auth');
     }
 
-    public function studentChangePassword(Request $request){
-            $validated = $request->validate([
-                'password' => ['required', 'string'],
-                'newPassword' => ['required', 'string', 'min:8', 'different:password'],
-                'confirmNewPassword' => ['required', 'same:newPassword'],
-            ]);
+    public function studentChangePassword(ChangePasswordRequest $request){
+            $validated = $request->validated();
 
-            if (!(Hash::check($request->get('password'), Auth::user()->password))) {
+            if (!(Hash::check($validated['password'], Auth::user()->password))) {
                 return redirect()->back()->withErrors(['كلمة السر القديمة غير صحيحة']);
             }
     
-            if(strcmp($request->get('newPassword'),$request->get('confirmNewPassword'))){
-                // Current password and new password same
-                return redirect()->back()->withErrors(['يرجى كتابة نفس كلمة السر']);
-            }
-    
-            // $validatedData = $request->validate([
-            //     'newPassword' => 'required',
-            //     'confirmNewPassword' => 'required|string|min:8|int',
-            // ]);
-    
             //Change Password
             $user = Auth::user();
-            $user->password = Hash::make($request->get('newPassword'));
+            $user->password = Hash::make($validated['newPassword']);
             $user->must_change_password = false;
             $user->save();
     

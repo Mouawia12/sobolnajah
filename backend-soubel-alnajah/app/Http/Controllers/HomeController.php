@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\AgendaScolaire\Publication;
 use App\Models\Inscription\Inscription;
@@ -122,15 +121,24 @@ class HomeController extends Controller
 
             $recentStudents = StudentInfo::query()
                 ->forSchool($schoolId)
-                ->with(['user:id,name', 'section.classroom.schoolgrade'])
+                ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'created_at'])
+                ->with([
+                    'user:id,name',
+                    'section:id,classroom_id,name_section',
+                    'section.classroom:id,grade_id,name_class',
+                    'section.classroom.schoolgrade:id,name_grade',
+                ])
                 ->latest()
                 ->take(5)
                 ->get();
 
             $todayMessageCount = ChatMessage::query()
-                ->when($schoolId, fn ($query) => $query->whereHas('sender', fn ($senderQuery) => $senderQuery->where('school_id', $schoolId)))
-                ->whereDate('created_at', Carbon::today())
-                ->count();
+                ->selectRaw('COUNT(chat_messages.id) as aggregate')
+                ->join('users', 'users.id', '=', 'chat_messages.user_id')
+                ->when($schoolId, fn ($query) => $query->where('users.school_id', $schoolId))
+                ->whereDate('chat_messages.created_at', Carbon::today())
+                ->value('aggregate');
+            $todayMessageCount = (int) ($todayMessageCount ?? 0);
 
             $data['stats'] = [
                 'total_students' => $totalStudents,

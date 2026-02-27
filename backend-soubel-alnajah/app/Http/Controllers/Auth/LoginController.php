@@ -3,15 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
-use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
-
-
-
-
-
+use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
@@ -45,6 +41,31 @@ class LoginController extends Controller
         $this->middleware('guest')->except('logout');
     }
 
+    protected function validateLogin(Request $request): void
+    {
+        $request->validate([
+            $this->username() => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ], [
+            $this->username() . '.required' => 'يرجى إدخال البريد الإلكتروني.',
+            $this->username() . '.email' => 'صيغة البريد الإلكتروني غير صحيحة.',
+            'password.required' => 'يرجى إدخال كلمة المرور.',
+        ]);
+    }
+
+    protected function sendFailedLoginResponse(Request $request)
+    {
+        $email = (string) $request->input($this->username());
+        $userExists = User::query()->where($this->username(), $email)->exists();
+
+        throw ValidationException::withMessages([
+            $userExists ? 'password' : $this->username() => [
+                $userExists
+                    ? 'كلمة المرور غير صحيحة. حاول مرة أخرى.'
+                    : 'البريد الإلكتروني غير موجود.',
+            ],
+        ]);
+    }
 
     /**
      * Logout trait

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\AgendaScolaire;
 
+use App\Http\Requests\DestroyGradeRequest;
 use App\Http\Requests\StoreGrade;
 use App\Models\AgendaScolaire\Grade;
 use App\Models\AgendaScolaire\Publication;
@@ -141,12 +142,13 @@ public function update(StoreGrade $request, $id)
      * @param  \App\Models\Grade  $grade
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroyGradeRequest $request, $id)
     {
-        $grade = Grade::findOrFail($id);
+        $validated = $request->validated();
+        $grade = Grade::findOrFail((int) $validated['id']);
         $this->authorize('delete', $grade);
 
-        $MyGrade_id = Publication::where('grade_id',$id)->pluck('grade_id');
+        $MyGrade_id = Publication::where('grade_id', (int) $validated['id'])->pluck('grade_id');
         
         if($MyGrade_id->count() == 0){
 

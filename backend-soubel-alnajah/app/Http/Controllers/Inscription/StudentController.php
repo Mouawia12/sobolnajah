@@ -6,6 +6,7 @@ use App\Actions\Inscription\BuildStudentEnrollmentPayloadAction;
 use App\Actions\Inscription\DeleteStudentEnrollmentAction;
 use App\Actions\Inscription\UpdateStudentEnrollmentAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyStudentRequest;
 use App\Http\Requests\ImportStudentsRequest;
 use App\Http\Requests\StoreStudent;
 use App\Imports\StudentsImport;
@@ -40,13 +41,20 @@ class StudentController extends Controller
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
-            ->with('schoolgrades')
+            ->select(['id', 'name_school'])
             ->orderBy('name_school')
             ->get();
 
         $data['StudentInfo'] = StudentInfo::query()
             ->forSchool($schoolId)
-            ->with(['user', 'parent.user', 'section.classroom.school'])
+            ->with([
+                'user:id,email',
+                'section:id,classroom_id,name_section',
+                'section.classroom:id,school_id,grade_id,name_class',
+                'section.classroom.schoolgrade:id,school_id,name_grade',
+                'section.classroom.schoolgrade.school:id,name_school',
+                'section.classroom.sections:id,classroom_id,name_section',
+            ])
             ->when($sectionId, fn ($query) => $query->where('section_id', $sectionId))
             ->when($classroomId, function ($query) use ($classroomId) {
                 $query->whereHas('section', fn ($sectionQuery) => $sectionQuery->where('classroom_id', $classroomId));
@@ -72,7 +80,11 @@ class StudentController extends Controller
 
         $data['Sections'] = Section::query()
             ->forSchool($schoolId)
-            ->with(['classroom.schoolgrade'])
+            ->select(['id', 'classroom_id', 'name_section'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
             ->orderBy('id')
             ->get();
 
@@ -160,13 +172,14 @@ class StudentController extends Controller
         return redirect()->route('Students.index');
     }
 
-    public function destroy($id)
+    public function destroy(DestroyStudentRequest $request, $id)
     {
+        $validated = $request->validated();
         $schoolId = $this->currentSchoolId();
 
         $student = StudentInfo::query()
             ->with(['user', 'parent.students', 'parent.user', 'section'])
-            ->findOrFail($id);
+            ->findOrFail((int) $validated['id']);
         $this->authorize('delete', $student);
 
         $this->deleteStudentEnrollmentAction->execute($student);

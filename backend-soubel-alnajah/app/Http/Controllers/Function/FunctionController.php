@@ -7,6 +7,8 @@ use App\Actions\Function\BuildGalleryPageDataAction;
 use App\Actions\Inscription\ApproveInscriptionByClassroomAction;
 use App\Actions\Notification\MarkUserNotificationAsReadAction;
 use App\Actions\Notification\SendSchoolCertificateNotificationAction;
+use App\Http\Requests\ApproveLegacyInscriptionRequest;
+use App\Http\Requests\MarkNotificationAsReadRequest;
 use App\Http\Requests\NotifySchoolCertificateRequest;
 use App\Models\AgendaScolaire\Grade;
 
@@ -61,17 +63,18 @@ class FunctionController extends Controller
         return $this->listAgendaGrades($id);
     }
 
-    public function store($id){
+    public function store(ApproveLegacyInscriptionRequest $request, $id){
         if (!Auth::user() || !Auth::user()->hasRole('admin')) {
             abort(403);
         }
 
+        $validated = $request->validated();
         $schoolId = $this->currentSchoolId();
 
         try {
             $inscription = Inscription::query()
                 ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
-                ->findOrFail($id);
+                ->findOrFail((int) $validated['id']);
             $this->authorize('approve', $inscription);
 
             $this->approveInscriptionByClassroomAction->execute($inscription, $schoolId);
@@ -88,14 +91,16 @@ class FunctionController extends Controller
 
 
     public function notify(NotifySchoolCertificateRequest $request,$id){
+        $validated = $request->validated();
+
         try {
             if(auth()->user()){
                 $this->sendSchoolCertificateNotificationAction->execute(
                     auth()->user(),
-                    (int) $id,
-                    (string) $request->year,
-                    (string) $request->namefr,
-                    (string) $request->namear
+                    (int) $validated['id'],
+                    (string) $validated['year'],
+                    (string) $validated['namefr'],
+                    (string) $validated['namear']
                 );
             }
             return back()->withSuccess('a');
@@ -107,8 +112,10 @@ class FunctionController extends Controller
         
     }
 
-    public function markAsRead($id){
-        $notify = $this->markUserNotificationAsReadAction->execute((string) $id, (int) Auth::id());
+    public function markAsRead(MarkNotificationAsReadRequest $request, $id){
+        $validated = $request->validated();
+
+        $notify = $this->markUserNotificationAsReadAction->execute((string) $validated['id'], (int) Auth::id());
 
         if (!$notify) {
             abort(404);

@@ -51,4 +51,34 @@ class AdminLayoutChromeTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('تم الحفظ بنجاح');
     }
+
+    public function test_admin_layout_sets_rtl_html_attributes_for_arabic_locale(): void
+    {
+        app()->setLocale('ar');
+
+        $user = User::factory()->create(['must_change_password' => false]);
+        Role::firstOrCreate(['name' => 'accountant']);
+        $user->attachRole('accountant');
+
+        $response = $this->actingAs($user)->get(route('accounting.contracts.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('lang="ar"', false);
+        $response->assertSee('dir="rtl"', false);
+    }
+
+    public function test_admin_layout_sets_ltr_html_attributes_for_non_arabic_locale(): void
+    {
+        app()->setLocale('en');
+
+        $user = User::factory()->create(['must_change_password' => false]);
+        Role::firstOrCreate(['name' => 'accountant']);
+        $user->attachRole('accountant');
+
+        $response = $this->actingAs($user)->get(route('accounting.contracts.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('lang="en"', false);
+        $response->assertSee('dir="ltr"', false);
+    }
 }

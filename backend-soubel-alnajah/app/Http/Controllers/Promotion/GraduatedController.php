@@ -35,16 +35,28 @@ class GraduatedController extends Controller
 
         $data['School'] = School::query()
             ->forSchool($schoolId)
+            ->select(['id', 'name_school'])
             ->get();
         $data['Sections'] = Section::query()
             ->forSchool($schoolId)
-            ->with('classroom.schoolgrade')
+            ->select(['id', 'classroom_id', 'name_section'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
             ->orderBy('id')
             ->get();
         $data['StudentInfo'] = StudentInfo::query()
             ->onlyTrashed()
             ->forSchool($schoolId)
-            ->with(['user', 'section.classroom.schoolgrade.school'])
+            ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'numtelephone', 'deleted_at'])
+            ->with([
+                'user:id,email',
+                'section:id,school_id,classroom_id,name_section',
+                'section.classroom:id,grade_id,name_class',
+                'section.classroom.schoolgrade:id,school_id,name_grade',
+                'section.classroom.schoolgrade.school:id,name_school',
+            ])
             ->when($sectionId, fn ($query) => $query->where('section_id', (int) $sectionId))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($studentQuery) use ($search) {

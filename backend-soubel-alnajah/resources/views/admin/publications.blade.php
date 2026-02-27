@@ -155,7 +155,7 @@
                            @if($pub->gallery && $pub->gallery->img_url)
                               <div class="mt-2">
                                  @foreach(json_decode($pub->gallery->img_url,true) as $img)
-                                    <img src="{{ asset('agenda/'.$img) }}" width="80" class="m-1 rounded">
+                                    <img src="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('publications.media', now()->addHours(12), ['filename' => $img]) }}" width="80" class="m-1 rounded">
                                  @endforeach
                               </div>
                            @endif

@@ -19,6 +19,7 @@ use App\Models\School\Classroom;
 use App\Models\Recruitment\JobPost;
 use App\Models\Recruitment\JobApplication;
 use App\Models\Timetable\Timetable;
+use App\Models\Chat\ChatRoom;
 use App\Models\Accounting\StudentContract;
 use App\Models\Accounting\Payment;
 use App\Policies\ExamePolicy;
@@ -38,6 +39,7 @@ use App\Policies\TeacherPolicy;
 use App\Policies\JobPostPolicy;
 use App\Policies\JobApplicationPolicy;
 use App\Policies\TimetablePolicy;
+use App\Policies\ChatRoomPolicy;
 use App\Policies\StudentContractPolicy;
 use App\Policies\PaymentPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -68,6 +70,7 @@ class AuthServiceProvider extends ServiceProvider
         JobPost::class => JobPostPolicy::class,
         JobApplication::class => JobApplicationPolicy::class,
         Timetable::class => TimetablePolicy::class,
+        ChatRoom::class => ChatRoomPolicy::class,
         StudentContract::class => StudentContractPolicy::class,
         Payment::class => PaymentPolicy::class,
     ];

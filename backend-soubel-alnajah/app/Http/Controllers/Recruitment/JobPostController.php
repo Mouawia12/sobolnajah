@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyJobPostRequest;
 use App\Http\Requests\StoreJobPostRequest;
 use App\Http\Requests\UpdateJobPostRequest;
 use App\Models\Recruitment\JobPost;
@@ -26,6 +27,7 @@ class JobPostController extends Controller
 
         $jobPosts = JobPost::query()
             ->forSchool($schoolId)
+            ->select(['id', 'school_id', 'slug', 'title', 'status', 'published_at', 'created_at'])
             ->when($search, fn ($query) => $query->where('title', 'like', '%' . $search . '%'))
             ->when($status, fn ($query) => $query->where('status', $status))
             ->withCount('applications')
@@ -37,7 +39,9 @@ class JobPostController extends Controller
             'jobPosts' => $jobPosts,
             'notify' => $this->notifications(),
             'canPickSchool' => !$schoolId,
-            'schools' => !$schoolId ? School::query()->orderBy('name_school')->get() : collect(),
+            'schools' => !$schoolId
+                ? School::query()->select(['id', 'name_school'])->orderBy('name_school')->get()
+                : collect(),
             'breadcrumbs' => [
                 ['label' => 'لوحة التحكم', 'url' => url('/admin')],
                 ['label' => 'إعلانات التوظيف'],
@@ -54,7 +58,9 @@ class JobPostController extends Controller
         return view('admin.recruitment.job_posts.create', [
             'notify' => $this->notifications(),
             'canPickSchool' => !$schoolId,
-            'schools' => !$schoolId ? School::query()->orderBy('name_school')->get() : collect(),
+            'schools' => !$schoolId
+                ? School::query()->select(['id', 'name_school'])->orderBy('name_school')->get()
+                : collect(),
             'breadcrumbs' => [
                 ['label' => 'لوحة التحكم', 'url' => url('/admin')],
                 ['label' => 'إعلانات التوظيف', 'url' => route('JobPosts.index')],
@@ -110,7 +116,9 @@ class JobPostController extends Controller
             'jobPost' => $jobPost,
             'notify' => $this->notifications(),
             'canPickSchool' => !$schoolId,
-            'schools' => !$schoolId ? School::query()->orderBy('name_school')->get() : collect(),
+            'schools' => !$schoolId
+                ? School::query()->select(['id', 'name_school'])->orderBy('name_school')->get()
+                : collect(),
             'breadcrumbs' => [
                 ['label' => 'لوحة التحكم', 'url' => url('/admin')],
                 ['label' => 'إعلانات التوظيف', 'url' => route('JobPosts.index')],
@@ -142,8 +150,10 @@ class JobPostController extends Controller
         return redirect()->route('JobPosts.index');
     }
 
-    public function destroy(JobPost $jobPost)
+    public function destroy(DestroyJobPostRequest $request)
     {
+        $validated = $request->validated();
+        $jobPost = JobPost::query()->findOrFail((int) $validated['id']);
         $this->authorize('delete', $jobPost);
 
         $jobPost->delete();

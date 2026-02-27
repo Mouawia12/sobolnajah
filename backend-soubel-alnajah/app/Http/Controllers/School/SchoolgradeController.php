@@ -7,6 +7,7 @@ use App\Models\School\School;
 use App\Models\School\Schoolgrade;
 use App\Models\School\Classroom;
 use App\Http\Requests\StoreSchoolgrade;
+use App\Http\Requests\DestroySchoolgradeRequest;
 use App\Http\Requests\UpdateScoolgrade;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -46,11 +47,13 @@ class SchoolgradeController extends Controller
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
+            ->select(['id', 'name_school'])
             ->orderBy('name_school')
             ->get();
         $data['Schoolgrade'] = Schoolgrade::query()
             ->forSchool($schoolId)
-            ->with('school')
+            ->select(['id', 'school_id', 'name_grade', 'notes', 'created_at'])
+            ->with('school:id,name_school')
             ->when($schoolFilter, fn ($gradesQuery) => $gradesQuery->where('school_id', (int) $schoolFilter))
             ->when($query !== '', function ($gradesQuery) use ($query) {
                 $gradesQuery->where(function ($textQuery) use ($query) {
@@ -174,16 +177,17 @@ class SchoolgradeController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroySchoolgradeRequest $request, $id)
     {
+       $validated = $request->validated();
        $schoolgrade = Schoolgrade::query()
            ->forSchool($this->currentSchoolId())
-           ->findOrFail($id);
+           ->findOrFail((int) $validated['id']);
        $this->authorize('delete', $schoolgrade);
 
        $MyClassroom_id = Classroom::query()
            ->forSchool($this->currentSchoolId())
-           ->where('grade_id', $id)
+           ->where('grade_id', (int) $validated['id'])
            ->pluck('grade_id');
       if($MyClassroom_id->count() == 0){
           $this->forgetSchoolGradesLookupCache((int) $schoolgrade->school_id);

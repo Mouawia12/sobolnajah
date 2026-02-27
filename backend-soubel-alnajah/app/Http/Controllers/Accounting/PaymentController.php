@@ -32,7 +32,19 @@ class PaymentController extends Controller
 
         $payments = Payment::query()
             ->forSchool($schoolId)
-            ->with(['contract.student.user', 'contract.student.section.classroom.schoolgrade'])
+            ->select([
+                'id',
+                'contract_id',
+                'receipt_number',
+                'paid_on',
+                'amount',
+                'payment_method',
+            ])
+            ->with([
+                'contract:id,student_id,academic_year',
+                'contract.student:id,user_id,section_id',
+                'contract.student.user:id,name',
+            ])
             ->when($from, fn ($q) => $q->whereDate('paid_on', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('paid_on', '<=', $to))
             ->when($sectionId, function ($q) use ($sectionId) {
@@ -46,14 +58,19 @@ class PaymentController extends Controller
 
         $contracts = StudentContract::query()
             ->forSchool($schoolId)
-            ->with(['student.user', 'student.section.classroom.schoolgrade'])
+            ->select(['id', 'student_id', 'academic_year', 'created_at'])
+            ->with([
+                'student:id,user_id',
+                'student.user:id,name',
+            ])
             ->orderByDesc('created_at')
             ->limit(200)
             ->get();
 
         $overdue = StudentContract::query()
             ->forSchool($schoolId)
-            ->with(['student.user'])
+            ->select(['id', 'student_id', 'academic_year', 'updated_at'])
+            ->with(['student:id,user_id', 'student.user:id,name'])
             ->whereHas('installments', fn ($q) => $q->where('status', 'overdue'))
             ->orderByDesc('updated_at')
             ->limit(100)
@@ -61,7 +78,11 @@ class PaymentController extends Controller
 
         $sections = Section::query()
             ->forSchool($schoolId)
-            ->with(['classroom.schoolgrade'])
+            ->select(['id', 'classroom_id', 'name_section'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
             ->orderBy('id')
             ->get();
 

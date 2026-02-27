@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\OpenAIService;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\SendOpenAiMessageRequest;
 use Illuminate\Support\Facades\Http;
 
 class OpenAIServiceController extends Controller
@@ -15,11 +15,9 @@ class OpenAIServiceController extends Controller
         ]);
     }
 
-    public function send(Request $request)
+    public function send(SendOpenAiMessageRequest $request)
     {
-        $request->validate([
-            'message' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         try {
             // إرسال الطلب مباشرة لـ OpenAI API
@@ -29,14 +27,14 @@ class OpenAIServiceController extends Controller
                     'model' => 'gpt-4o-mini',
                     'messages' => [
                         ['role' => 'system', 'content' => 'You are a helpful assistant.'],
-                        ['role' => 'user', 'content' => $request->message],
+                        ['role' => 'user', 'content' => $validated['message']],
                     ],
                 ]);
 
             // إذا كان الرد فيه خطأ من OpenAI
             if ($response->failed()) {
                 return response()->json([
-                    'user' => $request->message,
+                    'user' => $validated['message'],
                     'bot'  => '⚠ خطأ من API: ' . ($response->json()['error']['message'] ?? $response->status())
                 ], $response->status());
             }
@@ -46,20 +44,20 @@ class OpenAIServiceController extends Controller
 
             if (!$reply) {
                 return response()->json([
-                    'user' => $request->message,
+                    'user' => $validated['message'],
                     'bot'  => '⚠ لم يتم العثور على رد من API'
                 ], 500);
             }
 
             return response()->json([
-                'user' => $request->message,
+                'user' => $validated['message'],
                 'bot'  => $reply,
             ]);
 
         } catch (\Exception $e) {
             // أي خطأ غير متوقع (انقطاع نت، timeout ...)
             return response()->json([
-                'user' => $request->message,
+                'user' => $validated['message'],
                 'bot'  => '⚠ استثناء: ' . $e->getMessage()
             ], 500);
         }

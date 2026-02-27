@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\AgendaScolaire;
 
 
+use App\Http\Requests\DestroyNoteStudentRequest;
 use App\Http\Requests\StoreNoteStudentRequest;
 use App\Models\AgendaScolaire\NoteStudent;
 use App\Models\Inscription\StudentInfo;
@@ -141,9 +142,10 @@ class NoteStudentController extends Controller
 
 
 
-    public function destroy($id)
+    public function destroy(DestroyNoteStudentRequest $request, $id)
     {
-        $noteStudent = NoteStudent::findOrFail($id);
+        $validated = $request->validated();
+        $noteStudent = NoteStudent::findOrFail((int) $validated['id']);
         $this->authorize('delete', $noteStudent);
 
         foreach (['urlfile1', 'urlfile2', 'urlfile3'] as $column) {
@@ -187,6 +189,13 @@ class NoteStudentController extends Controller
             ]);
         }
 
+        $this->migrateLegacyNoteIfExists((string) $url);
+        if (Storage::disk('local')->exists($localPath)) {
+            return Storage::disk('local')->download($localPath, $downloadName, [
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+
         $legacyFile = public_path() . "/note/" . $url;
         if (!file_exists($legacyFile)) {
             abort(404, 'الملف غير موجود');
@@ -208,6 +217,14 @@ class NoteStudentController extends Controller
             $this->authorize('view', $notestudent);
 
             $localPath = $this->localNotePath($url);
+            if (Storage::disk('local')->exists($localPath)) {
+                return Storage::disk('local')->response($localPath, null, [
+                    'Content-Type' => 'application/pdf',
+                    'X-Content-Type-Options' => 'nosniff',
+                ]);
+            }
+
+            $this->migrateLegacyNoteIfExists((string) $url);
             if (Storage::disk('local')->exists($localPath)) {
                 return Storage::disk('local')->response($localPath, null, [
                     'Content-Type' => 'application/pdf',
@@ -248,6 +265,21 @@ class NoteStudentController extends Controller
         }
 
         return 'private/notes/' . $value;
+    }
+
+    private function migrateLegacyNoteIfExists(string $filename): void
+    {
+        if ($filename === '') {
+            return;
+        }
+
+        $legacyFile = public_path('note/' . $filename);
+        if (!file_exists($legacyFile)) {
+            return;
+        }
+
+        Storage::disk('local')->put($this->localNotePath($filename), file_get_contents($legacyFile));
+        @unlink($legacyFile);
     }
 
     private function assertSafeNoteFilename(string $value): void

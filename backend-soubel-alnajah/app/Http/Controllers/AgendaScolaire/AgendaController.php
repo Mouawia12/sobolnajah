@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\AgendaScolaire;
 
+use App\Http\Requests\DestroyAgendaRequest;
 use App\Http\Requests\StoreAgenda;
 use App\Models\AgendaScolaire\Agenda;
 use App\Models\AgendaScolaire\Publication;
@@ -118,12 +119,13 @@ class AgendaController extends Controller
      * @param  \App\Models\Agenda  $agenda
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroyAgendaRequest $request, $id)
     {
-        $agenda = Agenda::findOrFail($id);
+        $validated = $request->validated();
+        $agenda = Agenda::findOrFail((int) $validated['id']);
         $this->authorize('delete', $agenda);
 
-        $MyAgenda_id = Publication::where('agenda_id',$id)->pluck('agenda_id');
+        $MyAgenda_id = Publication::where('agenda_id', (int) $validated['id'])->pluck('agenda_id');
       
         if($MyAgenda_id->count() == 0){
             $agenda->delete();

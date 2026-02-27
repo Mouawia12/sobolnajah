@@ -13,6 +13,7 @@ use App\Http\Controllers\Inscription\TeacherController;
 use App\Http\Controllers\AgendaScolaire\AgendaController;
 use App\Http\Controllers\AgendaScolaire\GradeController;
 use App\Http\Controllers\AgendaScolaire\PublicationController;
+use App\Http\Controllers\AgendaScolaire\PublicationMediaController;
 use App\Http\Controllers\AgendaScolaire\ExamesController;
 use App\Http\Controllers\AgendaScolaire\NoteStudentController;
 use App\Http\Controllers\AgendaScolaire\AbsenceController;
@@ -87,6 +88,10 @@ Route::group(
 
         Route::get('/school-agenda/{id}',[FunctionController::class,'showAgenda'])->name('public.agenda.show');
         Route::get('/agenda/{id}',[FunctionController::class,'getAgenda'])->name('legacy.public.agenda.show');
+        Route::get('/media/publications/{filename}', [PublicationMediaController::class, 'show'])
+            ->middleware('signed')
+            ->where('filename', '[A-Za-z0-9][A-Za-z0-9._-]*')
+            ->name('publications.media');
         Route::get('/agenda-grades/{id?}',[FunctionController::class,'listAgendaGrades'])->name('public.agenda.grades');
         Route::get('/getgrades/{id}',[FunctionController::class,'getGrade'])->name('legacy.public.agenda.grades');
         Route::get('/gallery',[FunctionController::class,'showGallery'])->name('public.gallery.index');
@@ -158,7 +163,6 @@ Route::group(
                 'Sections'=>SectionController::class,
                 'Students'=>StudentController::class,
                 'Teachers'=>TeacherController::class,
-                'Promotions'=>PromotionController::class,
                 'graduated'=>GraduatedController::class,
                 'NoteStudents'=>NoteStudentController::class,
                 'Addnotestudents'=>NoteStudentController::class,
@@ -168,6 +172,7 @@ Route::group(
 
 
             ]);
+            Route::resource('Promotions', PromotionController::class)->only(['index', 'store', 'destroy']);
 
 
 
@@ -177,6 +182,11 @@ Route::group(
             Route::get('/accounting', fn () => redirect()->route('accounting.contracts.index'))->name('accounting.dashboard');
             Route::get('/accounting/contracts', [ContractController::class, 'index'])->name('accounting.contracts.index');
             Route::post('/accounting/contracts', [ContractController::class, 'store'])->name('accounting.contracts.store');
+            Route::post('/accounting/contracts/import', [ContractController::class, 'import'])->name('accounting.contracts.import');
+            Route::get('/accounting/contracts/import-reports/{filename}', [ContractController::class, 'downloadImportReport'])
+                ->middleware('signed')
+                ->where('filename', '[A-Za-z0-9._-]+\\.csv')
+                ->name('accounting.contracts.import.report');
             Route::patch('/accounting/contracts/{contract}', [ContractController::class, 'update'])->name('accounting.contracts.update');
 
             Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');

@@ -21,6 +21,11 @@ class Publication extends Model
         return $this->hasMany(Gallery::class,'publication_id');
     }
 
+    public function gallery()
+    {
+        return $this->hasOne(Gallery::class, 'publication_id', 'id');
+    }
+
     public function grade()
     {
         return $this->belongsTo(Grade::class,'grade_id','id');

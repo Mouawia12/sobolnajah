@@ -60,7 +60,7 @@
 
         
                                     <div class="item">
-                                        <img src="{{ asset('storage/agenda/'.$images.'')}}" alt="">
+                                        <img src="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('publications.media', now()->addHours(12), ['filename' => $images]) }}" alt="">
                                     </div>
                                        
                                       @endforeach 

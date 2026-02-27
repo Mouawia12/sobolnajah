@@ -26,7 +26,16 @@ class JobApplicationController extends Controller
 
         $applications = JobApplication::query()
             ->forSchool($schoolId)
-            ->with('post')
+            ->select([
+                'id',
+                'job_post_id',
+                'full_name',
+                'phone',
+                'email',
+                'status',
+                'created_at',
+            ])
+            ->with('post:id,title')
             ->when($status, fn ($query) => $query->where('status', $status))
             ->when($postId, fn ($query) => $query->where('job_post_id', $postId))
             ->when($search, function ($query) use ($search) {

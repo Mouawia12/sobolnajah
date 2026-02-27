@@ -8,6 +8,7 @@ use App\Actions\Inscription\UpdateTeacherEnrollmentAction;
 use App\Models\Inscription\Teacher;
 use App\Models\Specialization\Specialization;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyTeacherRequest;
 use App\Http\Requests\StoreTeacher;
 use Throwable;
 
@@ -37,7 +38,20 @@ class TeacherController extends Controller
 
         $data['Teacher'] = Teacher::query()
             ->forSchool($schoolId)
-            ->with(['user', 'specialization'])
+            ->select([
+                'id',
+                'user_id',
+                'specialization_id',
+                'name',
+                'gender',
+                'joining_date',
+                'address',
+                'created_at',
+            ])
+            ->with([
+                'user:id,email',
+                'specialization:id,name',
+            ])
             ->when($specializationId, fn ($query) => $query->where('specialization_id', $specializationId))
             ->when($gender !== null && $gender !== '', fn ($query) => $query->where('gender', $gender))
             ->when($search !== '', function ($query) use ($search) {
@@ -53,7 +67,10 @@ class TeacherController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $data['Specializations'] = Specialization::query()->orderBy('name')->get();
+        $data['Specializations'] = Specialization::query()
+            ->select(['id', 'name'])
+            ->orderBy('name')
+            ->get();
         $data['notify'] = $this->notifications();
         $data['breadcrumbs'] = [
             ['label' => 'لوحة التحكم', 'url' => url('/admin')],
@@ -152,13 +169,14 @@ class TeacherController extends Controller
      * @param  \App\Models\Teacher  $teacher
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Teacher $teacher, $id)
+    public function destroy(DestroyTeacherRequest $request, $id)
     {
+        $validated = $request->validated();
         $schoolId = $this->currentSchoolId();
 
         $teacher = Teacher::query()
             ->with(['user', 'sections'])
-            ->findOrFail($id);
+            ->findOrFail((int) $validated['id']);
         $this->authorize('delete', $teacher);
 
         if ($teacher->sections()->exists()) {

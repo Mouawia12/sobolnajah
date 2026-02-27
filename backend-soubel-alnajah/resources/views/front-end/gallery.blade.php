@@ -95,9 +95,9 @@
       @foreach ($Gallery as $gal)
         @foreach(json_decode($gal->img_url, true) as $images)
           <article class="location-listing">
-              <a href="{{ asset('storage/agenda/'.$images) }}" class="glightbox" data-gallery="gallery1">
+              <a href="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('publications.media', now()->addHours(12), ['filename' => $images]) }}" class="glightbox" data-gallery="gallery1">
                 <div class="location-image">
-                    <img src="{{ asset('storage/agenda/'.$images) }}" alt="gallery">
+                    <img src="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('publications.media', now()->addHours(12), ['filename' => $images]) }}" alt="gallery">
                 </div>
                 <div class="location-title">{{ trans('main_header.gallery') }}</div>
               </a>

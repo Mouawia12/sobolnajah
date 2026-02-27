@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\School;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DeleteBulkInscriptionsRequest;
+use App\Http\Requests\DestroyClassroomRequest;
 use Illuminate\Http\Request;
 use App\Models\School\School;
 use App\Models\School\Schoolgrade;
@@ -45,18 +46,23 @@ class ClassroomController extends Controller
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
-            ->with('schoolgrades')
+            ->select(['id', 'name_school'])
             ->orderBy('name_school')
             ->get();
 
         $data['Schoolgradee'] = Schoolgrade::query()
             ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->select(['id', 'name_grade'])
             ->orderBy('name_grade')
             ->get();
 
         $data['Classroom'] = Classroom::query()
             ->forSchool($schoolId)
-            ->with('schoolgrade.school')
+            ->select(['id', 'school_id', 'grade_id', 'name_class', 'created_at'])
+            ->with([
+                'schoolgrade:id,school_id,name_grade',
+                'schoolgrade.school:id,name_school',
+            ])
             ->when($schoolFilter, fn ($classroomQuery) => $classroomQuery->where('school_id', (int) $schoolFilter))
             ->when($gradeFilter, fn ($classroomQuery) => $classroomQuery->where('grade_id', (int) $gradeFilter))
             ->when($query !== '', function ($classroomQuery) use ($query) {
@@ -200,11 +206,12 @@ class ClassroomController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroyClassroomRequest $request, $id)
     {
+        $validated = $request->validated();
         $classroom = Classroom::query()
             ->forSchool($this->currentSchoolId())
-            ->findOrFail($id);
+            ->findOrFail((int) $validated['id']);
         $this->authorize('delete', $classroom);
 
         $hasInscriptions = Inscription::where('classroom_id', $classroom->id)->exists();

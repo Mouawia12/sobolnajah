@@ -2,26 +2,28 @@
 
 namespace App\Http\Controllers\AgendaScolaire;
 
-use App\Models\School\School;
-use App\Models\AgendaScolaire\Publication;
-use App\Models\AgendaScolaire\Agenda;
-use App\Models\AgendaScolaire\Gallery;
-use App\Models\AgendaScolaire\Grade;
-use App\Models\Inscription\Inscription;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
+use App\Actions\Publication\CreatePublicationAction;
+use App\Actions\Publication\DeletePublicationAction;
+use App\Actions\Publication\UpdatePublicationAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyPublicationRequest;
 use App\Http\Requests\StorePublication;
 use App\Http\Requests\UpdatePublicationRequest;
-use Illuminate\Support\Str;
+use App\Models\AgendaScolaire\Agenda;
+use App\Models\AgendaScolaire\Grade;
+use App\Models\School\School;
+use App\Models\AgendaScolaire\Publication;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
-use App\Services\OpenAiTranslationService;
 
 class PublicationController extends Controller
 {
-    public function __construct(private OpenAiTranslationService $translator)
-    {
+    public function __construct(
+        private CreatePublicationAction $createPublicationAction,
+        private UpdatePublicationAction $updatePublicationAction,
+        private DeletePublicationAction $deletePublicationAction
+    ) {
         $this->middleware(['auth', 'role:admin'])->only(['create', 'edit', 'store', 'update', 'destroy']);
     }
 
@@ -41,7 +43,8 @@ class PublicationController extends Controller
         $to = $request->query('date_to');
 
         $publicationQuery = Publication::query()
-            ->with(['grade', 'agenda'])
+            ->select(['id', 'school_id', 'grade_id', 'agenda_id', 'title', 'body', 'created_at'])
+            ->with(['gallery:id,publication_id,img_url'])
             ->orderByDesc('created_at');
 
         if ($schoolId) {
@@ -61,9 +64,16 @@ class PublicationController extends Controller
             });
 
         $data['Publications'] = $publicationQuery->paginate(20)->withQueryString();
-        $data['Grade'] = Grade::all();
-        $data['Agenda'] = Agenda::all();
+        $data['Grade'] = Grade::query()
+            ->select(['id', 'name_grades'])
+            ->orderBy('id')
+            ->get();
+        $data['Agenda'] = Agenda::query()
+            ->select(['id', 'name_agenda'])
+            ->orderBy('id')
+            ->get();
         $data['School'] = School::query()
+            ->select(['id', 'name_school'])
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
             ->get();
         $data['notify'] = $this->notifications();
@@ -85,47 +95,8 @@ class PublicationController extends Controller
         $validated = $request->validated();
         $this->authorize('create', Publication::class);
 
-        $schoolId = $this->currentSchoolId();
-
         try {
-            if ($schoolId && (int) $request->school_id2 !== (int) $schoolId) {
-                abort(403, 'غير مصرح لك بإضافة منشورات لمدرسة مختلفة.');
-            }
-
-            $originalTitle = $request->titlear;
-            $originalBody  = $request->bodyar;
-
-            $translations = $this->translator->translatePublicationContent($originalTitle, $originalBody);
-            $titleTranslations = $translations['title'];
-            $bodyTranslations = $translations['body'];
-
-            // 📝 حفظ المنشور
-            $Publication = new Publication();
-            $Publication->school_id = $request->school_id2;
-            $Publication->grade_id  = $request->grade_id2;
-            $Publication->agenda_id = $request->agenda_id;
-            $Publication->title     = $titleTranslations;
-            $Publication->body      = $bodyTranslations;
-            $Publication->like      = rand(90, 999);
-            $Publication->save();
-
-            // 📷 رفع الصور
-            $data = [];
-            if ($request->hasfile('img_url')) {
-                foreach ($request->img_url as $image) {
-                    $randstr = Str::random(rand(4, 10));
-                    $img_url = time() . $randstr . '.' . $image->extension();
-                    $path = $image->storeAs('agenda', $img_url, 'public');
-                    $data[] = $img_url;
-                }
-            }
-
-            $Gallery = new Gallery();
-            $Gallery->publication_id = $Publication->id;
-            $Gallery->agenda_id      = $request->agenda_id;
-            $Gallery->grade_id       = $request->grade_id2;
-            $Gallery->img_url        = json_encode($data ?? []);
-            $Gallery->save();
+            $this->createPublicationAction->execute($validated, $this->currentSchoolId());
 
             toastr()->success(trans('messages.success'));
             return redirect()->route('Publications.index');
@@ -165,50 +136,9 @@ class PublicationController extends Controller
         $validated = $request->validated();
 
         try {
-            $Publication = Publication::findOrFail($id);
-            $this->authorize('update', $Publication);
-
-            $schoolId = $this->currentSchoolId();
-            if ($schoolId && (int) $request->school_id2 !== (int) $schoolId) {
-                abort(403, 'غير مصرح لك بتعديل منشورات مدرسة مختلفة.');
-            }
-
-            $originalTitle = $request->titlear;
-            $originalBody  = $request->bodyar;
-
-            $translations = $this->translator->translatePublicationContent($originalTitle, $originalBody);
-            $titleTranslations = $translations['title'];
-            $bodyTranslations = $translations['body'];
-
-            $Publication->school_id = $request->school_id2;
-            $Publication->grade_id  = $request->grade_id2;
-            $Publication->agenda_id = $request->agenda_id;
-            $Publication->title     = $titleTranslations;
-            $Publication->body      = $bodyTranslations;
-            $Publication->save();
-
-            if ($request->hasfile('img_url')) {
-                $data = [];
-                foreach ($request->img_url as $image) {
-                    $randstr = Str::random(rand(4, 10));
-                    $img_url = time() . $randstr . '.' . $image->extension();
-                    $path = $image->storeAs('agenda', $img_url, 'public');
-                    $data[] = $img_url;
-                }
-
-                $gallery = Gallery::where('publication_id', $id)->first();
-                if ($gallery && $gallery->img_url) {
-                    $oldImages = json_decode($gallery->img_url, true);
-                    foreach ($oldImages as $img) {
-                        Storage::disk('public')->delete('agenda/' . $img);
-                    }
-                }
-
-                if ($gallery) {
-                    $gallery->img_url = json_encode($data);
-                    $gallery->save();
-                }
-            }
+            $publication = Publication::findOrFail($id);
+            $this->authorize('update', $publication);
+            $this->updatePublicationAction->execute($publication, $validated, $this->currentSchoolId());
 
             toastr()->success(trans('messages.Update'));
             return redirect()->route('Publications.index');
@@ -217,22 +147,14 @@ class PublicationController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(DestroyPublicationRequest $request, $id)
     {
+        $validated = $request->validated();
+
         try {
-            $publication = Publication::findOrFail($id);
+            $publication = Publication::findOrFail((int) $validated['id']);
             $this->authorize('delete', $publication);
-            $gallery = Gallery::where('publication_id', $id)->first();
-
-            if ($gallery && $gallery->img_url) {
-                $images = json_decode($gallery->img_url, true);
-                foreach ($images as $img) {
-                    Storage::disk('public')->delete('agenda/' . $img);
-                }
-                $gallery->delete();
-            }
-
-            $publication->delete();
+            $this->deletePublicationAction->execute($publication);
 
             toastr()->error(trans('messages.delete'));
             return redirect()->route('Publications.index');
@@ -247,8 +169,6 @@ class PublicationController extends Controller
 
         if (Auth::user()) {
             if (Auth::user()->hasRole('admin')) {
-                $School = School::all();
-                $Inscription = Inscription::all();
                 return view('admin.home');
             } else {
                 return view('welcome', compact('Publication'));
@@ -257,4 +177,5 @@ class PublicationController extends Controller
             return view('welcome', compact('Publication'));
         }
     }
+
 }

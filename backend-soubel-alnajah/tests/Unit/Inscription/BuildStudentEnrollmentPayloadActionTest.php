@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Inscription;
 
+use App\Actions\Inscription\BuildLocalizedNameAction;
 use App\Actions\Inscription\BuildStudentEnrollmentPayloadAction;
 use PHPUnit\Framework\TestCase;
 
@@ -9,7 +10,7 @@ class BuildStudentEnrollmentPayloadActionTest extends TestCase
 {
     public function test_it_builds_student_and_guardian_payloads_from_input(): void
     {
-        $action = new BuildStudentEnrollmentPayloadAction();
+        $action = new BuildStudentEnrollmentPayloadAction(new BuildLocalizedNameAction());
 
         $input = [
             'prenomfr' => 'Ali',
@@ -50,4 +51,3 @@ class BuildStudentEnrollmentPayloadActionTest extends TestCase
         $this->assertSame('guardian@example.test', $result['guardian']['email']);
     }
 }
-

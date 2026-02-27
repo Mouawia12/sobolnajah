@@ -14,6 +14,7 @@ class PublicJobController extends Controller
     {
         $jobPosts = JobPost::query()
             ->published()
+            ->withCount('applications')
             ->orderByDesc('published_at')
             ->paginate(12);
 

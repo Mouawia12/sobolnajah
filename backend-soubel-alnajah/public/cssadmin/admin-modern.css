@@ -230,3 +230,19 @@
   border-color: var(--admin-primary);
   color: #fff;
 }
+
+html[dir="rtl"] .content-header {
+  text-align: right;
+}
+
+html[dir="rtl"] .content-header .breadcrumb {
+  direction: rtl;
+}
+
+html[dir="rtl"] .admin-form-actions {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .table {
+  direction: rtl;
+}

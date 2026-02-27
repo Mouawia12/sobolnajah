@@ -1,63 +1,93 @@
-# Accounting Mapping (Draft Until Excel Is Provided)
+# Accounting Mapping (Finalized From Excel)
 
-> الحالة: Draft قابل للتحديث مباشرة بعد استلام ملف Excel الرسمي الخاص بالمقتصد.
+> الحالة: Final (اعتمادًا على ملف Excel: `/Users/mw/Downloads/حسام الدين.xlsx`)
 
-## Source Status
-- لم يتم العثور على ملف Excel المحاسبة داخل الشجرة الحالية للمشروع.
-- الملف الوحيد المكتشف: `backend-soubel-alnajah/public/exames/1665495440OrU0SDbqtu.xls` (يخص الامتحانات، ليس العقود/الدفعات).
+## 1) Source Workbook
+- Workbook: `حسام الدين.xlsx`
+- Sheets:
+  - `عقود التلاميذ`
+  - `دراهم`
+- Join Key الأساسي بين الورقتين: `رقم العقد`
 
-## Business Mapping (Current Working Baseline)
+## 2) Canonical Domain Targets
+- `student_contracts`
+- `contract_installments`
+- `payments`
+- `payment_receipts`
 
-## 1) Contract Header -> `student_contracts`
-- رقم/مرجع العقد (إن وجد في Excel) -> `student_contracts.id` أو حقل مرجعي إضافي لاحقًا.
-- التلميذ -> `student_contracts.student_id`
-- السنة الدراسية -> `student_contracts.academic_year`
-- المبلغ الإجمالي -> `student_contracts.total_amount`
-- نوع الدفع (سنوي/دفعات/أشهر) -> `student_contracts.plan_type`
-- عدد الدفعات -> `student_contracts.installments_count`
-- تاريخ بداية الخطة -> `student_contracts.starts_on`
-- حالة العقد -> `student_contracts.status`
+## 3) Sheet Mapping
 
-## 2) Plan/Installments -> `contract_installments`
-- رقم الدفعة (1..N) -> `contract_installments.installment_no`
-- تاريخ الاستحقاق -> `contract_installments.due_date`
-- مبلغ الدفعة -> `contract_installments.amount`
-- المدفوع من الدفعة -> `contract_installments.paid_amount`
-- حالة الدفعة -> `contract_installments.status`
-- ملاحظة الفترة (مثال: Jan/Trimester1) -> `contract_installments.label`
+### A) Sheet: `عقود التلاميذ` (Contract master + monthly plan)
+Header row المعتمدة: الصف 3.
 
-## 3) Payments/Receipts -> `payments` + `payment_receipts`
-- رقم الوصل -> `payments.receipt_number`
-- تاريخ الدفع -> `payments.paid_on`
-- مبلغ الدفع -> `payments.amount`
-- طريقة الدفع (نقدي/تحويل/...) -> `payments.payment_method`
-- ملاحظات -> `payments.notes`
-- ربط الدفعة بالعقد -> `payments.contract_id`
-- ربط الدفعة بالقسط (اختياري) -> `payments.installment_id`
-- نسخة وصل قابلة للطباعة -> `payment_receipts` (`receipt_code`, `payload`)
+| Excel Column | Arabic Header | Target Table | Target Field | Rule |
+|---|---|---|---|---|
+| C | تاريخ امضاء العقد | `student_contracts` | `signed_at` (أو metadata) | `d/m/Y` -> `Y-m-d` |
+| D | رقم العقد | `student_contracts` | `external_contract_no` (أو `id` business key) | string، unique per school/year |
+| F | السنة الدراسية | `student_contracts` | `academic_year` | normalize (`2025/2026` -> `2025-2026`) |
+| G | اسم ولقب التلاميذ | `student_contracts` | link to `student_id` | via student name lookup + school scoping |
+| H | اسم ولي | `student_contracts` | `guardian_name` (metadata) | optional |
+| I | تاريخ ميلاد | `student_contracts` | `student_birth_date` (metadata) | Excel serial/date -> `Y-m-d` |
+| J | رقم الهاتف | `student_contracts` | `guardian_phone` (metadata) | keep as string |
+| K..S | سبتمبر..ماي | `contract_installments` | `amount` + `label` + `due_date` | create installment only when amount > 0 |
+| T | مجموع | `student_contracts` | `total_amount` | numeric decimal |
 
-## 4) Derived Rules (Service Layer)
-- المتبقي للعقد = `total_amount - SUM(payments.amount)`
-- حالة العقد:
-  - `paid`: المتبقي <= 0
-  - `partial`: المتبقي > 0 مع وجود دفعات
-  - `overdue`: المتبقي > 0 مع وجود أقساط متأخرة
-  - `active`: عقد جارٍ بدون تأخر
-- حالة القسط:
-  - `paid` إذا `paid_amount >= amount`
-  - `partial` إذا `0 < paid_amount < amount`
-  - `overdue` إذا `due_date < today` و`paid_amount < amount`
+#### Installment labels/due dates
+- K: `September`
+- L: `October`
+- M: `November`
+- N: `December`
+- O: `January`
+- P: `February`
+- Q: `March`
+- R: `April`
+- S: `May`
 
-## 5) Missing Inputs Required From Excel
-- أسماء الأعمدة الفعلية في ملف المقتصد.
-- هل رقم العقد موجود كقيمة أعمال مستقلة؟
-- هل توجد حالات إضافية غير (`paid/partial/overdue`)؟
-- هل توجد قواعد خصومات/إعفاءات/غرامات؟
-- هل الوصل يجب أن يكون unique عالميًا أم داخل المدرسة فقط؟
+`due_date` rule:
+- derive from `academic_year` + month label (default day = `01`).
 
-## Next Update Path
-- عند توفير ملف Excel:
-  1. استخراج أسماء الأوراق (Sheets).
-  2. mapping كل عمود إلى جدول/حقل.
-  3. توثيق business rules الدقيقة (حسابات، استثناءات).
-  4. تثبيت نسخة نهائية من هذا الملف قبل بناء workflows النهائية.
+### B) Sheet: `دراهم` (Receipts + paid movements)
+Header row المعتمدة: الصف 2.
+
+| Excel Column | Arabic Header | Target Table | Target Field | Rule |
+|---|---|---|---|---|
+| B | رقم العقد | `payments` | `contract_id` (lookup by external_contract_no) | required |
+| C | الاخوة | `student_contracts` | `sibling_group` (metadata) | optional |
+| D | السنة الدراسية | `student_contracts` | `academic_year` | normalize |
+| E | اسم ولقب التلاميذ | `payments` | integrity check only | must match contract student |
+| F | رقم وصل اشتراك | `payment_receipts` | `receipt_code` (registration) | optional unique policy per school |
+| G | حقوق الاشتراك | `payments` | registration payment amount | map as upfront payment when present |
+| H,J,L,N,P,R,T,V,X | رقم الوصل (09..05) | `payment_receipts` | `receipt_code` | per monthly payment |
+| I,K,M,O,Q,S,U,W | دفعة (09..05) | `payments` | `amount`,`paid_on`,`payment_type` | payment_type = monthly |
+| Z | المجموع الإجمالي | computed check | `sum(registration + monthly)` | validation only |
+| AA | مجموع حقوق الاشتراك | computed check | compare with G | validation only |
+| AB | مجموع دفعات | computed check | compare with monthly sum | validation only |
+| AC..AE | ملاحظ | metadata | `notes` | concat non-empty |
+
+## 4) Business Rules (From Real File Behavior)
+- العقد هو السجل المرجعي، والمدفوعات تُربط به عبر `رقم العقد`.
+- يوجد دفعات شهرية قد تكون فارغة لبعض الأشهر، لذا الأقساط والمدفوعات تُنشأ فقط للقيم > 0.
+- `T (مجموع)` في `عقود التلاميذ` هو إجمالي العقد المستهدف.
+- `Z/AA/AB` في `دراهم` تستخدم للتحقق لا كمصدر نهائي للحفظ.
+- أرقام الهواتف تحفظ كنص (`string`) للحفاظ على الأصفار البادئة.
+
+## 5) Data Quality / Validation Rules
+- رفض أي صف بدون `رقم العقد`.
+- رفض duplication لنفس (`school_id`, `academic_year`, `external_contract_no`).
+- عند تعذر مطابقة اسم الطالب، يسجل الصف في rejection report ولا يُحفظ جزئيًا.
+- التحقق من توازن المجاميع:
+  - `total_amount` ≈ sum(installments)
+  - `monthly_paid_sum` ≈ `AB`
+  - `registration_sum` ≈ `AA`
+
+## 6) Import Execution Order
+1. استيراد `عقود التلاميذ` -> إنشاء/تحديث `student_contracts`.
+2. توليد `contract_installments` من K..S (القيم > 0).
+3. استيراد `دراهم` -> إنشاء `payments` و`payment_receipts`.
+4. تحديث الحالة الآلية للعقد (`paid/partial/overdue/active`) بعد كل دفعة.
+
+## 7) Outstanding Clarifications (Non-blocking)
+- هل `رقم وصل اشتراك` يجب أن يدخل ضمن نفس عداد `receipt_code` الشهري أم عداد مستقل؟
+- سياسة uniqueness للوصل: global أم per-school.
+
+تم اعتماد هذا mapping لإغلاق بند `F3-Analysis` لأنه مبني على ملف Excel فعلي وليس Draft افتراضي.

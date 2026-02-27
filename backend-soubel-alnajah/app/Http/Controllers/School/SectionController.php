@@ -13,6 +13,7 @@ use App\Models\School\Section;
 use App\Models\Inscription\Teacher;
 
 use App\Http\Requests\StoreSection;
+use App\Http\Requests\DestroySectionRequest;
 use App\Http\Requests\SyncSectionTeachersRequest;
 use App\Http\Requests\UpdateSectionStatusRequest;
 use Illuminate\Support\Facades\Cache;
@@ -47,25 +48,25 @@ class SectionController extends Controller
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
-            ->with('schoolgrades')
+            ->select(['id', 'name_school'])
             ->orderBy('name_school')
             ->get();
 
         $data['SchoolgradeFilterOptions'] = Schoolgrade::query()
             ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->select(['id', 'name_grade'])
             ->orderBy('name_grade')
             ->get();
 
         $data['ClassroomFilterOptions'] = Classroom::query()
             ->forSchool($schoolId)
-            ->with('schoolgrade')
+            ->select(['id', 'name_class'])
             ->orderBy('name_class')
             ->get();
 
         $sectionFilters = function ($sectionsQuery) use ($schoolId, $gradeFilter, $classroomFilter, $statusFilter, $query) {
             $sectionsQuery
                 ->forSchool($schoolId)
-                ->with(['classroom.schoolgrade.school', 'teachers'])
                 ->when($gradeFilter, fn ($q) => $q->where('grade_id', (int) $gradeFilter))
                 ->when($classroomFilter, fn ($q) => $q->where('classroom_id', (int) $classroomFilter))
                 ->when($statusFilter !== null && $statusFilter !== '', fn ($q) => $q->where('Status', (int) $statusFilter))
@@ -86,11 +87,22 @@ class SectionController extends Controller
 
         $data['Schoolgrade'] = Schoolgrade::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->select(['id', 'school_id', 'name_grade'])
             ->when($gradeFilter, fn ($q) => $q->whereKey((int) $gradeFilter))
             ->whereHas('sections', $sectionFilters)
             ->with([
-                'school',
-                'sections' => $sectionFilters,
+                'school:id,name_school',
+                'sections' => function ($sectionsQuery) use ($sectionFilters) {
+                    $sectionFilters($sectionsQuery);
+                    $sectionsQuery
+                        ->select(['id', 'school_id', 'grade_id', 'classroom_id', 'name_section', 'Status', 'created_at'])
+                        ->with([
+                            'classroom:id,school_id,grade_id,name_class',
+                            'classroom.schoolgrade:id,school_id,name_grade',
+                            'classroom.schoolgrade.school:id,name_school',
+                            'teachers:id,name',
+                        ]);
+                },
             ])
             ->orderBy('name_grade')
             ->paginate(6)
@@ -98,7 +110,7 @@ class SectionController extends Controller
 
         $data['Teacher'] = Teacher::query()
             ->forSchool($schoolId)
-            ->with('user')
+            ->select(['id', 'name'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -297,11 +309,12 @@ class SectionController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(DestroySectionRequest $request, $id)
     {
+        $validated = $request->validated();
         $section = Section::query()
             ->forSchool($this->currentSchoolId())
-            ->findOrFail($id);
+            ->findOrFail((int) $validated['id']);
         $this->authorize('delete', $section);
 
         $schoolId = (int) $section->school_id;

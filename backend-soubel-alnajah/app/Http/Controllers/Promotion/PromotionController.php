@@ -8,7 +8,6 @@ use App\Http\Requests\StorePromotionRequest;
 use App\Models\Inscription\StudentInfo;
 use App\Models\Promotion\Promotion;
 use App\Services\HomeDashboardCacheService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -124,22 +123,6 @@ class PromotionController extends Controller
      * Display the specified resource.
      */
     public function show(Promotion $promotion)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Promotion $promotion)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Promotion $promotion)
     {
         //
     }

@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 
 class InsertAdmin extends Seeder
 {
@@ -16,26 +16,22 @@ class InsertAdmin extends Seeder
      */
     public function run()
     {
-        DB::table('users')->delete();
+        Role::firstOrCreate(['name' => 'admin']);
 
-        User::create([
+        $admin = User::query()->updateOrCreate([
+            'email' => env('SITE_ADMIN_EMAIL', 'admin@sobolnajah.com'),
+        ], [
             'name' => [
-                'fr' => 'sobol najah',
-                'ar' => 'سبل النجاح',
-                'en' => 'Sobol Najah'
+                'fr' => env('SITE_ADMIN_NAME_FR', 'Site Admin'),
+                'ar' => env('SITE_ADMIN_NAME_AR', 'مسؤول الموقع'),
+                'en' => env('SITE_ADMIN_NAME_EN', 'Site Admin'),
             ],
-            'email' => 'admin@sobolnajah.com',
-            'password' => Hash::make(12345678),
-        ])->attachRole('admin');
+            'password' => Hash::make((string) env('SITE_ADMIN_PASSWORD', '12345678')),
+            'must_change_password' => filter_var(env('SITE_ADMIN_FORCE_PASSWORD_CHANGE', false), FILTER_VALIDATE_BOOL),
+        ]);
 
-        User::create([
-            'name' => [
-                'fr' => 'mouawia youmbai',
-                'ar' => 'معاوية يمبعي',
-                'en' => 'Mouawia Youmbai'
-            ],
-            'email' => 'mouawia@sobolnajah.com',
-            'password' => Hash::make(12345678),
-        ])->attachRole('student');
+        if (!$admin->hasRole('admin')) {
+            $admin->attachRole('admin');
+        }
     }
 }

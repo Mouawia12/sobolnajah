@@ -7,28 +7,26 @@ use Illuminate\Support\Facades\DB;
 
 class UpdateTeacherEnrollmentAction
 {
+    public function __construct(private BuildTeacherEnrollmentPayloadAction $buildTeacherEnrollmentPayloadAction)
+    {
+    }
+
     public function execute(Teacher $teacher, array $input, ?int $schoolId): void
     {
         DB::transaction(function () use ($teacher, $input, $schoolId) {
+            $payload = $this->buildTeacherEnrollmentPayloadAction->execute($input);
+
             $teacher->update([
-                'name' => [
-                    'fr' => $input['name_teacherfr'] ?? null,
-                    'ar' => $input['name_teacherar'] ?? null,
-                    'en' => $input['name_teacherfr'] ?? null,
-                ],
-                'gender' => $input['gender'] ?? null,
-                'joining_date' => $input['joining_date'] ?? null,
-                'address' => $input['address'] ?? null,
+                'name' => $payload['teacher']['name'],
+                'gender' => $payload['teacher']['gender'],
+                'joining_date' => $payload['teacher']['joining_date'],
+                'address' => $payload['teacher']['address'],
             ]);
 
             if ($teacher->user) {
                 $teacher->user->update([
-                    'name' => [
-                        'fr' => $input['name_teacherfr'] ?? null,
-                        'ar' => $input['name_teacherar'] ?? null,
-                        'en' => $input['name_teacherfr'] ?? null,
-                    ],
-                    'email' => $input['email'] ?? null,
+                    'name' => $payload['user']['name'],
+                    'email' => $payload['user']['email'],
                     'school_id' => $schoolId,
                 ]);
             }

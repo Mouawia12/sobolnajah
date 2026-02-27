@@ -27,19 +27,21 @@
         </form>
 
         <div class="row">
-            @forelse($timetables as $timetable)
-                <div class="col-md-6 mb-3">
-                    <div class="box">
-                        <div class="box-body">
-                            <h4>{{ $timetable->title ?: 'الجدول الدراسي' }}</h4>
-                            <p>{{ $timetable->section->classroom->schoolgrade->name_grade ?? '' }} / {{ $timetable->section->classroom->name_class ?? '' }} / {{ $timetable->section->name_section ?? '' }}</p>
-                            <a class="btn btn-info" href="{{ route('public.timetables.show', $timetable) }}">عرض الجدول</a>
+            @if($timetables->count() > 0)
+                @foreach($timetables as $timetable)
+                    <div class="col-md-6 mb-3">
+                        <div class="box">
+                            <div class="box-body">
+                                <h4>{{ $timetable->title ?: 'الجدول الدراسي' }}</h4>
+                                <p>{{ $timetable->section->classroom->schoolgrade->name_grade ?? '' }} / {{ $timetable->section->classroom->name_class ?? '' }} / {{ $timetable->section->name_section ?? '' }}</p>
+                                <a class="btn btn-info" href="{{ route('public.timetables.show', $timetable) }}">عرض الجدول</a>
+                            </div>
                         </div>
                     </div>
-                </div>
-            @empty
+                @endforeach
+            @else
                 <div class="col-12"><div class="alert alert-info">لا توجد جداول منشورة حاليا.</div></div>
-            @endforelse
+            @endif
         </div>
         {{ $timetables->links() }}
     </div>

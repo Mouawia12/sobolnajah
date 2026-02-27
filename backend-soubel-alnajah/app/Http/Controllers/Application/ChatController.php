@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Application;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateChatGroupRequest;
+use App\Http\Requests\MarkChatRoomAsReadRequest;
+use App\Http\Requests\SendChatMessageRequest;
+use App\Http\Requests\StartDirectChatRequest;
 use App\Models\Chat\ChatMessage;
 use App\Models\Chat\ChatParticipant;
 use App\Models\Chat\ChatRoom;
@@ -12,7 +16,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
 {
@@ -25,6 +28,7 @@ class ChatController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', ChatRoom::class);
         $currentUser = $request->user();
         $schoolId = $this->currentSchoolId();
 
@@ -57,6 +61,7 @@ class ChatController extends Controller
 
     public function listRooms(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', ChatRoom::class);
         $rooms = ChatRoom::query()
             ->forUser($request->user()->id)
             ->with([
@@ -73,7 +78,7 @@ class ChatController extends Controller
 
     public function messages(Request $request, ChatRoom $room): JsonResponse
     {
-        $this->authorizeRoom($room, $request->user()->id);
+        $this->authorize('view', $room);
 
         $messages = $room->messages()
             ->with('sender:id,name')
@@ -93,13 +98,10 @@ class ChatController extends Controller
         );
     }
 
-    public function sendMessage(Request $request, ChatRoom $room): JsonResponse
+    public function sendMessage(SendChatMessageRequest $request, ChatRoom $room): JsonResponse
     {
-        $this->authorizeRoom($room, $request->user()->id);
-
-        $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
-        ]);
+        $this->authorize('view', $room);
+        $data = $request->validated();
 
         $message = $room->messages()->create([
             'user_id' => $request->user()->id,
@@ -119,15 +121,10 @@ class ChatController extends Controller
         return response()->json($this->messagePayload($message->load('sender:id,name')));
     }
 
-    public function startDirect(Request $request): JsonResponse
+    public function startDirect(StartDirectChatRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'user_id' => [
-                'required',
-                'integer',
-                Rule::exists('users', 'id')->whereNot('id', $request->user()->id),
-            ],
-        ]);
+        $this->authorize('create', ChatRoom::class);
+        $data = $request->validated();
 
         $target = User::findOrFail($data['user_id']);
         $this->assertSameSchool($request->user(), $target);
@@ -144,16 +141,10 @@ class ChatController extends Controller
         ]);
     }
 
-    public function createGroup(Request $request): JsonResponse
+    public function createGroup(CreateChatGroupRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'members' => ['required', 'array', 'min:2'],
-            'members.*' => [
-                'distinct',
-                Rule::exists('users', 'id')->whereNot('id', $request->user()->id),
-            ],
-        ]);
+        $this->authorize('create', ChatRoom::class);
+        $data = $request->validated();
 
         $members = User::whereIn('id', $data['members'])->get();
         foreach ($members as $member) {
@@ -181,9 +172,11 @@ class ChatController extends Controller
         ], 201);
     }
 
-    public function markRoomAsRead(Request $request, ChatRoom $room): JsonResponse
+    public function markRoomAsRead(MarkChatRoomAsReadRequest $request, $room): JsonResponse
     {
-        $this->authorizeRoom($room, $request->user()->id);
+        $validated = $request->validated();
+        $room = ChatRoom::query()->findOrFail((int) $validated['room_id']);
+        $this->authorize('view', $room);
 
         $lastMessage = $room->messages()->latest()->first();
 
@@ -257,15 +250,6 @@ class ChatController extends Controller
         return $room;
     }
 
-    protected function authorizeRoom(ChatRoom $room, int $userId): void
-    {
-        abort_unless(
-            $room->participants()->where('user_id', $userId)->exists(),
-            403,
-            'غير مصرح لك بالدخول إلى هذه المحادثة.'
-        );
-    }
-
     protected function assertSameSchool(User $a, User $b): void
     {
         if ($a->school_id && $b->school_id && $a->school_id !== $b->school_id) {
@@ -275,16 +259,16 @@ class ChatController extends Controller
 
     protected function roomsPayload(Collection $rooms, int $currentUserId): Collection
     {
+        $rooms->loadMissing([
+            'participants:id,name',
+            'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
+        ]);
+
         return $rooms->map(fn (ChatRoom $room) => $this->roomPayload($room, $currentUserId))->values();
     }
 
     protected function roomPayload(ChatRoom $room, int $currentUserId): array
     {
-        $room->loadMissing([
-            'participants:id,name',
-            'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
-        ]);
-
         $participants = $room->participants->map(fn (User $user) => [
             'id' => $user->id,
             'name' => $this->translated($user, 'name'),
@@ -308,8 +292,6 @@ class ChatController extends Controller
 
     protected function messagePayload(ChatMessage $message): array
     {
-        $message->loadMissing('sender:id,name');
-
         return [
             'id' => $message->id,
             'body' => $message->body,

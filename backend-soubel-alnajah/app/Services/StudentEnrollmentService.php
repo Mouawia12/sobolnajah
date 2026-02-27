@@ -2,21 +2,27 @@
 
 namespace App\Services;
 
+use App\Actions\Inscription\ProvisionSchoolUserAction;
+use App\Actions\Inscription\BuildLocalizedNameAction;
+use App\Actions\Inscription\UpdateGuardianAccountAction;
+use App\Actions\Inscription\BuildGuardianProfilePayloadAction;
 use App\Models\Inscription\MyParent;
 use App\Models\Inscription\StudentInfo;
 use App\Models\School\Section;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class StudentEnrollmentService
 {
-    public function __construct(private UserOnboardingService $onboardingService)
+    public function __construct(
+        private ProvisionSchoolUserAction $provisionSchoolUserAction,
+        private BuildLocalizedNameAction $buildLocalizedNameAction,
+        private UpdateGuardianAccountAction $updateGuardianAccountAction,
+        private BuildGuardianProfilePayloadAction $buildGuardianProfilePayloadAction
+    )
     {
     }
 
@@ -110,18 +116,11 @@ class StudentEnrollmentService
             ->first();
 
         if ($guardian) {
-            $this->syncGuardianAccount($guardian, $guardianData, $schoolId);
+            $this->updateGuardianAccountAction->execute($guardian, $guardianData, $schoolId);
 
-            return tap($guardian)->update(array_filter([
-                'prenomwali' => $this->normalizeName($guardianData['first_name'] ?? []),
-                'nomwali' => $this->normalizeName($guardianData['last_name'] ?? []),
-                'relationetudiant' => Arr::get($guardianData, 'relation'),
-                'adressewali' => Arr::get($guardianData, 'address'),
-                'wilayawali' => Arr::get($guardianData, 'wilaya'),
-                'dayrawali' => Arr::get($guardianData, 'dayra'),
-                'baladiawali' => Arr::get($guardianData, 'baladia'),
-                'numtelephonewali' => $phone,
-            ], fn ($value) => !is_null($value)));
+            return tap($guardian)->update(
+                $this->buildGuardianProfilePayloadAction->execute($guardianData, $phone)
+            );
         }
 
         $guardianUser = $this->createUser(
@@ -131,17 +130,11 @@ class StudentEnrollmentService
             'guardian'
         );
 
-        return MyParent::create([
-            'prenomwali' => $this->normalizeName($guardianData['first_name'] ?? []),
-            'nomwali' => $this->normalizeName($guardianData['last_name'] ?? []),
-            'relationetudiant' => Arr::get($guardianData, 'relation'),
-            'adressewali' => Arr::get($guardianData, 'address'),
-            'wilayawali' => Arr::get($guardianData, 'wilaya'),
-            'dayrawali' => Arr::get($guardianData, 'dayra'),
-            'baladiawali' => Arr::get($guardianData, 'baladia'),
-            'numtelephonewali' => $phone,
-            'user_id' => $guardianUser->id,
-        ]);
+        return MyParent::create(
+            $this->buildGuardianProfilePayloadAction->execute($guardianData, $phone) + [
+                'user_id' => $guardianUser->id,
+            ]
+        );
     }
 
     protected function createStudentUser(array $studentData, int $schoolId): User
@@ -172,57 +165,16 @@ class StudentEnrollmentService
             ]);
         }
 
-        $user = User::create([
-            'name' => $name,
-            'email' => $email,
-            // Create unpredictable temporary password instead of static defaults.
-            'password' => Hash::make(Str::random(40)),
-            'must_change_password' => true,
-            'school_id' => $schoolId,
-        ]);
-
-        if (!$user->hasRole($role)) {
-            $user->attachRole($role);
-        }
-
-        $this->onboardingService->dispatchPasswordSetupLink($user);
-
-        return $user;
-    }
-
-    protected function syncGuardianAccount(MyParent $guardian, array $guardianData, int $schoolId): void
-    {
-        $user = $guardian->user;
-
-        if (!$user) {
-            throw new ModelNotFoundException('Guardian user account not found.');
-        }
-
-        $email = Arr::get($guardianData, 'email');
-
-        $user->fill([
-            'name' => $this->normalizeName($guardianData['first_name'] ?? []),
-            'email' => $email ?: $user->email,
-            'school_id' => $schoolId,
-        ]);
-
-        $user->save();
-
-        if (!$user->hasRole('guardian')) {
-            $user->attachRole('guardian');
-        }
+        return $this->provisionSchoolUserAction->execute($name, $email, $schoolId, $role);
     }
 
     protected function normalizeName(array $name): array
     {
-        $fr = Arr::get($name, 'fr');
-        $ar = Arr::get($name, 'ar');
-        $en = Arr::get($name, 'en') ?? $fr ?? $ar;
-
-        return array_filter([
-            'fr' => $fr,
-            'ar' => $ar,
-            'en' => $en,
-        ], fn ($value) => !is_null($value));
+        return $this->buildLocalizedNameAction->execute(
+            Arr::get($name, 'fr'),
+            Arr::get($name, 'ar'),
+            Arr::get($name, 'en'),
+            true
+        );
     }
 }

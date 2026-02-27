@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Timetable;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyTimetableRequest;
 use App\Http\Requests\StoreTimetableRequest;
 use App\Http\Requests\UpdateTimetableRequest;
 use App\Models\Inscription\Teacher;
@@ -29,7 +30,13 @@ class TimetableController extends Controller
 
         $timetables = Timetable::query()
             ->forSchool($schoolId)
-            ->with(['section.classroom.schoolgrade', 'entries'])
+            ->select(['id', 'section_id', 'academic_year', 'title', 'is_published', 'created_at'])
+            ->withCount('entries')
+            ->with([
+                'section:id,classroom_id,name_section',
+                'section.classroom:id,grade_id,name_class',
+                'section.classroom.schoolgrade:id,name_grade',
+            ])
             ->when($query, fn ($builder) => $builder->where('title', 'like', '%' . $query . '%'))
             ->when($sectionId, fn ($builder) => $builder->where('section_id', $sectionId))
             ->orderByDesc('created_at')
@@ -38,7 +45,11 @@ class TimetableController extends Controller
 
         $sections = Section::query()
             ->forSchool($schoolId)
-            ->with('classroom.schoolgrade')
+            ->select(['id', 'classroom_id', 'name_section'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
             ->orderBy('created_at')
             ->get();
 
@@ -58,8 +69,20 @@ class TimetableController extends Controller
         $this->authorize('create', Timetable::class);
 
         $schoolId = $this->currentSchoolId();
-        $sections = Section::query()->forSchool($schoolId)->with('classroom.schoolgrade')->orderBy('created_at')->get();
-        $teachers = Teacher::query()->forSchool($schoolId)->orderByDesc('created_at')->get();
+        $sections = Section::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'classroom_id', 'name_section', 'created_at'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
+            ->orderBy('created_at')
+            ->get();
+        $teachers = Teacher::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'name', 'created_at'])
+            ->orderByDesc('created_at')
+            ->get();
 
         return view('admin.timetables.create', [
             'notify' => $this->notifications(),
@@ -123,10 +146,24 @@ class TimetableController extends Controller
         $this->authorize('update', $timetable);
 
         $schoolId = $this->currentSchoolId();
-        $sections = Section::query()->forSchool($schoolId)->with('classroom.schoolgrade')->orderBy('created_at')->get();
-        $teachers = Teacher::query()->forSchool($schoolId)->orderByDesc('created_at')->get();
+        $sections = Section::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'classroom_id', 'name_section', 'created_at'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
+            ->orderBy('created_at')
+            ->get();
+        $teachers = Teacher::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'name', 'created_at'])
+            ->orderByDesc('created_at')
+            ->get();
 
-        $timetable->load('entries');
+        $timetable->load([
+            'entries:id,timetable_id,day_of_week,period_index,starts_at,ends_at,subject_name,teacher_id,room_name',
+        ]);
 
         return view('admin.timetables.edit', [
             'notify' => $this->notifications(),
@@ -185,8 +222,10 @@ class TimetableController extends Controller
         return redirect()->route('timetables.index');
     }
 
-    public function destroy(Timetable $timetable)
+    public function destroy(DestroyTimetableRequest $request)
     {
+        $validated = $request->validated();
+        $timetable = Timetable::query()->findOrFail((int) $validated['id']);
         $this->authorize('delete', $timetable);
         $timetable->delete();
         $this->forgetPublicSectionsCache();

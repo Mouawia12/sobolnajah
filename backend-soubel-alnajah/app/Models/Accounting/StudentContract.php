@@ -18,6 +18,7 @@ class StudentContract extends Model
     protected $casts = [
         'starts_on' => 'date',
         'ends_on' => 'date',
+        'metadata' => 'array',
     ];
 
     public function student(): BelongsTo

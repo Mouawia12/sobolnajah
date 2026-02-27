@@ -8,7 +8,7 @@
                 <div class="entry-image clearfix">
                     @foreach ($pub->galleries as $gal)
                         <div class="item">
-                            <img src="{{ asset('storage/agenda/'.json_decode($gal->img_url, true)[0]) }}" alt="">
+                            <img src="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('publications.media', now()->addHours(12), ['filename' => json_decode($gal->img_url, true)[0]]) }}" alt="">
                         </div>
                     @endforeach
                 </div>

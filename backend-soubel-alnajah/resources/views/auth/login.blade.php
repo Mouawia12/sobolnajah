@@ -2,7 +2,7 @@
 @section('css')
 
 @section('title')
-   login
+   {{ trans('login.login') }}
 @stop
 @endsection
 
@@ -41,7 +41,7 @@
                             <div class="form-group">
                                 <div class="input-group mb-15">
                                     <span class="input-group-text bg-transparent"><i class="ti-email"></i></span>
-                                    <input id="email" type="email" placeholder="Email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus>
+                                    <input id="email" type="email" placeholder="{{ trans('login.email') }}" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus>
                                     @error('email')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -52,7 +52,15 @@
                             <div class="form-group">
                                 <div class="input-group mb-15">
                                     <span class="input-group-text  bg-transparent"><i class="ti-lock"></i></span>
-                                    <input id="password" type="password" placeholder="Modepasse" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
+                                    <input id="password" type="password" placeholder="{{ trans('login.password') }}" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
+                                    <button
+                                        class="input-group-text bg-transparent border-start-0"
+                                        type="button"
+                                        id="toggle-password"
+                                        aria-label="إظهار كلمة المرور"
+                                    >
+                                        <i id="toggle-password-icon" class="ti-eye"></i>
+                                    </button>
 
                                 @error('password')
                                     <span class="invalid-feedback" role="alert">
@@ -85,7 +93,7 @@
                               </div>
                         </form>	
                         <div class="text-center">
-                            <p class="mt-15 mb-0">{{ trans('login.dhaccount') }} <a href="{{ route('register') }}" class="text-warning ms-5">Register</a></p>
+                            <p class="mt-15 mb-0">{{ trans('login.dhaccount') }} <a href="{{ route('register') }}" class="text-warning ms-5">{{ trans('login.register') }}</a></p>
                         </div>	
                     </div>
                 </div>								
@@ -102,6 +110,23 @@
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var passwordInput = document.getElementById('password');
+    var toggleButton = document.getElementById('toggle-password');
+    var toggleIcon = document.getElementById('toggle-password-icon');
+
+    if (!passwordInput || !toggleButton || !toggleIcon) {
+        return;
+    }
+
+    toggleButton.addEventListener('click', function () {
+        var isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        toggleIcon.className = isPassword ? 'ti-close' : 'ti-eye';
+        toggleButton.setAttribute('aria-label', isPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+    });
+});
+</script>
 @endsection
-
-
