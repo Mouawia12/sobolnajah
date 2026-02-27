@@ -20,4 +20,12 @@
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup.min.js')}}"></script>
 <script src="{{ asset('assets/vendor_components/Magnific-Popup-master/dist/jquery.magnific-popup-init.js')}}"></script>
 
-
+<script>
+// Remove legacy cookie consent banner if any script injects it.
+document.addEventListener('DOMContentLoaded', function () {
+    var banner = document.getElementById('gdpr-cookie-message');
+    if (banner) {
+        banner.remove();
+    }
+});
+</script>

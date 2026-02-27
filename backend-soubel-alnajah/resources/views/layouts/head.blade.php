@@ -51,9 +51,12 @@
     width: 30px;
     height: 30px;
 }
+/* Force-disable legacy cookie banner */
+#gdpr-cookie-message {
+    display: none !important;
+}
 
 </style>
-
 
 
 
