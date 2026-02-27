@@ -58,8 +58,8 @@ class TimetableController extends Controller
             'timetables' => $timetables,
             'sections' => $sections,
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'الجداول'],
+                ['label' => trans('timetable.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('timetable.breadcrumbs.index')],
             ],
         ]);
     }
@@ -89,9 +89,9 @@ class TimetableController extends Controller
             'sections' => $sections,
             'teachers' => $teachers,
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'الجداول', 'url' => route('timetables.index')],
-                ['label' => 'إضافة جدول'],
+                ['label' => trans('timetable.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('timetable.breadcrumbs.index'), 'url' => route('timetables.index')],
+                ['label' => trans('timetable.breadcrumbs.add')],
             ],
         ]);
     }
@@ -136,7 +136,7 @@ class TimetableController extends Controller
             return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
 
-        toastr()->success('تم إنشاء الجدول بنجاح');
+        toastr()->success(trans('timetable.messages.created'));
         $this->forgetPublicSectionsCache();
         return redirect()->route('timetables.index');
     }
@@ -171,9 +171,9 @@ class TimetableController extends Controller
             'sections' => $sections,
             'teachers' => $teachers,
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'الجداول', 'url' => route('timetables.index')],
-                ['label' => 'تعديل جدول'],
+                ['label' => trans('timetable.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('timetable.breadcrumbs.index'), 'url' => route('timetables.index')],
+                ['label' => trans('timetable.breadcrumbs.edit')],
             ],
         ]);
     }
@@ -217,7 +217,7 @@ class TimetableController extends Controller
             return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
 
-        toastr()->success('تم تحديث الجدول');
+        toastr()->success(trans('timetable.messages.updated'));
         $this->forgetPublicSectionsCache();
         return redirect()->route('timetables.index');
     }
@@ -229,7 +229,7 @@ class TimetableController extends Controller
         $this->authorize('delete', $timetable);
         $timetable->delete();
         $this->forgetPublicSectionsCache();
-        toastr()->error('تم حذف الجدول');
+        toastr()->error(trans('timetable.messages.deleted'));
         return redirect()->route('timetables.index');
     }
 
@@ -242,9 +242,9 @@ class TimetableController extends Controller
             'timetable' => $timetable,
             'notify' => $this->notifications(),
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'الجداول', 'url' => route('timetables.index')],
-                ['label' => 'طباعة جدول'],
+                ['label' => trans('timetable.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('timetable.breadcrumbs.index'), 'url' => route('timetables.index')],
+                ['label' => trans('timetable.breadcrumbs.print')],
             ],
         ]);
     }

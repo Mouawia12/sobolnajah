@@ -93,8 +93,8 @@ class PaymentController extends Controller
             'overdue' => $overdue,
             'sections' => $sections,
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'الدفعات والوصولات'],
+                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('accounting.breadcrumbs.payments')],
             ],
         ]);
     }
@@ -152,7 +152,7 @@ class PaymentController extends Controller
             return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
 
-        toastr()->success('تم تسجيل الدفعة');
+        toastr()->success(trans('accounting.messages.payment_created'));
         return redirect()->route('accounting.payments.index');
     }
 
@@ -176,9 +176,9 @@ class PaymentController extends Controller
             'notify' => $this->notifications(),
             'payment' => $payment,
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'الدفعات والوصولات', 'url' => route('accounting.payments.index')],
-                ['label' => 'وصل الدفع'],
+                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('accounting.breadcrumbs.payments'), 'url' => route('accounting.payments.index')],
+                ['label' => trans('accounting.breadcrumbs.receipt')],
             ],
         ]);
     }

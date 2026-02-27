@@ -27,6 +27,11 @@ return [
     'recruitment_management' => 'إدارة التوظيف',
     'recruitment_posts' => 'إعلانات التوظيف',
     'recruitment_applications' => 'طلبات التوظيف',
+    'timetables' => 'الجداول',
+    'finance' => 'المالية',
+    'finance_management' => 'الإدارة المالية',
+    'finance_contracts' => 'العقود المالية',
+    'finance_payments' => 'الدفعات والوصولات',
 
 
 

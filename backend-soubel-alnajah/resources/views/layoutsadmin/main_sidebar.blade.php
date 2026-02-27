@@ -11,18 +11,18 @@
                     @endphp
 
                     @if($isAccountantOnly)
-                        <li class="header">المالية</li>
+                        <li class="header">{{ trans('main_sidebar.finance') }}</li>
                         <li class="treeview">
                             <a href="#">
                                 <i class="mdi mdi-cash-multiple me-15"><span class="path1"></span><span class="path2"></span></i>
-                                <span>الإدارة المالية</span>
+                                <span>{{ trans('main_sidebar.finance_management') }}</span>
                                 <span class="pull-right-container">
                                     <i class="fa fa-angle-right pull-right"></i>
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>العقود المالية</a></li>
-                                <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>الدفعات والوصولات</a></li>
+                                <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_contracts') }}</a></li>
+                                <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_payments') }}</a></li>
                             </ul>
                         </li>
                     @else
@@ -88,7 +88,7 @@
                             <ul class="treeview-menu">
                                 <li><a href="{{ route('Agendas.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.agenda') }}</a></li>
                                 <li><a href="{{ route('Grades.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.grades') }}</a></li>
-                                <li><a href="{{ route('timetables.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>الجداول</a></li>
+                                <li><a href="{{ route('timetables.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.timetables') }}</a></li>
                                 <li><a href="{{ route('Publications.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.publication') }}</a></li>
                                 <li><a href="{{ route('Exames.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('exam.exam') }}</a></li>
                             </ul>
@@ -110,18 +110,18 @@
                         </li>
 
                         @if(auth()->check() && ($user->hasRole('admin') || $user->hasRole('accountant')))
-                            <li class="header">المالية</li>
+                            <li class="header">{{ trans('main_sidebar.finance') }}</li>
                             <li class="treeview">
                                 <a href="#">
                                     <i class="mdi mdi-cash-multiple me-15"><span class="path1"></span><span class="path2"></span></i>
-                                    <span>الإدارة المالية</span>
+                                    <span>{{ trans('main_sidebar.finance_management') }}</span>
                                     <span class="pull-right-container">
                                         <i class="fa fa-angle-right pull-right"></i>
                                     </span>
                                 </a>
                                 <ul class="treeview-menu">
-                                    <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>العقود المالية</a></li>
-                                    <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>الدفعات والوصولات</a></li>
+                                    <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_contracts') }}</a></li>
+                                    <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_payments') }}</a></li>
                                 </ul>
                             </li>
                         @endif

@@ -1,5 +1,5 @@
 @extends('layoutsadmin.masteradmin')
-@section('titlea', 'العقود المالية')
+@section('titlea', trans('accounting.contracts'))
 
 @section('contenta')
 <div class="row">

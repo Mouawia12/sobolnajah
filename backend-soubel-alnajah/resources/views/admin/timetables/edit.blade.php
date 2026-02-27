@@ -1,18 +1,18 @@
 @extends('layoutsadmin.masteradmin')
-@section('titlea', 'تعديل جدول')
+@section('titlea', trans('timetable.edit'))
 
 @section('contenta')
 <div class="row">
     <div class="col-12">
         <div class="box">
-            <div class="box-header with-border"><h4 class="box-title">تعديل جدول</h4></div>
+            <div class="box-header with-border"><h4 class="box-title">{{ trans('timetable.edit') }}</h4></div>
             <div class="box-body">
                 <form method="POST" action="{{ route('timetables.update', $timetable) }}" class="admin-form-panel">
                     @csrf
                     @method('PATCH')
                     <div class="row admin-form-grid">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">القسم</label>
+                            <label class="form-label">{{ trans('timetable.section') }}</label>
                             <select name="section_id" class="form-select" required>
                                 @foreach($sections as $section)
                                     <option value="{{ $section->id }}" @selected((int)$section->id === (int)$timetable->section_id)>
@@ -22,35 +22,35 @@
                             </select>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">السنة الدراسية</label>
+                            <label class="form-label">{{ trans('timetable.academic_year') }}</label>
                             <input type="text" class="form-control" name="academic_year" value="{{ old('academic_year', $timetable->academic_year) }}" required>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">العنوان</label>
+                            <label class="form-label">{{ trans('timetable.title_field') }}</label>
                             <input type="text" class="form-control" name="title" value="{{ old('title', $timetable->title) }}">
                         </div>
                         <div class="col-md-2 mb-3 d-flex align-items-center">
                             <div class="form-check mt-4">
                                 <input type="hidden" name="is_published" value="0">
                                 <input class="form-check-input" type="checkbox" value="1" name="is_published" id="is_published" @checked($timetable->is_published)>
-                                <label class="form-check-label" for="is_published">نشر</label>
+                                <label class="form-check-label" for="is_published">{{ trans('timetable.publish') }}</label>
                             </div>
                         </div>
                     </div>
 
-                    <h5 class="mt-3 admin-section-title">الحصص</h5>
+                    <h5 class="mt-3 admin-section-title">{{ trans('timetable.entries') }}</h5>
                     <div class="table-responsive">
                         <table class="table table-bordered admin-entry-table" id="entries-table">
                             <thead>
                             <tr>
-                                <th>اليوم (1-7)</th>
-                                <th>الحصة</th>
-                                <th>من</th>
-                                <th>إلى</th>
-                                <th>المادة</th>
-                                <th>الأستاذ</th>
-                                <th>القاعة</th>
-                                <th>حذف</th>
+                                <th>{{ trans('timetable.day_range') }}</th>
+                                <th>{{ trans('timetable.period') }}</th>
+                                <th>{{ trans('timetable.from') }}</th>
+                                <th>{{ trans('timetable.to') }}</th>
+                                <th>{{ trans('timetable.subject') }}</th>
+                                <th>{{ trans('timetable.teacher') }}</th>
+                                <th>{{ trans('timetable.room') }}</th>
+                                <th>{{ trans('timetable.delete') }}</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -76,10 +76,10 @@
                             </tbody>
                         </table>
                     </div>
-                    <button class="btn btn-secondary mb-3" type="button" id="add-entry">إضافة حصة</button>
+                    <button class="btn btn-secondary mb-3" type="button" id="add-entry">{{ trans('timetable.add_entry') }}</button>
                     <div class="admin-form-actions">
-                        <button class="btn btn-primary">تحديث</button>
-                        <a href="{{ route('timetables.index') }}" class="btn btn-outline-secondary">رجوع</a>
+                        <button class="btn btn-primary">{{ trans('timetable.update') }}</button>
+                        <a href="{{ route('timetables.index') }}" class="btn btn-outline-secondary">{{ trans('timetable.back') }}</a>
                     </div>
                 </form>
             </div>

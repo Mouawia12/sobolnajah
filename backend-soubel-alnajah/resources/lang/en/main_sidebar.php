@@ -27,5 +27,10 @@ return [
     'recruitment_management' => 'Recruitment Management',
     'recruitment_posts' => 'Job Posts',
     'recruitment_applications' => 'Job Applications',
+    'timetables' => 'Timetables',
+    'finance' => 'Finance',
+    'finance_management' => 'Financial Management',
+    'finance_contracts' => 'Financial Contracts',
+    'finance_payments' => 'Payments & Receipts',
 
 ];

@@ -30,6 +30,11 @@ return [
     'recruitment_management' => 'Gestion du recrutement',
     'recruitment_posts' => 'Offres d emploi',
     'recruitment_applications' => 'Candidatures',
+    'timetables' => 'Emplois du temps',
+    'finance' => 'Finance',
+    'finance_management' => 'Gestion financiere',
+    'finance_contracts' => 'Contrats financiers',
+    'finance_payments' => 'Paiements et recus',
 
     
     

@@ -104,8 +104,8 @@ class ContractController extends Controller
             'plans' => $plans,
             'overdueContracts' => $overdueContracts,
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'العقود المالية'],
+                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('accounting.breadcrumbs.contracts')],
             ],
         ]);
     }
@@ -144,7 +144,7 @@ class ContractController extends Controller
             return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
 
-        toastr()->success('تم إنشاء العقد بنجاح');
+        toastr()->success(trans('accounting.messages.contract_created'));
         return redirect()->route('accounting.contracts.index');
     }
 
@@ -177,7 +177,7 @@ class ContractController extends Controller
             return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
 
-        toastr()->success('تم تحديث العقد');
+        toastr()->success(trans('accounting.messages.contract_updated'));
         return redirect()->route('accounting.contracts.index');
     }
 
@@ -188,7 +188,7 @@ class ContractController extends Controller
 
         $schoolId = $this->currentSchoolId();
         if (!$schoolId) {
-            return back()->withErrors(['file' => 'يجب تحديد مدرسة المستخدم قبل الاستيراد.']);
+            return back()->withErrors(['file' => trans('accounting.messages.import_school_required')]);
         }
 
         $isPreview = (bool) $request->boolean('preview');
@@ -230,15 +230,16 @@ class ContractController extends Controller
             session()->flash('import_preview_csv_url', URL::signedRoute('accounting.contracts.import.report', ['filename' => $previewFilename]));
         }
 
-        $message = sprintf(
-            '%s عقود جديدة: %d، عقود محدثة: %d، دفعات: %d، صفوف متخطاة: %d، تحذيرات: %d',
-            $isPreview ? 'تم تنفيذ معاينة بدون حفظ.' : 'تم استيراد الملف.',
-            $summary['contracts_created'],
-            $summary['contracts_updated'],
-            $summary['payments_created'],
-            $summary['rows_skipped'],
-            count((array) ($summary['validation_warnings'] ?? []))
-        );
+        $message = trans('accounting.messages.import_summary', [
+            'mode' => $isPreview
+                ? trans('accounting.messages.import_mode_preview')
+                : trans('accounting.messages.import_mode_execute'),
+            'created' => (int) ($summary['contracts_created'] ?? 0),
+            'updated' => (int) ($summary['contracts_updated'] ?? 0),
+            'payments' => (int) ($summary['payments_created'] ?? 0),
+            'skipped' => (int) ($summary['rows_skipped'] ?? 0),
+            'warnings' => count((array) ($summary['validation_warnings'] ?? [])),
+        ]);
 
         if ($isPreview) {
             toastr()->info($message);

@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8">
-    <title>طباعة الجدول</title>
+    <title>{{ trans('timetable.print') }}</title>
     <style>
         :root {
             --line: #d6deea;
@@ -81,28 +81,28 @@
 </head>
 <body>
 <div class="print-actions">
-    <button onclick="window.print()">طباعة</button>
+    <button onclick="window.print()">{{ trans('timetable.print') }}</button>
 </div>
 <div class="sheet">
     <div class="header">
         <div class="school-name">{{ $timetable->section->school->name_school ?? 'Sobol Najah' }}</div>
-        <div class="title">{{ $timetable->title ?: 'الجدول الدراسي' }}</div>
+        <div class="title">{{ $timetable->title ?: trans('timetable.default_print_title') }}</div>
         <div class="meta">
             {{ $timetable->section->classroom->schoolgrade->name_grade ?? '' }} /
             {{ $timetable->section->classroom->name_class ?? '' }} /
             {{ $timetable->section->name_section ?? '' }}<br>
-            السنة الدراسية: {{ $timetable->academic_year }}
+            {{ trans('timetable.school_year') }}: {{ $timetable->academic_year }}
         </div>
     </div>
     <table>
         <thead>
         <tr>
-            <th>اليوم</th>
-            <th>الحصة</th>
-            <th>التوقيت</th>
-            <th>المادة</th>
-            <th>الأستاذ</th>
-            <th>القاعة</th>
+            <th>{{ trans('timetable.day') }}</th>
+            <th>{{ trans('timetable.period') }}</th>
+            <th>{{ trans('timetable.from') }} - {{ trans('timetable.to') }}</th>
+            <th>{{ trans('timetable.subject') }}</th>
+            <th>{{ trans('timetable.teacher') }}</th>
+            <th>{{ trans('timetable.room') }}</th>
         </tr>
         </thead>
         <tbody>
@@ -117,7 +117,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="6">لا توجد حصص مسجلة في هذا الجدول.</td>
+                <td colspan="6">{{ trans('timetable.no_entries') }}</td>
             </tr>
         @endforelse
         </tbody>
