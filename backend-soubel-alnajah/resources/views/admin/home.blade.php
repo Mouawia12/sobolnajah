@@ -21,6 +21,11 @@
         background: rgba(255,255,255,0.2);
     }
 
+    .info-box-icon i {
+        font-size: 30px;
+        line-height: 1;
+    }
+
     .info-box.bg-light .info-box-icon {
         background: #e0e7ff;
         color: #4338ca;
@@ -70,7 +75,7 @@
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
                 <div class="info-box bg-info text-white shadow-sm">
-                    <span class="info-box-icon icon-wrapper"><span class="icon-Man"><span class="path1"></span><span class="path2"></span></span></span>
+                    <span class="info-box-icon icon-wrapper"><i class="mdi mdi-human-male"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">{{ trans('home.male') }}</span>
                         <span class="info-box-number">{{ number_format($stats['male_students'] ?? 0) }}</span>
@@ -79,7 +84,7 @@
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
                 <div class="info-box bg-warning text-white shadow-sm">
-                    <span class="info-box-icon icon-wrapper"><span class="icon-Woman"><span class="path1"></span><span class="path2"></span></span></span>
+                    <span class="info-box-icon icon-wrapper"><i class="mdi mdi-human-female"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">{{ trans('home.female') }}</span>
                         <span class="info-box-number">{{ number_format($stats['female_students'] ?? 0) }}</span>
@@ -99,7 +104,7 @@
         <div class="row g-3 mt-1">
             <div class="col-12 col-sm-6 col-xl-3">
                 <div class="info-box bg-danger text-white shadow-sm">
-                    <span class="info-box-icon icon-wrapper"><span class="icon-Clipboard-list"><span class="path1"></span><span class="path2"></span></span></span>
+                    <span class="info-box-icon icon-wrapper"><i class="mdi mdi-clipboard-text-outline"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">{{ __('طلبات التسجيل قيد المراجعة') }}</span>
                         <span class="info-box-number">{{ number_format($stats['pending_inscriptions'] ?? 0) }}</span>
