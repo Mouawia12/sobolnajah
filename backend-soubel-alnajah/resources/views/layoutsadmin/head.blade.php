@@ -27,12 +27,12 @@
 
 
 <!-- Vendors Style-->
-<link rel="stylesheet" href="{{ asset('cssadmin/vendors_css.css') }}">
+<link rel="stylesheet" href="{{ asset('cssadmin/vendors_css.css') }}?v={{ @filemtime(public_path('cssadmin/vendors_css.css')) }}">
 	  
 <!-- Style-->  
-<link rel="stylesheet" href="{{ asset('cssadmin/style.css') }}">
-<link rel="stylesheet" href="{{ asset('cssadmin/skin_color.css') }}">
-<link rel="stylesheet" href="{{ asset('cssadmin/admin-modern.css') }}">
+<link rel="stylesheet" href="{{ asset('cssadmin/style.css') }}?v={{ @filemtime(public_path('cssadmin/style.css')) }}">
+<link rel="stylesheet" href="{{ asset('cssadmin/skin_color.css') }}?v={{ @filemtime(public_path('cssadmin/skin_color.css')) }}">
+<link rel="stylesheet" href="{{ asset('cssadmin/admin-modern.css') }}?v={{ @filemtime(public_path('cssadmin/admin-modern.css')) }}">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cairo">
 
 @toastr_css
