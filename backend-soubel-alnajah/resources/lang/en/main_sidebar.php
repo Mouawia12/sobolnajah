@@ -24,5 +24,8 @@ return [
     'promotion' => 'Student Promotion',
     'graduated' => 'Graduated Students',
     'Absences'=>'Absences List',
+    'recruitment_management' => 'Recruitment Management',
+    'recruitment_posts' => 'Job Posts',
+    'recruitment_applications' => 'Job Applications',
 
 ];

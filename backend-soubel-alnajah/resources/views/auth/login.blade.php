@@ -57,7 +57,7 @@
                                         class="input-group-text bg-transparent border-start-0"
                                         type="button"
                                         id="toggle-password"
-                                        aria-label="إظهار كلمة المرور"
+                                        aria-label="{{ trans('login.toggle_show') }}"
                                     >
                                         <i id="toggle-password-icon" class="ti-eye"></i>
                                     </button>
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var isPassword = passwordInput.getAttribute('type') === 'password';
         passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
         toggleIcon.className = isPassword ? 'ti-close' : 'ti-eye';
-        toggleButton.setAttribute('aria-label', isPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+        toggleButton.setAttribute('aria-label', isPassword ? @json(trans('login.toggle_hide')) : @json(trans('login.toggle_show')));
     });
 });
 </script>

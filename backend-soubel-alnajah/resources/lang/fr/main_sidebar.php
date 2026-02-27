@@ -27,6 +27,9 @@ return [
     'publication' => 'liste des publications',
 
     'Absences'=>'Absences liste',
+    'recruitment_management' => 'Gestion du recrutement',
+    'recruitment_posts' => 'Offres d emploi',
+    'recruitment_applications' => 'Candidatures',
 
     
     

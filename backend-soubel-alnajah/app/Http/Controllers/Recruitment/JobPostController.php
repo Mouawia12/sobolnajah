@@ -43,8 +43,8 @@ class JobPostController extends Controller
                 ? School::query()->select(['id', 'name_school'])->orderBy('name_school')->get()
                 : collect(),
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'إعلانات التوظيف'],
+                ['label' => trans('recruitment.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('recruitment.breadcrumbs.job_posts')],
             ],
         ]);
     }
@@ -62,9 +62,9 @@ class JobPostController extends Controller
                 ? School::query()->select(['id', 'name_school'])->orderBy('name_school')->get()
                 : collect(),
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'إعلانات التوظيف', 'url' => route('JobPosts.index')],
-                ['label' => 'إضافة إعلان'],
+                ['label' => trans('recruitment.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('recruitment.breadcrumbs.job_posts'), 'url' => route('JobPosts.index')],
+                ['label' => trans('recruitment.breadcrumbs.add_job_post')],
             ],
         ]);
     }
@@ -76,7 +76,7 @@ class JobPostController extends Controller
 
         $schoolId = $this->currentSchoolId() ?: (int) ($validated['school_id'] ?? 0);
         if (!$schoolId) {
-            return back()->withErrors(['error' => 'School is required.'])->withInput();
+            return back()->withErrors(['error' => trans('recruitment.messages.school_required')])->withInput();
         }
 
         $title = trim((string) $validated['title']);
@@ -101,7 +101,7 @@ class JobPostController extends Controller
             'updated_by' => auth()->id(),
         ]);
 
-        toastr()->success('تم إنشاء إعلان التوظيف بنجاح');
+        toastr()->success(trans('recruitment.messages.job_post_created'));
 
         return redirect()->route('JobPosts.index');
     }
@@ -120,9 +120,9 @@ class JobPostController extends Controller
                 ? School::query()->select(['id', 'name_school'])->orderBy('name_school')->get()
                 : collect(),
             'breadcrumbs' => [
-                ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-                ['label' => 'إعلانات التوظيف', 'url' => route('JobPosts.index')],
-                ['label' => 'تعديل إعلان'],
+                ['label' => trans('recruitment.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('recruitment.breadcrumbs.job_posts'), 'url' => route('JobPosts.index')],
+                ['label' => trans('recruitment.breadcrumbs.edit_job_post')],
             ],
         ]);
     }
@@ -145,7 +145,7 @@ class JobPostController extends Controller
             'updated_by' => auth()->id(),
         ]);
 
-        toastr()->success('تم تحديث إعلان التوظيف');
+        toastr()->success(trans('recruitment.messages.job_post_updated'));
 
         return redirect()->route('JobPosts.index');
     }
@@ -158,7 +158,7 @@ class JobPostController extends Controller
 
         $jobPost->delete();
 
-        toastr()->error('تم حذف إعلان التوظيف');
+        toastr()->error(trans('recruitment.messages.job_post_deleted'));
 
         return redirect()->route('JobPosts.index');
     }

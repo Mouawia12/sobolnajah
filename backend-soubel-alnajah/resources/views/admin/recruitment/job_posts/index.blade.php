@@ -1,30 +1,30 @@
 @extends('layoutsadmin.masteradmin')
-@section('titlea', 'إعلانات التوظيف')
+@section('titlea', trans('recruitment.job_posts'))
 
 @section('contenta')
 <div class="row">
     <div class="col-12">
         <div class="box">
             <div class="box-header with-border d-flex justify-content-between">
-                <h4 class="box-title">إعلانات التوظيف</h4>
-                <a href="{{ route('JobPosts.create') }}" class="btn btn-info">إضافة إعلان</a>
+                <h4 class="box-title">{{ trans('recruitment.job_posts') }}</h4>
+                <a href="{{ route('JobPosts.create') }}" class="btn btn-info">{{ trans('recruitment.admin.add_job_post') }}</a>
             </div>
             <div class="box-body">
                 <form method="GET" class="row mb-3">
                     <div class="col-md-4">
-                        <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="بحث بعنوان الإعلان">
+                        <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="{{ trans('recruitment.admin.search_title') }}">
                     </div>
                     <div class="col-md-3">
                         <select name="status" class="form-select">
-                            <option value="">كل الحالات</option>
-                            @foreach (['draft' => 'مسودة', 'published' => 'منشور', 'closed' => 'مغلق'] as $key => $label)
-                                <option value="{{ $key }}" @selected(request('status') === $key)>{{ $label }}</option>
+                            <option value="">{{ trans('recruitment.admin.all_statuses') }}</option>
+                            @foreach (['draft', 'published', 'closed'] as $key)
+                                <option value="{{ $key }}" @selected(request('status') === $key)>{{ trans('recruitment.statuses.job.' . $key) }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <button class="btn btn-primary" type="submit">تصفية</button>
-                        <a href="{{ route('JobPosts.index') }}" class="btn btn-outline-secondary">إعادة ضبط</a>
+                        <button class="btn btn-primary" type="submit">{{ trans('recruitment.admin.filter') }}</button>
+                        <a href="{{ route('JobPosts.index') }}" class="btn btn-outline-secondary">{{ trans('recruitment.admin.reset') }}</a>
                     </div>
                 </form>
 
@@ -33,11 +33,11 @@
                         <thead>
                         <tr>
                             <th>#</th>
-                            <th>العنوان</th>
-                            <th>الحالة</th>
-                            <th>عدد الطلبات</th>
-                            <th>تاريخ النشر</th>
-                            <th>الإجراءات</th>
+                            <th>{{ trans('recruitment.admin.title') }}</th>
+                            <th>{{ trans('recruitment.admin.status') }}</th>
+                            <th>{{ trans('recruitment.admin.applications_count') }}</th>
+                            <th>{{ trans('recruitment.admin.published_at') }}</th>
+                            <th>{{ trans('recruitment.admin.actions') }}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -45,21 +45,21 @@
                             <tr>
                                 <td>{{ $jobPosts->firstItem() + $index }}</td>
                                 <td>{{ $jobPost->title }}</td>
-                                <td><span class="admin-status admin-status-{{ $jobPost->status }}">{{ $jobPost->status }}</span></td>
+                                <td><span class="admin-status admin-status-{{ $jobPost->status }}">{{ trans('recruitment.statuses.job.' . $jobPost->status) }}</span></td>
                                 <td>{{ $jobPost->applications_count }}</td>
                                 <td>{{ $jobPost->published_at ?? '-' }}</td>
                                 <td>
-                                    <a href="{{ route('JobPosts.edit', $jobPost) }}" class="btn btn-sm btn-primary">تعديل</a>
+                                    <a href="{{ route('JobPosts.edit', $jobPost) }}" class="btn btn-sm btn-primary">{{ trans('recruitment.admin.edit') }}</a>
                                     <form method="POST" action="{{ route('JobPosts.destroy', $jobPost) }}" class="d-inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-sm btn-danger" onclick="return confirm('تأكيد حذف الإعلان؟')">حذف</button>
+                                        <button class="btn btn-sm btn-danger" onclick="return confirm('{{ trans('recruitment.admin.delete_confirm') }}')">{{ trans('recruitment.admin.delete') }}</button>
                                     </form>
-                                    <a href="{{ route('recruitment.applications.index', ['post_id' => $jobPost->id]) }}" class="btn btn-sm btn-info">الطلبات</a>
+                                    <a href="{{ route('recruitment.applications.index', ['post_id' => $jobPost->id]) }}" class="btn btn-sm btn-info">{{ trans('recruitment.admin.view_applications') }}</a>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6"><div class="admin-empty-state">لا توجد إعلانات توظيف بعد.</div></td></tr>
+                            <tr><td colspan="6"><div class="admin-empty-state">{{ trans('recruitment.admin.empty_job_posts') }}</div></td></tr>
                         @endforelse
                         </tbody>
                     </table>

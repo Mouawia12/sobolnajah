@@ -61,6 +61,6 @@ class PublicJobController extends Controller
             'submitted_user_agent' => (string) $request->userAgent(),
         ]);
 
-        return back()->withSuccess('تم إرسال طلب الترشح بنجاح');
+        return back()->withSuccess(trans('recruitment.messages.application_submitted'));
     }
 }

@@ -47,9 +47,9 @@ class LoginController extends Controller
             $this->username() => ['required', 'email'],
             'password' => ['required', 'string'],
         ], [
-            $this->username() . '.required' => 'يرجى إدخال البريد الإلكتروني.',
-            $this->username() . '.email' => 'صيغة البريد الإلكتروني غير صحيحة.',
-            'password.required' => 'يرجى إدخال كلمة المرور.',
+            $this->username() . '.required' => trans('login.validation_email_required'),
+            $this->username() . '.email' => trans('login.validation_email_invalid'),
+            'password.required' => trans('login.validation_password_required'),
         ]);
     }
 
@@ -61,8 +61,8 @@ class LoginController extends Controller
         throw ValidationException::withMessages([
             $userExists ? 'password' : $this->username() => [
                 $userExists
-                    ? 'كلمة المرور غير صحيحة. حاول مرة أخرى.'
-                    : 'البريد الإلكتروني غير موجود.',
+                    ? trans('login.error_password_invalid')
+                    : trans('login.error_email_not_found'),
             ],
         ]);
     }

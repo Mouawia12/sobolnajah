@@ -94,18 +94,18 @@
                             </ul>
                         </li>
 
-                        <li class="header">التوظيف</li>
+                        <li class="header">{{ trans('main_header.recruitment') }}</li>
                         <li class="treeview">
                             <a href="#">
                                 <i class="mdi mdi-briefcase-check-outline me-15"><span class="path1"></span><span class="path2"></span></i>
-                                <span>إدارة التوظيف</span>
+                                <span>{{ trans('main_sidebar.recruitment_management') }}</span>
                                 <span class="pull-right-container">
                                     <i class="fa fa-angle-right pull-right"></i>
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li><a href="{{ route('JobPosts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>إعلانات التوظيف</a></li>
-                                <li><a href="{{ route('recruitment.applications.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>طلبات التوظيف</a></li>
+                                <li><a href="{{ route('JobPosts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.recruitment_posts') }}</a></li>
+                                <li><a href="{{ route('recruitment.applications.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.recruitment_applications') }}</a></li>
                             </ul>
                         </li>
 

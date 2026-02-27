@@ -1,5 +1,5 @@
 @extends('layouts.masterhome')
-@section('title', 'إعلانات التوظيف')
+@section('title', trans('recruitment.public.page_title'))
 @section('css')
 <style>
     .jobs-page {
@@ -168,8 +168,8 @@
 <section class="bg-img pt-150 pb-20 jobs-hero" data-overlay="1" style="background-image: url({{ asset('images/logincover.jpg') }});">
     <div class="container">
         <div class="text-center">
-            <h2 class="page-title text-white">إعلانات التوظيف</h2>
-            <p class="jobs-subtitle">اكتشف الفرص المفتوحة وانضم إلى فريق تعليمي يصنع الأثر.</p>
+            <h2 class="page-title text-white">{{ trans('recruitment.public.page_title') }}</h2>
+            <p class="jobs-subtitle">{{ trans('recruitment.public.subtitle') }}</p>
         </div>
     </div>
 </section>
@@ -183,22 +183,22 @@
                     <div class="col-md-6 mb-3">
                         <div class="box job-card" style="animation-delay: {{ $loop->index * 90 }}ms;">
                             <div class="box-body">
-                                <span class="job-status">متاح الآن</span>
+                                <span class="job-status">{{ trans('recruitment.public.available_now') }}</span>
                                 <h4 class="job-title">{{ $jobPost->title }}</h4>
                                 <p class="job-snippet">{{ \Illuminate\Support\Str::limit(strip_tags($jobPost->description), 180) }}</p>
                                 <div class="job-meta">
-                                    <span class="job-meta-chip">تاريخ النشر: {{ optional($jobPost->published_at)->format('Y-m-d') ?? '-' }}</span>
-                                    <span class="job-meta-chip">آخر موعد: {{ optional($jobPost->closed_at)->format('Y-m-d') ?? 'مفتوح' }}</span>
-                                    <span class="job-meta-chip">الطلبات: {{ $jobPost->applications_count }}</span>
+                                    <span class="job-meta-chip">{{ trans('recruitment.public.published_at') }}: {{ optional($jobPost->published_at)->format('Y-m-d') ?? '-' }}</span>
+                                    <span class="job-meta-chip">{{ trans('recruitment.public.closed_at') }}: {{ optional($jobPost->closed_at)->format('Y-m-d') ?? trans('recruitment.public.open_ended') }}</span>
+                                    <span class="job-meta-chip">{{ trans('recruitment.public.applications_count') }}: {{ $jobPost->applications_count }}</span>
                                 </div>
-                                <a href="{{ route('public.jobs.show', $jobPost) }}" class="job-cta">عرض التفاصيل والتقديم</a>
+                                <a href="{{ route('public.jobs.show', $jobPost) }}" class="job-cta">{{ trans('recruitment.public.view_apply') }}</a>
                             </div>
                         </div>
                     </div>
                 @endforeach
             @else
                 <div class="col-12">
-                    <div class="jobs-empty">لا توجد إعلانات توظيف متاحة حاليًا.</div>
+                    <div class="jobs-empty">{{ trans('recruitment.public.empty') }}</div>
                 </div>
             @endif
         </div>

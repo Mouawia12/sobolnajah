@@ -35,9 +35,9 @@
                                         class="btn btn-outline-secondary"
                                         type="button"
                                         id="toggle-password"
-                                        aria-label="Show password"
+                                        aria-label="{{ trans('login.toggle_show') }}"
                                     >
-                                        <span id="toggle-password-text">Show</span>
+                                        <span id="toggle-password-text">{{ trans('login.toggle_show') }}</span>
                                     </button>
                                 </div>
 
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
     toggleButton.addEventListener('click', function () {
         var isPassword = passwordInput.getAttribute('type') === 'password';
         passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-        toggleText.textContent = isPassword ? 'Hide' : 'Show';
+        toggleText.textContent = isPassword ? @json(trans('login.toggle_hide')) : @json(trans('login.toggle_show'));
     });
 });
 </script>

@@ -25,10 +25,10 @@
             <div class="col-md-7">
                 <div class="box">
                     <div class="box-body">
-                        <h4>تفاصيل الإعلان</h4>
+                        <h4>{{ trans('recruitment.public.details') }}</h4>
                         <div class="mb-3">{!! nl2br(e($jobPost->description)) !!}</div>
                         @if($jobPost->requirements)
-                            <h5>الشروط</h5>
+                            <h5>{{ trans('recruitment.public.requirements') }}</h5>
                             <div>{!! nl2br(e($jobPost->requirements)) !!}</div>
                         @endif
                     </div>
@@ -37,27 +37,27 @@
             <div class="col-md-5">
                 <div class="box">
                     <div class="box-body">
-                        <h4>استمارة الترشح</h4>
+                        <h4>{{ trans('recruitment.public.apply_form') }}</h4>
                         <form method="POST" action="{{ route('public.jobs.apply', $jobPost) }}" enctype="multipart/form-data">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label">الاسم واللقب</label>
+                                <label class="form-label">{{ trans('recruitment.public.full_name') }}</label>
                                 <input type="text" name="full_name" class="form-control" value="{{ old('full_name') }}" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">رقم الهاتف</label>
+                                <label class="form-label">{{ trans('recruitment.public.phone') }}</label>
                                 <input type="text" name="phone" class="form-control" value="{{ old('phone') }}" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">البريد الإلكتروني (اختياري)</label>
+                                <label class="form-label">{{ trans('recruitment.public.email_optional') }}</label>
                                 <input type="email" name="email" class="form-control" value="{{ old('email') }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">السيرة الذاتية (PDF/DOC/DOCX)</label>
+                                <label class="form-label">{{ trans('recruitment.public.cv_label') }}</label>
                                 <input type="file" name="cv" class="form-control" required>
                             </div>
                             <input type="text" name="website" value="" style="display:none" tabindex="-1" autocomplete="off">
-                            <button class="btn btn-primary">إرسال</button>
+                            <button class="btn btn-primary">{{ trans('recruitment.public.submit') }}</button>
                         </form>
                     </div>
                 </div>

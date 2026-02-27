@@ -73,7 +73,7 @@ class JobApplicationController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        toastr()->success('تم تحديث حالة الطلب');
+        toastr()->success(trans('recruitment.messages.application_status_updated'));
 
         return redirect()->route('recruitment.applications.index');
     }
