@@ -34,7 +34,9 @@
             autocomplete="off"
           ></textarea>
           <button id="send-btn" type="submit" class="btn btn-primary ai-send-btn" aria-label="send">
-            <i class="mdi mdi-send-up"></i>
+            <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" fill="currentColor"></path>
+            </svg>
           </button>
         </form>
       </div>
@@ -415,6 +417,13 @@
 
   .ai-send-btn[disabled] {
     opacity: 0.75;
+  }
+
+  .send-icon {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+    vertical-align: middle;
   }
 
   body.dark-skin .ai-chat-shell .btn-outline-secondary {

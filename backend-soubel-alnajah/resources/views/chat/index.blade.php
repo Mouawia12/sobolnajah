@@ -156,6 +156,13 @@
         opacity: 0.5;
     }
 
+    .send-icon {
+        width: 18px;
+        height: 18px;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
     .chat-shell .box-header,
     .chat-shell .box-body {
         background: var(--chat-surface);
@@ -352,7 +359,9 @@
                             <div class="chat-typing d-none" id="chat-typing-indicator">{{ __('جاري الإرسال...') }}</div>
                         </div>
                         <a href="#" class="btn btn-primary btn-chat-send btn-chat-disabled" id="message-submit" aria-disabled="true">
-                            <i class="mdi mdi-send-up"></i>
+                            <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" fill="currentColor"></path>
+                            </svg>
                         </a>
                     </form>
                     <div class="text-danger small mt-2 d-none" id="message-error"></div>
