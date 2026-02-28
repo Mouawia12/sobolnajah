@@ -1,43 +1,42 @@
 @extends('layoutsadmin.masteradmin')
-@section('cssa')
 
 @section('titlea')
-   chat
+  chat
 @stop
-@endsection
 
 @section('contenta')
-
 <div class="row">
-  <div class="col-lg-12 col-12">
-    <div class="row">
-      <div class="col-lg-12 col-12">
-        <div class="box bg-lightest d-flex flex-column" style="height:500px;">
-          
-          <!-- Chat messages container -->
-          <div class="box-body flex-grow-1" style="overflow-y:auto;">
-            <div id="chat-box" class="chat-box-one2">
-              <!-- الرسائل تظهر هنا -->
-            </div>
+  <div class="col-12">
+    <div class="ai-chat-shell card">
+      <div class="ai-chat-header">
+        <div class="ai-chat-brand">
+          <div class="ai-chat-avatar">AI</div>
+          <div class="ai-chat-headings">
+            <h4 id="chat-title" class="mb-0"></h4>
+            <small id="chat-subtitle"></small>
           </div>
-
-          <!-- Chat input -->
-          <div class="box-footer no-border">
-            <form id="chat-form" 
-                  class="d-flex justify-content-between align-items-center bg-white p-2 rounded10 b-1">
-              @csrf
-              <input id="msg" 
-                     class="form-control b-0 me-2" 
-                     type="text" 
-                     placeholder="Say something..." 
-                     required autocomplete="off">
-              <button type="submit" class="waves-effect waves-circle btn btn-circle btn-primary">
-                <i class="mdi mdi-send"></i>
-              </button>
-            </form>
-          </div>
-
         </div>
+        <button id="clear-chat" type="button" class="btn btn-outline-secondary btn-sm"></button>
+      </div>
+
+      <div id="chat-scroll" class="ai-chat-body">
+        <div id="chat-box" class="ai-chat-box"></div>
+      </div>
+
+      <div class="ai-chat-footer">
+        <form id="chat-form" class="ai-chat-form">
+          @csrf
+          <textarea
+            id="msg"
+            rows="1"
+            class="form-control ai-chat-input"
+            required
+            autocomplete="off"
+          ></textarea>
+          <button id="send-btn" type="submit" class="btn btn-primary ai-send-btn" aria-label="send">
+            <i class="mdi mdi-send"></i>
+          </button>
+        </form>
       </div>
     </div>
   </div>
@@ -48,8 +47,39 @@
 <script>
   const form = document.getElementById('chat-form');
   const box = document.getElementById('chat-box');
+  const scrollContainer = document.getElementById('chat-scroll');
   const input = document.getElementById('msg');
+  const sendBtn = document.getElementById('send-btn');
+  const clearBtn = document.getElementById('clear-chat');
+  const chatTitle = document.getElementById('chat-title');
+  const chatSubtitle = document.getElementById('chat-subtitle');
 
+  const isArabic = (document.documentElement.lang || '').toLowerCase().startsWith('ar') || document.body.dir === 'rtl';
+
+  const i18n = {
+    ar: {
+      title: 'مساعد الذكاء الاصطناعي',
+      subtitle: 'متصل الآن - ردود سريعة ومنظمة',
+      placeholder: 'اكتب رسالتك هنا...',
+      clear: 'مسح المحادثة',
+      welcome: 'مرحبا بك! كيف يمكنني مساعدتك اليوم؟',
+      thinking: 'جاري الكتابة...',
+      error: 'حدث خطأ في الاتصال بالخادم.',
+      emptyMessage: 'اكتب رسالة اولا.'
+    },
+    en: {
+      title: 'AI Assistant',
+      subtitle: 'Online - Fast and structured replies',
+      placeholder: 'Type your message...',
+      clear: 'Clear chat',
+      welcome: 'Welcome! How can I help you today?',
+      thinking: 'Typing...',
+      error: 'Server connection error.',
+      emptyMessage: 'Please type a message first.'
+    }
+  };
+
+  const t = (key) => (isArabic ? i18n.ar[key] : i18n.en[key]);
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   function escapeHtml(text) {
@@ -61,56 +91,119 @@
       .replace(/'/g, '&#039;');
   }
 
-  function appendMessageBubble(text, sender = 'bot') {
-    const isUser = sender === 'user';
-    const bubble = document.createElement('div');
-    bubble.className = `card d-inline-block mb-2 me-2 p-2 rounded chat-bubble ${isUser ? 'float-end bg-primary text-white' : 'float-start bg-light text-dark'}`;
-    bubble.innerHTML = escapeHtml(text);
-    box.appendChild(bubble);
-
-    const clearFix = document.createElement('div');
-    clearFix.className = 'clearfix';
-    box.appendChild(clearFix);
-    box.scrollTop = box.scrollHeight;
+  function currentTime() {
+    const now = new Date();
+    return now.toLocaleTimeString(isArabic ? 'ar-DZ' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
   function splitBotReply(rawText) {
     const text = String(rawText || '').replace(/\r\n/g, '\n').trim();
     if (!text) return [];
 
-    // Handles replies like: ### الرسالة 1 ... ### الرسالة 2 ...
-    const inlineHeadingParts = text
+    const numberedParts = text
       .split(/(?=###\s*(?:الرسالة|رسالة|message)\s*\d+\s*:?\s*)/gi)
       .map((part) => part.replace(/^###\s*/i, '').trim())
       .filter(Boolean);
 
-    if (inlineHeadingParts.length > 1) {
-      return inlineHeadingParts;
-    }
+    if (numberedParts.length > 1) return numberedParts;
 
-    // Fallback: split paragraphs.
-    const paragraphParts = text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
-    return paragraphParts.length ? paragraphParts : [text];
+    const paragraphs = text
+      .split(/\n{2,}/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return paragraphs.length ? paragraphs : [text];
   }
+
+  function createBubble({ text, sender, muted = false }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg-row ${sender === 'user' ? 'msg-user' : 'msg-bot'}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = `msg-bubble ${sender === 'user' ? 'user-bubble' : 'bot-bubble'} ${muted ? 'muted-bubble' : ''}`;
+
+    const content = document.createElement('div');
+    content.className = 'msg-content';
+    content.innerHTML = escapeHtml(text);
+
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    meta.textContent = currentTime();
+
+    bubble.appendChild(content);
+    bubble.appendChild(meta);
+    wrapper.appendChild(bubble);
+    box.appendChild(wrapper);
+
+    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    return wrapper;
+  }
+
+  function addWelcome() {
+    if (box.children.length > 0) return;
+    createBubble({ text: t('welcome'), sender: 'bot', muted: true });
+  }
+
+  async function renderBotResponse(raw) {
+    const parts = splitBotReply(raw);
+    for (const part of parts) {
+      createBubble({ text: part, sender: 'bot' });
+      await sleep(130);
+    }
+  }
+
+  function setUiLanguage() {
+    chatTitle.textContent = t('title');
+    chatSubtitle.textContent = t('subtitle');
+    input.placeholder = t('placeholder');
+    clearBtn.textContent = t('clear');
+  }
+
+  function autoResizeTextarea() {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
+  }
+
+  setUiLanguage();
+  addWelcome();
+
+  input.addEventListener('input', autoResizeTextarea);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    box.innerHTML = '';
+    addWelcome();
+    input.focus();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const msg = input.value.trim();
-    if (!msg) return;
+    if (!msg) {
+      createBubble({ text: t('emptyMessage'), sender: 'bot', muted: true });
+      return;
+    }
 
-    appendMessageBubble(msg, 'user');
+    createBubble({ text: msg, sender: 'user' });
     input.value = '';
+    autoResizeTextarea();
 
-    // مؤشر الكتابة (ثلاث نقاط متحركة)
-    let thinkingDiv = document.createElement('div');
-    thinkingDiv.className = "text-muted my-2";
-    thinkingDiv.id = "thinking";
-    thinkingDiv.innerHTML = `<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>`;
-    box.appendChild(thinkingDiv);
-    box.scrollTop = box.scrollHeight;
+    const thinkingNode = createBubble({ text: t('thinking'), sender: 'bot', muted: true });
+
+    sendBtn.disabled = true;
+    input.disabled = true;
 
     try {
-      let res = await fetch('/chat-gpt', {
+      const res = await fetch('/chat-gpt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,48 +212,206 @@
         body: JSON.stringify({ message: msg })
       });
 
-      let data = await res.json();
+      const data = await res.json();
+      thinkingNode.remove();
 
-      // احذف المؤشر و أضف ردود البوت كرسائل منفصلة
-      thinkingDiv.remove();
-      const botParts = splitBotReply(data.bot);
-
-      for (const part of botParts) {
-        appendMessageBubble(part, 'bot');
-        await sleep(180);
+      if (!res.ok) {
+        createBubble({ text: data.bot || t('error'), sender: 'bot' });
+      } else {
+        await renderBotResponse(data.bot || '...');
       }
-
     } catch (error) {
       console.error(error);
-      thinkingDiv.remove();
-      box.innerHTML += `<p class="text-danger">⚠ خطأ في الاتصال بالسيرفر</p>`;
+      thinkingNode.remove();
+      createBubble({ text: t('error'), sender: 'bot' });
+    } finally {
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
     }
   });
 </script>
 
 <style>
-/* أنيميشن ثلاث نقاط متحركة */
-.typing-dots span {
-  animation: blink 1.5s infinite;
-  font-size: 20px;
-  padding: 0 2px;
-}
-.typing-dots span:nth-child(2) {
-  animation-delay: 0.3s;
-}
-.typing-dots span:nth-child(3) {
-  animation-delay: 0.6s;
-}
-@keyframes blink {
-  0% { opacity: 0.2; }
-  20% { opacity: 1; }
-  100% { opacity: 0.2; }
-}
+  .ai-chat-shell {
+    border: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 35px rgba(16, 24, 40, 0.08);
+    min-height: 76vh;
+    background: linear-gradient(180deg, #f9fbff 0%, #f3f6fb 100%);
+  }
 
-.chat-bubble {
-  max-width: 85%;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
+  .ai-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e6ecf5;
+    background: #ffffff;
+  }
+
+  .ai-chat-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ai-chat-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  .ai-chat-headings h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1f2a37;
+    line-height: 1.2;
+  }
+
+  .ai-chat-headings small {
+    color: #6b7280;
+    font-size: 12px;
+  }
+
+  .ai-chat-body {
+    flex: 1;
+    height: calc(76vh - 130px);
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .ai-chat-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .msg-row {
+    display: flex;
+    width: 100%;
+  }
+
+  .msg-user {
+    justify-content: flex-end;
+  }
+
+  .msg-bot {
+    justify-content: flex-start;
+  }
+
+  .msg-bubble {
+    max-width: min(78%, 820px);
+    border-radius: 14px;
+    padding: 10px 12px 8px;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.06);
+    animation: bubbleIn 0.18s ease-out;
+  }
+
+  .user-bubble {
+    background: linear-gradient(140deg, #0d6efd 0%, #0b5ed7 100%);
+    color: #fff;
+    border-bottom-right-radius: 5px;
+  }
+
+  .bot-bubble {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #e5eaf3;
+    border-bottom-left-radius: 5px;
+  }
+
+  .muted-bubble {
+    opacity: 0.9;
+  }
+
+  .msg-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.65;
+    font-size: 14px;
+  }
+
+  .msg-meta {
+    margin-top: 6px;
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .ai-chat-footer {
+    border-top: 1px solid #e6ecf5;
+    background: #ffffff;
+    padding: 10px 12px 12px;
+  }
+
+  .ai-chat-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .ai-chat-input {
+    border: 1px solid #d7deea;
+    border-radius: 12px;
+    resize: none;
+    min-height: 44px;
+    max-height: 180px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    background: #fdfefe;
+  }
+
+  .ai-chat-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.12);
+  }
+
+  .ai-send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    box-shadow: 0 10px 20px rgba(13, 110, 253, 0.2);
+  }
+
+  .ai-send-btn[disabled] {
+    opacity: 0.75;
+  }
+
+  @keyframes bubbleIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .ai-chat-shell {
+      min-height: 70vh;
+      border-radius: 12px;
+    }
+
+    .ai-chat-body {
+      height: calc(70vh - 130px);
+      padding: 12px;
+    }
+
+    .msg-bubble {
+      max-width: 90%;
+    }
+  }
 </style>
 @endsection
