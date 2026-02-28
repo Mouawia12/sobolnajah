@@ -83,6 +83,19 @@
                         <li class="header">الهيكل المدرسي</li>
                         <li class="treeview">
                             <a href="#">
+                                <i class="mdi mdi-account-multiple-plus me-15"><span class="path1"></span><span class="path2"></span></i>
+                                <span>إدارة المستخدمين</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-right pull-right"></i>
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li><a href="{{ route('admin.users.create') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>إضافة مستخدم</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="treeview">
+                            <a href="#">
                                 <i class="mdi mdi-school me-15"><span class="path1"></span><span class="path2"></span></i>
                                 <span>إعدادات المدرسة</span>
                                 <span class="pull-right-container">

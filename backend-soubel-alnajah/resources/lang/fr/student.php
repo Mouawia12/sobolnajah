@@ -22,6 +22,10 @@ return [
     'chapter1'=>'Chapitre I',
     'chapter2'=>'Chapitre II',
     'chapter3'=>'Chapitre III',
+    'absence' => 'Absences',
+    'abdence' => 'Absences',
+    'date' => 'Date',
+    'section' => 'Section',
 
     
 

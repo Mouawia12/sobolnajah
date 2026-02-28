@@ -22,4 +22,8 @@ return [
     'chapter1' => 'First Term I',
     'chapter2' => 'Second Term II',
     'chapter3' => 'Third Term III',
+    'absence' => 'Absences',
+    'abdence' => 'Absences',
+    'date' => 'Date',
+    'section' => 'Section',
 ];

@@ -86,7 +86,7 @@ class AbsenceController extends Controller
         $data['notify'] = $this->notifications();
         $data['breadcrumbs'] = [
             ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-            ['label' => trans('student.abdence')],
+            ['label' => trans('student.absence')],
         ];
 
         return view('admin.AbsenceStudent',$data);

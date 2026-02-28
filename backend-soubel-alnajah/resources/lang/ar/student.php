@@ -22,6 +22,10 @@ return [
     'chapter1'=>'الفصل الاول I',
     'chapter2'=>'الفصل الثاني II',
     'chapter3'=>'الفصل الثالث III',
+    'absence' => 'الغيابات',
+    'abdence' => 'الغيابات',
+    'date' => 'التاريخ',
+    'section' => 'القسم',
 
     
 

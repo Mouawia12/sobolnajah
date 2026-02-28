@@ -35,6 +35,7 @@ use App\Http\Controllers\Accounting\ContractController;
 use App\Http\Controllers\Accounting\PaymentController;
 use App\Http\Controllers\Accounting\AccountantDashboardController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Admin\UserManagementController;
 
 
 
@@ -148,6 +149,8 @@ Route::group(
 
         Route::group(['middleware' => ['role:admin','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
             Route::get('/admin', [HomeController::class, 'index'])->name('admin.dashboard');
+            Route::get('/admin/users/create', [UserManagementController::class, 'create'])->name('admin.users.create');
+            Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
             Route::post('/mark-as-read/{id}', [FunctionController::class, 'markAsRead'])->name('markAsRead');
             Route::post('/markasread/{id}', [FunctionController::class, 'markAsRead'])->name('markasread');
             Route::post('/delete_all',[ClassroomController::class,'delete_all'])->name('delete_all');

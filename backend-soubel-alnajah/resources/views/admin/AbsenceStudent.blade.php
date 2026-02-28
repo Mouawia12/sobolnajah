@@ -2,7 +2,7 @@
 @section('cssa')
 
 @section('titlea')
-    {{ trans('student.abdence') }}
+    {{ trans('student.absence') }}
 @stop
 @endsection
 
@@ -51,7 +51,7 @@
                             @foreach ($hours as $hour)
                                 <th>{{ $hour }}:00</th>
                             @endforeach
-                            <th>Section</th> {{-- العمود الجديد --}}
+                            <th>{{ trans('student.section') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -100,7 +100,7 @@
                             @foreach ($hours as $hour)
                                 <th>{{ $hour }}:00</th>
                             @endforeach
-                            <th>Section</th> {{-- نفس العمود الجديد --}}
+                            <th>{{ trans('student.section') }}</th>
                         </tr>
                     </tfoot>
                 </table>
