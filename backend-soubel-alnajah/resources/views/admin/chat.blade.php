@@ -50,14 +50,55 @@
   const box = document.getElementById('chat-box');
   const input = document.getElementById('msg');
 
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function appendMessageBubble(text, sender = 'bot') {
+    const isUser = sender === 'user';
+    const bubble = document.createElement('div');
+    bubble.className = `card d-inline-block mb-2 me-2 p-2 rounded chat-bubble ${isUser ? 'float-end bg-primary text-white' : 'float-start bg-light text-dark'}`;
+    bubble.innerHTML = escapeHtml(text);
+    box.appendChild(bubble);
+
+    const clearFix = document.createElement('div');
+    clearFix.className = 'clearfix';
+    box.appendChild(clearFix);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function splitBotReply(rawText) {
+    const text = String(rawText || '').replace(/\r\n/g, '\n').trim();
+    if (!text) return [];
+
+    // Handles replies like: ### الرسالة 1 ... ### الرسالة 2 ...
+    const inlineHeadingParts = text
+      .split(/(?=###\s*(?:الرسالة|رسالة|message)\s*\d+\s*:?\s*)/gi)
+      .map((part) => part.replace(/^###\s*/i, '').trim())
+      .filter(Boolean);
+
+    if (inlineHeadingParts.length > 1) {
+      return inlineHeadingParts;
+    }
+
+    // Fallback: split paragraphs.
+    const paragraphParts = text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+    return paragraphParts.length ? paragraphParts : [text];
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = input.value.trim();
     if (!msg) return;
 
-    // رسالة المستخدم
-    box.innerHTML += `<div class="card d-inline-block mb-2 float-end me-2 bg-primary text-white p-2 rounded"> ${msg}</div><div class="clearfix"></div>`;
-    box.scrollTop = box.scrollHeight;
+    appendMessageBubble(msg, 'user');
     input.value = '';
 
     // مؤشر الكتابة (ثلاث نقاط متحركة)
@@ -80,10 +121,14 @@
 
       let data = await res.json();
 
-      // احذف المؤشر و أضف رد البوت
+      // احذف المؤشر و أضف ردود البوت كرسائل منفصلة
       thinkingDiv.remove();
-      box.innerHTML += `<div class="card d-inline-block mb-2 float-start me-2 bg-light p-2 rounded"> ${data.bot}</div><div class="clearfix"></div>`;
-      box.scrollTop = box.scrollHeight;
+      const botParts = splitBotReply(data.bot);
+
+      for (const part of botParts) {
+        appendMessageBubble(part, 'bot');
+        await sleep(180);
+      }
 
     } catch (error) {
       console.error(error);
@@ -110,6 +155,12 @@
   0% { opacity: 0.2; }
   20% { opacity: 1; }
   100% { opacity: 0.2; }
+}
+
+.chat-bubble {
+  max-width: 85%;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>
 @endsection
