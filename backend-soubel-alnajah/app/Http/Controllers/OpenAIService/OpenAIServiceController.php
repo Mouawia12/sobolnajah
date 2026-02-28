@@ -18,11 +18,19 @@ class OpenAIServiceController extends Controller
     public function send(SendOpenAiMessageRequest $request)
     {
         $validated = $request->validated();
+        $apiKey = (string) config('openai.api_key');
+
+        if ($apiKey === '') {
+            return response()->json([
+                'user' => $validated['message'],
+                'bot'  => '⚠ مفتاح OpenAI غير مضبوط في إعدادات الخادم (OPENAI_API_KEY).'
+            ], 500);
+        }
 
         try {
             // إرسال الطلب مباشرة لـ OpenAI API
             $response = Http::timeout(60) // مهلة 60 ثانية
-                ->withToken(env('OPENAI_API_KEY'))
+                ->withToken($apiKey)
                 ->post('https://api.openai.com/v1/chat/completions', [
                     'model' => 'gpt-4o-mini',
                     'messages' => [
