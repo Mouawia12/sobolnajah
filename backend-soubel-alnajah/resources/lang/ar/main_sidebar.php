@@ -28,6 +28,8 @@ return [
     'recruitment_posts' => 'إعلانات التوظيف',
     'recruitment_applications' => 'طلبات التوظيف',
     'timetables' => 'الجداول',
+    'teacher_schedules' => 'جداول الأساتذة',
+    'teacher_weekly_schedule' => 'جدولي الأسبوعي',
     'finance' => 'المالية',
     'finance_management' => 'الإدارة المالية',
     'finance_contracts' => 'العقود المالية',

@@ -4,6 +4,7 @@ namespace App\Actions\Inscription;
 
 use App\Models\Inscription\Teacher;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class UpdateTeacherEnrollmentAction
 {
@@ -24,11 +25,18 @@ class UpdateTeacherEnrollmentAction
             ]);
 
             if ($teacher->user) {
-                $teacher->user->update([
+                $userData = [
                     'name' => $payload['user']['name'],
                     'email' => $payload['user']['email'],
                     'school_id' => $schoolId,
-                ]);
+                ];
+
+                if (!empty($payload['user']['password'])) {
+                    $userData['password'] = Hash::make($payload['user']['password']);
+                    $userData['must_change_password'] = false;
+                }
+
+                $teacher->user->update($userData);
             }
         });
     }

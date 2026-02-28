@@ -193,6 +193,18 @@
             <input type="email" name="email" value="{{$ins->user->email}}" class="form-control" placeholder="{{ trans('inscription.ecrire') }}" required>
           </div>
          </div>
+         <div class="col-md-6">
+          <div class="form-group">
+            <label class="form-label">{{ __('كلمة المرور الجديدة (اختياري)') }}</label>
+            <input type="password" name="password" class="form-control" placeholder="{{ __('اتركه فارغاً بدون تغيير') }}">
+          </div>
+         </div>
+         <div class="col-md-6">
+          <div class="form-group">
+            <label class="form-label">{{ __('تأكيد كلمة المرور') }}</label>
+            <input type="password" name="password_confirmation" class="form-control" placeholder="{{ __('تأكيد كلمة المرور') }}">
+          </div>
+         </div>
       </div>
        </div> 
       
@@ -304,6 +316,18 @@
                     <div class="form-group">
                       <label class="form-label">{{ trans('inscription.email') }}</label>
                       <input type="email" name="email" class="form-control" placeholder="{{ trans('inscription.ecrire') }}" required>
+                    </div>
+                   </div>
+                   <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="form-label">{{ __('كلمة المرور') }}</label>
+                      <input type="password" name="password" class="form-control" placeholder="{{ __('أدخل كلمة مرور المعلم') }}" required>
+                    </div>
+                   </div>
+                   <div class="col-md-6">
+                    <div class="form-group">
+                      <label class="form-label">{{ __('تأكيد كلمة المرور') }}</label>
+                      <input type="password" name="password_confirmation" class="form-control" placeholder="{{ __('تأكيد كلمة المرور') }}" required>
                     </div>
                    </div>
                 </div>

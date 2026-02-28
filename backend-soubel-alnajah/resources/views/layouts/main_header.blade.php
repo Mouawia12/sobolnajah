@@ -100,6 +100,9 @@
 				<li>
 					<a href="{{ route('public.timetables.index') }}">{{ trans('main_header.timetables') }}</a>
 				</li>
+				<li>
+					<a href="{{ route('public.teacher_schedules.index') }}">{{ trans('main_sidebar.teacher_schedules') }}</a>
+				</li>
 
 
 
@@ -208,7 +211,6 @@
 			</div>
 		</nav>
 	</header>
-
 
 
 

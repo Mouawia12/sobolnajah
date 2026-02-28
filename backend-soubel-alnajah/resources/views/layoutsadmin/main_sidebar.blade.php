@@ -8,6 +8,10 @@
                         $isAccountantOnly = auth()->check()
                             && $user->hasRole('accountant')
                             && !$user->hasRole('admin');
+                        $isTeacherOnly = auth()->check()
+                            && $user->hasRole('teacher')
+                            && !$user->hasRole('admin')
+                            && !$user->hasRole('accountant');
                     @endphp
 
                     @if($isAccountantOnly)
@@ -23,6 +27,50 @@
                             <ul class="treeview-menu">
                                 <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_contracts') }}</a></li>
                                 <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_payments') }}</a></li>
+                            </ul>
+                        </li>
+                    @elseif($isTeacherOnly)
+                        <li class="header">{{ __('لوحة المعلم') }}</li>
+                        <li>
+                            <a href="{{ route('teacher.dashboard') }}">
+                                <i class="mdi mdi-view-dashboard me-15"></i>
+                                <span>{{ __('الرئيسية') }}</span>
+                            </a>
+                        </li>
+
+                        <li class="header">{{ __('التواصل') }}</li>
+                        <li>
+                            <a href="{{ route('Chats.index') }}">
+                                <i class="icon-Speach-Bubble4 me-15"></i>
+                                <span>{{ trans('opt.chat_users') }}</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('teacher.schedules.index') }}">
+                                <i class="mdi mdi-calendar-week me-15"></i>
+                                <span>{{ trans('main_sidebar.teacher_weekly_schedule') }}</span>
+                            </a>
+                        </li>
+
+                        <li class="header">{{ trans('main_sidebar.langue') }}</li>
+                        <li class="treeview">
+                            <a href="#">
+                                <i class="fa fa-refresh"><span class="path1"></span><span class="path2"></span></i>
+                                <span>{{ trans('main_sidebar.langue') }}</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-right pull-right"></i>
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                @foreach(LaravelLocalization::getSupportedLocales() as $localeCode => $properties)
+                                    @if(in_array($properties['native'], ['العربية', 'English', 'français'], true))
+                                        <li>
+                                            <a hreflang="{{ $localeCode }}" href="{{ LaravelLocalization::getLocalizedURL($localeCode, null, [], true) }}">
+                                                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ $properties['native'] }}
+                                            </a>
+                                        </li>
+                                    @endif
+                                @endforeach
                             </ul>
                         </li>
                     @else
@@ -89,6 +137,7 @@
                                 <li><a href="{{ route('Agendas.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.agenda') }}</a></li>
                                 <li><a href="{{ route('Grades.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.grades') }}</a></li>
                                 <li><a href="{{ route('timetables.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.timetables') }}</a></li>
+                                <li><a href="{{ route('teacher-schedules.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.teacher_schedules') }}</a></li>
                                 <li><a href="{{ route('Publications.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.publication') }}</a></li>
                                 <li><a href="{{ route('Exames.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('exam.exam') }}</a></li>
                             </ul>
@@ -169,7 +218,7 @@
     </section>
 
     <div class="sidebar-footer">
-        <a href="{{ route('admin.password.change.page') }}" class="link" data-bs-toggle="tooltip" title="{{ trans('main_header.setting') }}"><span class="icon-Settings-2"></span></a>
+        <a href="{{ route('password.change.page') }}" class="link" data-bs-toggle="tooltip" title="{{ trans('main_header.setting') }}"><span class="icon-Settings-2"></span></a>
         <a href="#" class="link" data-bs-toggle="tooltip" title="Email"><span class="icon-Mail"></span></a>
         <a href="#"
            onclick="event.preventDefault(); document.getElementById('logout-form2').submit();"

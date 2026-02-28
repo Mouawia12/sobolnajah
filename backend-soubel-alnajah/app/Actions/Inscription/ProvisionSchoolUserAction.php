@@ -13,13 +13,15 @@ class ProvisionSchoolUserAction
     {
     }
 
-    public function execute(array $name, ?string $email, int $schoolId, string $role): User
+    public function execute(array $name, ?string $email, int $schoolId, string $role, ?string $password = null): User
     {
+        $hasManualPassword = is_string($password) && $password !== '';
+
         $user = User::create([
             'name' => $name,
             'email' => $email,
-            'password' => Hash::make(Str::random(40)),
-            'must_change_password' => true,
+            'password' => Hash::make($hasManualPassword ? $password : Str::random(40)),
+            'must_change_password' => !$hasManualPassword,
             'school_id' => $schoolId,
         ]);
 
@@ -27,7 +29,9 @@ class ProvisionSchoolUserAction
             $user->attachRole($role);
         }
 
-        $this->onboardingService->dispatchPasswordSetupLink($user);
+        if (!$hasManualPassword) {
+            $this->onboardingService->dispatchPasswordSetupLink($user);
+        }
 
         return $user;
     }

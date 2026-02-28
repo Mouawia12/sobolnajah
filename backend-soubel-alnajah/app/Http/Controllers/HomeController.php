@@ -6,8 +6,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\AgendaScolaire\Publication;
 use App\Models\Inscription\Inscription;
 use App\Models\Inscription\StudentInfo;
+use App\Models\Inscription\Teacher;
 use App\Models\Inscription\MyParent;
 use App\Models\Chat\ChatMessage;
+use App\Models\Timetable\TimetableEntry;
+use App\Models\TeacherSchedule\TeacherSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -154,7 +157,9 @@ class HomeController extends Controller
             $data['recentStudents'] = $recentStudents;
 
             return view('admin.home', $data);
-        }else if(Auth::user()->hasRole('student')){
+        } else if (Auth::user()->hasRole('teacher')) {
+            return redirect()->route('teacher.dashboard');
+        } else if(Auth::user()->hasRole('student')){
 
             $data['StudentInfo'] = StudentInfo::where('user_id',Auth::user()->id)->first();
             return view('front-end.studentprofile',$data);
@@ -164,7 +169,67 @@ class HomeController extends Controller
             return view('front-end.parentprofile',$data);
             //return Auth::user()->id;
         }
-        
+
+    }
+
+    public function teacherDashboard()
+    {
+        abort_unless(Auth::check() && Auth::user()->hasRole('teacher'), 403);
+
+        $user = Auth::user();
+        $locale = app()->getLocale();
+        $teacher = Teacher::query()
+            ->with([
+                'specialization:id,name',
+                'sections:id,classroom_id,name_section',
+                'sections.classroom:id,grade_id,name_class',
+                'sections.classroom.schoolgrade:id,name_grade',
+            ])
+            ->where('user_id', $user->id)
+            ->first();
+
+        $teacherId = $teacher?->id;
+
+        $assignedSections = $teacher?->sections ?? collect();
+        $sectionsCount = $assignedSections->count();
+        $totalPeriods = $teacherId
+            ? TimetableEntry::query()->where('teacher_id', $teacherId)->count()
+            : 0;
+        $todayPeriods = $teacherId
+            ? TimetableEntry::query()
+                ->where('teacher_id', $teacherId)
+                ->where('day_of_week', Carbon::now()->dayOfWeekIso)
+                ->count()
+            : 0;
+        $teacherSchedulesCount = $teacherId
+            ? TeacherSchedule::query()->where('teacher_id', $teacherId)->count()
+            : 0;
+
+        $sectionCards = $assignedSections->map(function ($section) use ($locale) {
+            $classroom = $section->classroom;
+            $grade = $classroom?->schoolgrade;
+
+            return [
+                'section' => $section->getTranslation('name_section', $locale),
+                'classroom' => $classroom ? $classroom->getTranslation('name_class', $locale) : '—',
+                'grade' => $grade ? $grade->getTranslation('name_grade', $locale) : '—',
+            ];
+        })->values();
+
+        return view('teacher.dashboard', [
+            'notify' => $this->notifications(),
+            'teacher' => $teacher,
+            'stats' => [
+                'sections_count' => $sectionsCount,
+                'today_periods' => $todayPeriods,
+                'total_periods' => $totalPeriods,
+                'teacher_schedules_count' => $teacherSchedulesCount,
+            ],
+            'sections' => $sectionCards,
+            'breadcrumbs' => [
+                ['label' => __('لوحة المعلم')],
+            ],
+        ]);
     }
 
 }

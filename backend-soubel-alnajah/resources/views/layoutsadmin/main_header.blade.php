@@ -190,7 +190,7 @@
               <li class="user-body">
 				 {{-- <a class="dropdown-item" href="#"><i class="ti-user text-muted me-2"></i> Profile</a>
 				 <a class="dropdown-item" href="#"><i class="ti-wallet text-muted me-2"></i> My Wallet</a> --}}
-				 <a class="dropdown-item" href="{{ route('admin.password.change.page') }}"><i class="ti-settings text-muted me-2"></i>{{ trans('main_header.setting') }}</a>
+				 <a class="dropdown-item" href="{{ route('password.change.page') }}"><i class="ti-settings text-muted me-2"></i>{{ trans('main_header.setting') }}</a>
 				 <div class="dropdown-divider"></div>
 				 <a class="dropdown-item" href="#" onclick="event.preventDefault();
 				 document.getElementById('logout-form').submit();">

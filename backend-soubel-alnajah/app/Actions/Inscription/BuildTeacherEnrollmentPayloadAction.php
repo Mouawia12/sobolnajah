@@ -19,6 +19,7 @@ class BuildTeacherEnrollmentPayloadAction
             'user' => [
                 'name' => $name,
                 'email' => $input['email'] ?? null,
+                'password' => $input['password'] ?? null,
             ],
             'teacher' => [
                 'specialization_id' => $input['specialization_id'] ?? null,

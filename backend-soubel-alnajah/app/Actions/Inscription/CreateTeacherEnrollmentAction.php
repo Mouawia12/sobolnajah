@@ -23,7 +23,8 @@ class CreateTeacherEnrollmentAction
                 $payload['user']['name'],
                 $payload['user']['email'],
                 $schoolId,
-                'teacher'
+                'teacher',
+                $payload['user']['password']
             );
 
             Teacher::create([

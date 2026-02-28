@@ -28,6 +28,8 @@ return [
     'recruitment_posts' => 'Job Posts',
     'recruitment_applications' => 'Job Applications',
     'timetables' => 'Timetables',
+    'teacher_schedules' => 'Teacher Schedules',
+    'teacher_weekly_schedule' => 'My Weekly Schedule',
     'finance' => 'Finance',
     'finance_management' => 'Financial Management',
     'finance_contracts' => 'Financial Contracts',

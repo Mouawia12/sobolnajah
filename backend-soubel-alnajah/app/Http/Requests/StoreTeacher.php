@@ -24,32 +24,37 @@ class StoreTeacher extends FormRequest
      */
     public function rules()
     {
+        $specialization_id = $this->specialization_id;
+        $gender = $this->gender;
+        $name_teacherfr = $this->name_teacherfr;
+        $name_teacherar = $this->name_teacherar;
+        $teacherId = $this->route('Teacher') ?? $this->route('teacher');
 
-        $specialization_id=$this->specialization_id;
-        $gender=$this->gender;
-        $name_teacherfr=$this->name_teacherfr;   
-        $name_teacherar=$this->name_teacherar;
- 
- 
-         return [
+        $passwordRules = $this->isMethod('post')
+            ? ['required', 'string', 'min:8', 'confirmed']
+            : ['nullable', 'string', 'min:8', 'confirmed'];
+
+        return [
             'name_teacherfr' => 'required',
             'name_teacherar' => 'required',
             'address' => 'required',
             'email' => 'required|email',
             'gender' => 'required',
-     
-             'specialization_id' => [
-             'required',
-                 Rule::unique('teachers')->where('specialization_id', $specialization_id)  
-                                           ->where('gender', $gender) 
-                                           ->where(function ($query) use($name_teacherfr,$name_teacherar) {
-                                           return $query->where('name->fr', $name_teacherfr)
-                                                         ->orwhere('name->ar', $name_teacherar)
-                                  ;
-                 }),
-             ],
- 
-         ];
+            'password' => $passwordRules,
+
+            'specialization_id' => [
+                'required',
+                Rule::unique('teachers')
+                    ->ignore($teacherId)
+                    ->where('specialization_id', $specialization_id)
+                    ->where('gender', $gender)
+                    ->where(function ($query) use ($name_teacherfr, $name_teacherar) {
+                        return $query->where('name->fr', $name_teacherfr)
+                            ->orWhere('name->ar', $name_teacherar);
+                    }),
+            ],
+
+        ];
 
     }
 }

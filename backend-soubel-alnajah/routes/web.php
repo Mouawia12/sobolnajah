@@ -21,7 +21,6 @@ use App\Http\Controllers\AgendaScolaire\AbsenceController;
 use App\Http\Controllers\Promotion\PromotionController;
 use App\Http\Controllers\Promotion\GraduatedController;
 use App\Http\Controllers\Function\FunctionController;
-use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Application\ChatController;
 use App\Http\Controllers\OpenAIService\OpenAIServiceController;
 use App\Http\Controllers\Recruitment\JobApplicationController;
@@ -29,6 +28,9 @@ use App\Http\Controllers\Recruitment\JobPostController;
 use App\Http\Controllers\Recruitment\PublicJobController;
 use App\Http\Controllers\Timetable\PublicTimetableController;
 use App\Http\Controllers\Timetable\TimetableController;
+use App\Http\Controllers\Timetable\TeacherScheduleController as AdminTeacherScheduleController;
+use App\Http\Controllers\Timetable\PublicTeacherScheduleController;
+use App\Http\Controllers\Teacher\TeacherScheduleController as TeacherTeacherScheduleController;
 use App\Http\Controllers\Accounting\ContractController;
 use App\Http\Controllers\Accounting\PaymentController;
 
@@ -103,8 +105,15 @@ Route::group(
             ->name('public.jobs.apply');
         Route::get('/school-timetables', [PublicTimetableController::class, 'index'])->name('public.timetables.index');
         Route::get('/school-timetables/{timetable}', [PublicTimetableController::class, 'show'])->name('public.timetables.show');
+        Route::get('/school-teacher-schedules', [PublicTeacherScheduleController::class, 'index'])->name('public.teacher_schedules.index');
+        Route::get('/school-teacher-schedules/{teacherSchedule}/print', [PublicTeacherScheduleController::class, 'print'])->name('public.teacher_schedules.print');
+        Route::get('/school-teacher-schedules/{teacherSchedule}/pdf', [PublicTeacherScheduleController::class, 'pdf'])->name('public.teacher_schedules.pdf');
+        Route::get('/school-teacher-schedules/{teacherSchedule}', [PublicTeacherScheduleController::class, 'show'])->name('public.teacher_schedules.show');
 
         Route::middleware(['auth', 'force.password.change'])->group(function () {
+            Route::get('/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('password.change.page');
+            Route::get('/changepass', [FunctionController::class, 'changepass'])->name('changepass');
+
             Route::get('/chat-gpt', [OpenAIServiceController::class, 'index'])->name('chat.ai');
             Route::post('/chat-gpt', [OpenAIServiceController::class, 'send'])->name('chat.send');
 
@@ -132,13 +141,12 @@ Route::group(
 
 
         Route::group(['middleware' => ['role:admin','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
-            Route::get('/admin', [AdminController::class, 'indexadmin']);
+            Route::get('/admin', [HomeController::class, 'index'])->name('admin.dashboard');
             Route::post('/mark-as-read/{id}', [FunctionController::class, 'markAsRead'])->name('markAsRead');
             Route::post('/markasread/{id}', [FunctionController::class, 'markAsRead'])->name('markasread');
             Route::post('/delete_all',[ClassroomController::class,'delete_all'])->name('delete_all');
             Route::post('/store/{id}',[FunctionController::class,'store']);
-            Route::get('/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('admin.password.change.page');
-            Route::get('/changepass', [FunctionController::class, 'changepass'])->name('changepass');
+            Route::get('/admin/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('admin.password.change.page');
             Route::get('/DownloadNoteFromAdmin/{url}', [NoteStudentController::class, 'DownloadNoteFromAdmin'])->name('DownloadNoteFromAdmin');
             Route::get('/DisplayNoteFromAdmin/{url}', [NoteStudentController::class, 'displayNoteFromAdmin'])->name('DisplayNoteFromAdmin');
             Route::get('/DisplqyNoteFromAdmin/{url}', [NoteStudentController::class, 'DisplqyNoteFromAdmin'])->name('DisplqyNoteFromAdmin');
@@ -153,6 +161,8 @@ Route::group(
             Route::patch('/recruitment/applications/{jobApplication}/status', [JobApplicationController::class, 'updateStatus'])->name('recruitment.applications.status');
             Route::get('/recruitment/applications/{jobApplication}/cv', [JobApplicationController::class, 'downloadCv'])->name('recruitment.applications.cv');
             Route::get('/timetables/{timetable}/print', [TimetableController::class, 'print'])->name('timetables.print');
+            Route::get('/teacher-schedules/{teacherSchedule}/print', [AdminTeacherScheduleController::class, 'print'])->name('teacher-schedules.print');
+            Route::get('/teacher-schedules/{teacherSchedule}/pdf', [AdminTeacherScheduleController::class, 'pdf'])->name('teacher-schedules.pdf');
 
             Route::resources([
                 'Schools'=>SchoolController::class,
@@ -172,10 +182,20 @@ Route::group(
 
 
             ]);
+            Route::resource('teacher-schedules', AdminTeacherScheduleController::class)
+                ->parameters(['teacher-schedules' => 'teacherSchedule']);
             Route::resource('Promotions', PromotionController::class)->only(['index', 'store', 'destroy']);
 
 
 
+        });
+
+        Route::group(['middleware' => ['role:teacher','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
+            Route::get('/teacher/dashboard', [HomeController::class, 'teacherDashboard'])->name('teacher.dashboard');
+            Route::get('/teacher/schedules', [TeacherTeacherScheduleController::class, 'index'])->name('teacher.schedules.index');
+            Route::get('/teacher/schedules/{teacherSchedule}/print', [TeacherTeacherScheduleController::class, 'print'])->name('teacher.schedules.print');
+            Route::get('/teacher/schedules/{teacherSchedule}/pdf', [TeacherTeacherScheduleController::class, 'pdf'])->name('teacher.schedules.pdf');
+            Route::get('/teacher/schedules/{teacherSchedule}', [TeacherTeacherScheduleController::class, 'show'])->name('teacher.schedules.show');
         });
 
         Route::group(['middleware' => ['auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {

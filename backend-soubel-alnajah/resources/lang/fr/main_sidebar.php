@@ -31,6 +31,8 @@ return [
     'recruitment_posts' => 'Offres d emploi',
     'recruitment_applications' => 'Candidatures',
     'timetables' => 'Emplois du temps',
+    'teacher_schedules' => 'Emplois des enseignants',
+    'teacher_weekly_schedule' => 'Mon emploi hebdomadaire',
     'finance' => 'Finance',
     'finance_management' => 'Gestion financiere',
     'finance_contracts' => 'Contrats financiers',
