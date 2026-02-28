@@ -9,7 +9,7 @@
                 <h4 class="box-title">{{ trans('recruitment.breadcrumbs.add_job_post') }}</h4>
             </div>
             <div class="box-body">
-                <form method="POST" action="{{ route('JobPosts.store') }}" class="admin-form-panel">
+                <form method="POST" action="{{ route('JobPosts.store') }}" enctype="multipart/form-data" class="admin-form-panel">
                     @csrf
                     @if($canPickSchool)
                         <div class="mb-3">
@@ -36,6 +36,12 @@
                     <div class="mb-3">
                         <label class="form-label">{{ trans('recruitment.admin.requirements') }}</label>
                         <textarea name="requirements" rows="4" class="form-control">{{ old('requirements') }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ trans('recruitment.admin.cover_image') }}</label>
+                        <input type="file" name="cover_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="form-control">
+                        <small class="text-muted d-block mt-1">{{ trans('recruitment.admin.cover_image_help') }}</small>
                     </div>
 
                     <div class="row admin-form-grid">

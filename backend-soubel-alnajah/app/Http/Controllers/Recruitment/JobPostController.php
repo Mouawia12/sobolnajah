@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateJobPostRequest;
 use App\Models\Recruitment\JobPost;
 use App\Models\School\School;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class JobPostController extends Controller
 {
@@ -94,6 +95,9 @@ class JobPostController extends Controller
             'title' => $title,
             'description' => $validated['description'],
             'requirements' => $validated['requirements'] ?? null,
+            'cover_image_path' => $request->hasFile('cover_image')
+                ? $request->file('cover_image')->store('recruitment/job-posts', 'public')
+                : null,
             'status' => $validated['status'],
             'published_at' => $validated['published_at'] ?? null,
             'closed_at' => $validated['closed_at'] ?? null,
@@ -133,12 +137,26 @@ class JobPostController extends Controller
         $validated = $request->validated();
 
         $schoolId = $this->currentSchoolId() ?: (int) ($validated['school_id'] ?? $jobPost->school_id);
+        $coverImagePath = $jobPost->cover_image_path;
+
+        if ($request->boolean('remove_cover_image') && $coverImagePath) {
+            Storage::disk('public')->delete($coverImagePath);
+            $coverImagePath = null;
+        }
+
+        if ($request->hasFile('cover_image')) {
+            if ($coverImagePath) {
+                Storage::disk('public')->delete($coverImagePath);
+            }
+            $coverImagePath = $request->file('cover_image')->store('recruitment/job-posts', 'public');
+        }
 
         $jobPost->update([
             'school_id' => $schoolId,
             'title' => trim((string) $validated['title']),
             'description' => $validated['description'],
             'requirements' => $validated['requirements'] ?? null,
+            'cover_image_path' => $coverImagePath,
             'status' => $validated['status'],
             'published_at' => $validated['published_at'] ?? null,
             'closed_at' => $validated['closed_at'] ?? null,
@@ -156,6 +174,9 @@ class JobPostController extends Controller
         $jobPost = JobPost::query()->findOrFail((int) $validated['id']);
         $this->authorize('delete', $jobPost);
 
+        if ($jobPost->cover_image_path) {
+            Storage::disk('public')->delete($jobPost->cover_image_path);
+        }
         $jobPost->delete();
 
         toastr()->error(trans('recruitment.messages.job_post_deleted'));

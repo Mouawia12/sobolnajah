@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class JobPost extends Model
 {
@@ -16,6 +17,7 @@ class JobPost extends Model
         'published_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
+    protected $appends = ['cover_image_url'];
 
     public function applications(): HasMany
     {
@@ -46,5 +48,14 @@ class JobPost extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        if (!$this->cover_image_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->cover_image_path);
     }
 }

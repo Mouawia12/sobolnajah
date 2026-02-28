@@ -1,6 +1,24 @@
 @extends('layouts.masterhome')
 @section('title', $jobPost->title)
 
+@section('css')
+<style>
+    .job-detail-cover {
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 18px;
+        box-shadow: 0 10px 28px rgba(10, 45, 90, 0.12);
+    }
+
+    .job-detail-cover img {
+        width: 100%;
+        max-height: 360px;
+        object-fit: cover;
+        display: block;
+    }
+</style>
+@endsection
+
 @section('content')
 <section class="bg-img pt-150 pb-20" data-overlay="1" style="background-image: url({{ asset('images/logincover.jpg') }});">
     <div class="container">
@@ -25,6 +43,9 @@
             <div class="col-md-7">
                 <div class="box">
                     <div class="box-body">
+                        <div class="job-detail-cover">
+                            <img src="{{ $jobPost->cover_image_url ?: asset('images/logincover.jpg') }}" alt="{{ $jobPost->title }}">
+                        </div>
                         <h4>{{ trans('recruitment.public.details') }}</h4>
                         <div class="mb-3">{!! nl2br(e($jobPost->description)) !!}</div>
                         @if($jobPost->requirements)

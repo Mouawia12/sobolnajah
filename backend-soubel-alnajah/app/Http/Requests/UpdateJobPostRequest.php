@@ -19,6 +19,8 @@ class UpdateJobPostRequest extends FormRequest
             'title' => ['required', 'string', 'max:180'],
             'description' => ['required', 'string'],
             'requirements' => ['nullable', 'string'],
+            'cover_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_cover_image' => ['nullable', 'boolean'],
             'status' => ['required', Rule::in(['draft', 'published', 'closed'])],
             'published_at' => ['nullable', 'date'],
             'closed_at' => ['nullable', 'date', 'after:published_at'],

@@ -59,8 +59,23 @@
         display: flex;
         flex-direction: column;
         height: 100%;
-        align-items: center;
-        text-align: center;
+        align-items: stretch;
+        text-align: start;
+    }
+
+    .job-media {
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 14px;
+        aspect-ratio: 16 / 9;
+        background: linear-gradient(135deg, #d7e8fb 0%, #eef6ff 100%);
+    }
+
+    .job-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
     }
 
     .job-status {
@@ -104,7 +119,7 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-bottom: 18px;
-        justify-content: center;
+        justify-content: flex-start;
     }
 
     .job-meta-chip {
@@ -128,6 +143,7 @@
         background: linear-gradient(135deg, var(--jobs-primary) 0%, var(--jobs-accent) 100%);
         color: #fff;
         text-decoration: none;
+        align-self: flex-start;
     }
 
     .job-cta:hover {
@@ -153,6 +169,16 @@
     .jobs-pagination nav {
         display: flex;
         justify-content: center;
+    }
+
+    @media (max-width: 767.98px) {
+        .job-title {
+            font-size: 20px;
+        }
+
+        .job-snippet {
+            min-height: 0;
+        }
     }
 
     @keyframes jobsFadeUp {
@@ -183,6 +209,13 @@
                     <div class="col-md-6 mb-3">
                         <div class="box job-card" style="animation-delay: {{ $loop->index * 90 }}ms;">
                             <div class="box-body">
+                                <div class="job-media">
+                                    <img
+                                        src="{{ $jobPost->cover_image_url ?: asset('images/logincover.jpg') }}"
+                                        alt="{{ $jobPost->title }}"
+                                        loading="lazy"
+                                    >
+                                </div>
                                 <span class="job-status">{{ trans('recruitment.public.available_now') }}</span>
                                 <h4 class="job-title">{{ $jobPost->title }}</h4>
                                 <p class="job-snippet">{{ \Illuminate\Support\Str::limit(strip_tags($jobPost->description), 180) }}</p>

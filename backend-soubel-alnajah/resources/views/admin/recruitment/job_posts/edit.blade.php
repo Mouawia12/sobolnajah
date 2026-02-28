@@ -9,7 +9,7 @@
                 <h4 class="box-title">{{ trans('recruitment.breadcrumbs.edit_job_post') }}</h4>
             </div>
             <div class="box-body">
-                <form method="POST" action="{{ route('JobPosts.update', $jobPost) }}" class="admin-form-panel">
+                <form method="POST" action="{{ route('JobPosts.update', $jobPost) }}" enctype="multipart/form-data" class="admin-form-panel">
                     @csrf
                     @method('PATCH')
                     @if($canPickSchool)
@@ -37,6 +37,21 @@
                         <label class="form-label">{{ trans('recruitment.admin.requirements') }}</label>
                         <textarea name="requirements" rows="4" class="form-control">{{ old('requirements', $jobPost->requirements) }}</textarea>
                     </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ trans('recruitment.admin.cover_image') }}</label>
+                        <input type="file" name="cover_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="form-control">
+                        <small class="text-muted d-block mt-1">{{ trans('recruitment.admin.cover_image_help') }}</small>
+                    </div>
+                    @if($jobPost->cover_image_url)
+                        <div class="mb-3">
+                            <img src="{{ $jobPost->cover_image_url }}" alt="{{ $jobPost->title }}" style="max-width: 280px; width: 100%; border-radius: 12px; border: 1px solid #e5e7eb;">
+                            <label class="form-check mt-2">
+                                <input type="checkbox" name="remove_cover_image" value="1" class="form-check-input">
+                                <span class="form-check-label">{{ trans('recruitment.admin.remove_cover_image') }}</span>
+                            </label>
+                        </div>
+                    @endif
 
                     <div class="row admin-form-grid">
                         <div class="col-md-4 mb-3">
