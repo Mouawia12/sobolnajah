@@ -352,7 +352,7 @@
                             <div class="chat-typing d-none" id="chat-typing-indicator">{{ __('جاري الإرسال...') }}</div>
                         </div>
                         <a href="#" class="btn btn-primary btn-chat-send btn-chat-disabled" id="message-submit" aria-disabled="true">
-                            <i class="mdi mdi-send" @if(app()->getLocale() === 'ar') style="transform: scaleX(-1);" @endif></i>
+                            <i class="mdi mdi-send-up"></i>
                         </a>
                     </form>
                     <div class="text-danger small mt-2 d-none" id="message-error"></div>

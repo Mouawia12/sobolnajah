@@ -34,7 +34,7 @@
             autocomplete="off"
           ></textarea>
           <button id="send-btn" type="submit" class="btn btn-primary ai-send-btn" aria-label="send">
-            <i class="mdi mdi-send"></i>
+            <i class="mdi mdi-send-up"></i>
           </button>
         </form>
       </div>
