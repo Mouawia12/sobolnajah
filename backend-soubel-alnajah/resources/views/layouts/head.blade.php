@@ -56,7 +56,44 @@
     display: none !important;
 }
 
-</style>
+/* Unified rectangular media previews for publications/posts */
+.blog-post .entry-image {
+    overflow: hidden;
+    border-radius: 14px;
+    background: #edf1f6;
+}
 
+.blog-post .entry-image .owl-stage-outer,
+.blog-post .entry-image .owl-stage,
+.blog-post .entry-image .owl-item,
+.blog-post .entry-image .item {
+    height: clamp(220px, 32vw, 420px);
+}
+
+.blog-post .entry-image > img,
+.blog-post .entry-image .item > img,
+.blog-post .grid-post li img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+.blog-post .grid-post li {
+    overflow: hidden;
+    height: clamp(150px, 22vw, 260px);
+}
+
+@media (max-width: 767px) {
+    .blog-post .entry-image .owl-stage-outer,
+    .blog-post .entry-image .owl-stage,
+    .blog-post .entry-image .owl-item,
+    .blog-post .entry-image .item {
+        height: 240px;
+    }
+}
+
+</style>
 
 
