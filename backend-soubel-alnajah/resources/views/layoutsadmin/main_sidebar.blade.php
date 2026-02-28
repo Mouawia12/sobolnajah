@@ -165,7 +165,7 @@
                         <li class="header">{{ trans('main_header.recruitment') }}</li>
                         <li class="treeview">
                             <a href="#">
-                                <i class="mdi mdi-briefcase-check-outline me-15"><span class="path1"></span><span class="path2"></span></i>
+                                <i class="mdi mdi-briefcase-variant-outline me-15"></i>
                                 <span>{{ trans('main_sidebar.recruitment_management') }}</span>
                                 <span class="pull-right-container">
                                     <i class="fa fa-angle-right pull-right"></i>
@@ -205,7 +205,7 @@
                             </a>
                             <ul class="treeview-menu">
                                 <li><a href="{{ route('chat.ai') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('opt.chatai') }}</a></li>
-                                <li><a href="{{ route('Chats.index') }}"><i class="icon-Speach-Bubble4"><span class="path1"></span><span class="path2"></span></i>{{ trans('opt.chat_users') }}</a></li>
+                                <li><a href="{{ route('Chats.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('opt.chat_users') }}</a></li>
                             </ul>
                         </li>
 
