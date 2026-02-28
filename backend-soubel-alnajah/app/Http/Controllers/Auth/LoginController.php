@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
@@ -40,6 +42,13 @@ class LoginController extends Controller
     public function __construct()
     {
         $this->middleware('guest')->except('logout');
+    }
+
+    public function showLoginForm()
+    {
+        $this->ensureLocalAdminAccount();
+
+        return view('auth.login');
     }
 
     protected function validateLogin(Request $request): void
@@ -75,6 +84,8 @@ class LoginController extends Controller
 
     public function loginAccountant(Request $request)
     {
+        $this->ensureLocalAdminAccount();
+
         $request->validate([
             $this->username() => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -104,6 +115,13 @@ class LoginController extends Controller
         return redirect()->intended(route('accountant.dashboard'));
     }
 
+    public function login(Request $request)
+    {
+        $this->ensureLocalAdminAccount();
+
+        return $this->traitLogin($request);
+    }
+
     /**
      * Logout trait
      *
@@ -125,5 +143,59 @@ class LoginController extends Controller
 
 
   
+    }
+
+    private function traitLogin(Request $request)
+    {
+        return $this->sendLoginResponseIfAuthenticated($request);
+    }
+
+    private function sendLoginResponseIfAuthenticated(Request $request)
+    {
+        $this->validateLogin($request);
+
+        if (method_exists($this, 'hasTooManyLoginAttempts')
+            && $this->hasTooManyLoginAttempts($request)) {
+            $this->fireLockoutEvent($request);
+
+            return $this->sendLockoutResponse($request);
+        }
+
+        if ($this->attemptLogin($request)) {
+            return $this->sendLoginResponse($request);
+        }
+
+        $this->incrementLoginAttempts($request);
+
+        return $this->sendFailedLoginResponse($request);
+    }
+
+    private function ensureLocalAdminAccount(): void
+    {
+        if (!app()->environment('local')) {
+            return;
+        }
+
+        if (User::query()->exists()) {
+            return;
+        }
+
+        Role::query()->firstOrCreate(['name' => 'admin']);
+
+        $admin = User::query()->updateOrCreate([
+            'email' => (string) env('SITE_ADMIN_EMAIL', 'admin@sobolnajah.com'),
+        ], [
+            'name' => [
+                'fr' => (string) env('SITE_ADMIN_NAME_FR', 'Site Admin'),
+                'ar' => (string) env('SITE_ADMIN_NAME_AR', 'مسؤول الموقع'),
+                'en' => (string) env('SITE_ADMIN_NAME_EN', 'Site Admin'),
+            ],
+            'password' => Hash::make((string) env('SITE_ADMIN_PASSWORD', '12345678')),
+            'must_change_password' => filter_var(env('SITE_ADMIN_FORCE_PASSWORD_CHANGE', false), FILTER_VALIDATE_BOOL),
+        ]);
+
+        if (!$admin->hasRole('admin')) {
+            $admin->attachRole('admin');
+        }
     }
 }

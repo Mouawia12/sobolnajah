@@ -165,7 +165,7 @@
                         <li class="header">{{ trans('main_header.recruitment') }}</li>
                         <li class="treeview">
                             <a href="#">
-                                <i class="mdi mdi-briefcase-variant-outline me-15"></i>
+                                <i class="fa fa-briefcase me-15" aria-hidden="true"></i>
                                 <span>{{ trans('main_sidebar.recruitment_management') }}</span>
                                 <span class="pull-right-container">
                                     <i class="fa fa-angle-right pull-right"></i>
