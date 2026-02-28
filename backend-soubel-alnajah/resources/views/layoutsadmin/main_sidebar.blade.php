@@ -16,6 +16,12 @@
 
                     @if($isAccountantOnly)
                         <li class="header">{{ trans('main_sidebar.finance') }}</li>
+                        <li>
+                            <a href="{{ route('accountant.dashboard') }}">
+                                <i class="mdi mdi-view-dashboard me-15"></i>
+                                <span>{{ __('لوحة المحاسب') }}</span>
+                            </a>
+                        </li>
                         <li class="treeview">
                             <a href="#">
                                 <i class="mdi mdi-cash-multiple me-15"><span class="path1"></span><span class="path2"></span></i>

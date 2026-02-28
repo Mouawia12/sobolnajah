@@ -31,6 +31,10 @@ return [
         ],
         'guardian' => [
             'profile' => 'r,u',
+        ],
+        'accountant' => [
+            'payments' => 'c,r,u,d',
+            'profile' => 'r,u',
         ]
     ],
 

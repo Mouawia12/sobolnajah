@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
@@ -65,6 +66,42 @@ class LoginController extends Controller
                     : trans('login.error_email_not_found'),
             ],
         ]);
+    }
+
+    public function showAccountantLoginForm()
+    {
+        return view('auth.login_accountant');
+    }
+
+    public function loginAccountant(Request $request)
+    {
+        $request->validate([
+            $this->username() => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $credentials = $request->only($this->username(), 'password');
+
+        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+            throw ValidationException::withMessages([
+                $this->username() => [trans('auth.failed')],
+            ]);
+        }
+
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('accountant')) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                $this->username() => ['هذا الحساب ليس حساب محاسب مالي.'],
+            ]);
+        }
+
+        return redirect()->intended(route('accountant.dashboard'));
     }
 
     /**

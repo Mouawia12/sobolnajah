@@ -33,6 +33,8 @@ use App\Http\Controllers\Timetable\PublicTeacherScheduleController;
 use App\Http\Controllers\Teacher\TeacherScheduleController as TeacherTeacherScheduleController;
 use App\Http\Controllers\Accounting\ContractController;
 use App\Http\Controllers\Accounting\PaymentController;
+use App\Http\Controllers\Accounting\AccountantDashboardController;
+use App\Http\Controllers\Auth\LoginController;
 
 
 
@@ -55,6 +57,10 @@ Route::group(
 
         Route::get('/login', function () {
             return view('auth.login');
+        });
+        Route::middleware('guest')->group(function () {
+            Route::get('/accountant/login', [LoginController::class, 'showAccountantLoginForm'])->name('accountant.login');
+            Route::post('/accountant/login', [LoginController::class, 'loginAccountant'])->name('accountant.login.submit');
         });
 
         Route::get('/contact', function () {
@@ -196,6 +202,10 @@ Route::group(
             Route::get('/teacher/schedules/{teacherSchedule}/print', [TeacherTeacherScheduleController::class, 'print'])->name('teacher.schedules.print');
             Route::get('/teacher/schedules/{teacherSchedule}/pdf', [TeacherTeacherScheduleController::class, 'pdf'])->name('teacher.schedules.pdf');
             Route::get('/teacher/schedules/{teacherSchedule}', [TeacherTeacherScheduleController::class, 'show'])->name('teacher.schedules.show');
+        });
+
+        Route::group(['middleware' => ['role:accountant','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
+            Route::get('/accountant/dashboard', [AccountantDashboardController::class, 'index'])->name('accountant.dashboard');
         });
 
         Route::group(['middleware' => ['auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {

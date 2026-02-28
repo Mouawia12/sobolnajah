@@ -93,7 +93,7 @@ class PaymentController extends Controller
             'overdue' => $overdue,
             'sections' => $sections,
             'breadcrumbs' => [
-                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => $this->dashboardUrl()],
                 ['label' => trans('accounting.breadcrumbs.payments')],
             ],
         ]);
@@ -176,7 +176,7 @@ class PaymentController extends Controller
             'notify' => $this->notifications(),
             'payment' => $payment,
             'breadcrumbs' => [
-                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => $this->dashboardUrl()],
                 ['label' => trans('accounting.breadcrumbs.payments'), 'url' => route('accounting.payments.index')],
                 ['label' => trans('accounting.breadcrumbs.receipt')],
             ],
@@ -211,5 +211,15 @@ class PaymentController extends Controller
         if (!$user || (!$user->hasRole('admin') && !$user->hasRole('accountant'))) {
             abort(403);
         }
+    }
+
+    private function dashboardUrl(): string
+    {
+        $user = auth()->user();
+        if ($user && $user->hasRole('accountant') && !$user->hasRole('admin')) {
+            return route('accountant.dashboard');
+        }
+
+        return url('/admin');
     }
 }

@@ -104,7 +104,7 @@ class ContractController extends Controller
             'plans' => $plans,
             'overdueContracts' => $overdueContracts,
             'breadcrumbs' => [
-                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => $this->dashboardUrl()],
                 ['label' => trans('accounting.breadcrumbs.contracts')],
             ],
         ]);
@@ -315,6 +315,16 @@ class ContractController extends Controller
         if (!$user || (!$user->hasRole('admin') && !$user->hasRole('accountant'))) {
             abort(403);
         }
+    }
+
+    private function dashboardUrl(): string
+    {
+        $user = auth()->user();
+        if ($user && $user->hasRole('accountant') && !$user->hasRole('admin')) {
+            return route('accountant.dashboard');
+        }
+
+        return url('/admin');
     }
 
     /**

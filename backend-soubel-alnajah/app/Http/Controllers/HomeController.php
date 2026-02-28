@@ -159,6 +159,8 @@ class HomeController extends Controller
             return view('admin.home', $data);
         } else if (Auth::user()->hasRole('teacher')) {
             return redirect()->route('teacher.dashboard');
+        } else if (Auth::user()->hasRole('accountant')) {
+            return redirect()->route('accountant.dashboard');
         } else if(Auth::user()->hasRole('student')){
 
             $data['StudentInfo'] = StudentInfo::where('user_id',Auth::user()->id)->first();
