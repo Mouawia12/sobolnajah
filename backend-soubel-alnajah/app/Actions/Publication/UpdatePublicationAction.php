@@ -37,12 +37,11 @@ class UpdatePublicationAction
             return;
         }
 
-        $gallery = Gallery::query()->where('publication_id', $publication->id)->first();
-        if (!$gallery) {
-            return;
-        }
+        $gallery = Gallery::query()->firstOrNew(['publication_id' => $publication->id]);
+        $gallery->agenda_id = (int) $data['agenda_id'];
+        $gallery->grade_id = (int) $data['grade_id2'];
 
-        if ($gallery->img_url) {
+        if ($gallery->exists && $gallery->img_url) {
             $oldImages = json_decode($gallery->img_url, true);
             foreach ((array) $oldImages as $image) {
                 $this->imageManager->delete((string) $image);
@@ -53,4 +52,3 @@ class UpdatePublicationAction
         $gallery->save();
     }
 }
-
