@@ -1,6 +1,13 @@
 /node_modules
 /public/hot
 /public/storage
+/public/build
+/public/mix-manifest.json
+/public/js/app.js
+/public/js/app.js.LICENSE.txt
+/public/css/app.css
+/public/note/*
+!/public/note/.gitignore
 /storage/*.key
 /vendor
 .env
@@ -20,3 +27,23 @@ yarn-error.log
 # Local archives and downloaded templates
 *.zip
 eduadmin-responsive-bootstrap-admin-template-dashboard/
+
+# Exclude third-party demos/tests/docs from repository tracking
+public/assets/vendor_components/Flot/examples/
+public/assets/vendor_components/apexcharts-bundle/samples/
+public/assets/vendor_components/ckeditor/samples/
+public/assets/vendor_components/flexslider/demo/
+public/assets/vendor_components/jvectormap/lib3/tests/
+public/assets/vendor_components/jvectormap/tests/
+public/assets/vendor_components/select2/docs/
+public/assets/vendor_components/select2/tests/
+public/assets/vendor_components/**/demo/
+public/assets/vendor_components/**/demos/
+public/assets/vendor_components/**/example/
+public/assets/vendor_components/**/examples/
+public/assets/vendor_components/**/test/
+public/assets/vendor_components/**/tests/
+public/assets/vendor_components/**/docs/
+public/assets/vendor_components/**/doc/
+public/assets/vendor_components/**/samples/
+public/assets/vendor_components/**/website/

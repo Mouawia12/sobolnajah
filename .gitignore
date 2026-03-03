@@ -1,1 +1,20 @@
+# OS
 .DS_Store
+**/.DS_Store
+
+# Logs
+*.log
+
+# Laravel app artifacts (backend-soubel-alnajah)
+backend-soubel-alnajah/.env
+backend-soubel-alnajah/.env.backup
+backend-soubel-alnajah/vendor/
+backend-soubel-alnajah/node_modules/
+backend-soubel-alnajah/public/hot
+backend-soubel-alnajah/public/storage
+backend-soubel-alnajah/storage/*.key
+backend-soubel-alnajah/.phpunit.result.cache
+
+# Editors
+.idea/
+.vscode/
