@@ -47,9 +47,9 @@
                  </tr>
               </thead>
               <tbody>
-               @php  @endphp
+               @php($i = ($Grade->currentPage() - 1) * $Grade->perPage())
                @forelse ($Grade as $g)
-               @php  @endphp
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>
                     <td>

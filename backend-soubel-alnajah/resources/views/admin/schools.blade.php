@@ -50,9 +50,9 @@
               </thead>
               <tbody>
 
-               @php  @endphp
+               @php($i = ($School->currentPage() - 1) * $School->perPage())
                @forelse ($School as $sc)
-               @php  @endphp
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>
                     <td>{{ $sc->name_school }}</td>

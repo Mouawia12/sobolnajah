@@ -17,7 +17,7 @@
                             <label class="form-label">{{ trans('recruitment.admin.school') }}</label>
                             <select name="school_id" class="form-select" required>
                                 @foreach($schools as $school)
-                                    <option value="{{ $school->id }}" {{ () ? 'selected' : '' }}>{{ $school->name_school }}</option>
+                                    <option value="{{ $school->id }}" @selected((int)$jobPost->school_id === (int)$school->id)>{{ $school->name_school }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -58,7 +58,7 @@
                             <label class="form-label">{{ trans('recruitment.admin.status') }}</label>
                             <select name="status" class="form-select" required>
                                 @foreach (['draft', 'published', 'closed'] as $status)
-                                    <option value="{{ $status }}" {{ () ? 'selected' : '' }} }}</option>
+                                    <option value="{{ $status }}" @selected(old('status', $jobPost->status) === $status)>{{ trans('recruitment.statuses.job.' . $status) }}</option>
                                 @endforeach
                             </select>
                         </div>

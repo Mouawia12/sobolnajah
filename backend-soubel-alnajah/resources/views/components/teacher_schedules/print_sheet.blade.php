@@ -54,7 +54,7 @@
             <tr>
                 <th>{{ $dayLabel }}</th>
                 @foreach($schedule->slots as $slot)
-                    @php  @endphp
+                    @php($cell = $matrix[$dayIndex][$slot->slot_index] ?? null)
                     <td>
                         @if($cell)
                             <div class="cell-subject">{{ $cell['subject_name'] ?: '—' }}</div>

@@ -15,7 +15,7 @@
                 <select name="section_id" class="form-select">
                     <option value="">كل الأقسام</option>
                     @foreach($sections as $section)
-                        <option value="{{ $section->id }}" {{ () ? 'selected' : '' }}>
+                        <option value="{{ $section->id }}" @selected((string)request('section_id') === (string)$section->id)>
                             {{ $section->classroom->schoolgrade->name_grade ?? '' }} / {{ $section->classroom->name_class ?? '' }} / {{ $section->name_section }}
                         </option>
                     @endforeach

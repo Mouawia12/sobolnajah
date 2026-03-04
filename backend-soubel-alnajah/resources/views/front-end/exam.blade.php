@@ -47,9 +47,9 @@
             </tr>
          </thead>
          <tbody>
-            @php  @endphp
+            @php($i = ($Exames->currentPage() - 1) * $Exames->perPage())
             @forelse ($Exames as $ex)
-            @php  @endphp
+            @php($i++)
               <tr>
                 
                  <td>{{ $i }}</td> 

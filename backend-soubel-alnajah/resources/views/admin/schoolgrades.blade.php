@@ -34,7 +34,7 @@
                  <select name="school_id" class="form-select">
                    <option value="">الكل</option>
                    @foreach ($School as $sc)
-                     <option value="{{ $sc->id }}" {{ () ? 'selected' : '' }}>{{ $sc->name_school }}</option>
+                     <option value="{{ $sc->id }}" @selected((string) request('school_id') === (string) $sc->id)>{{ $sc->name_school }}</option>
                    @endforeach
                  </select>
                </div>
@@ -59,9 +59,9 @@
               </thead>
               <tbody>
 
-               @php  @endphp
+               @php($i = ($Schoolgrade->currentPage() - 1) * $Schoolgrade->perPage())
                @forelse ($Schoolgrade as $gr)
-               @php  @endphp
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>
                     <td>{{ $gr->name_grade }}</td>

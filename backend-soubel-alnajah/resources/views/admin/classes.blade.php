@@ -35,7 +35,7 @@
                  <select name="school_id" class="form-select">
                    <option value="">الكل</option>
                    @foreach ($School as $sc)
-                     <option value="{{ $sc->id }}" {{ () ? 'selected' : '' }}>{{ $sc->name_school }}</option>
+                     <option value="{{ $sc->id }}" @selected((string) request('school_id') === (string) $sc->id)>{{ $sc->name_school }}</option>
                    @endforeach
                  </select>
                </div>
@@ -45,7 +45,7 @@
                  <select name="grade_id" class="form-select">
                    <option value="">الكل</option>
                    @foreach ($Schoolgradee as $grade)
-                     <option value="{{ $grade->id }}" {{ () ? 'selected' : '' }}>{{ $grade->name_grade }}</option>
+                     <option value="{{ $grade->id }}" @selected((string) request('grade_id') === (string) $grade->id)>{{ $grade->name_grade }}</option>
                    @endforeach
                  </select>
                </div>
@@ -69,9 +69,9 @@
               </thead>
               <tbody>
 
-               @php  @endphp
+               @php($i = ($Classroom->currentPage() - 1) * $Classroom->perPage())
                @forelse ($Classroom as $cr)
-               @php  @endphp
+               @php($i++)
                  <tr>
                     <td>{{ $i }}</td>                    
                     <td>{{ $cr->schoolgrade->school->name_school }}</td>

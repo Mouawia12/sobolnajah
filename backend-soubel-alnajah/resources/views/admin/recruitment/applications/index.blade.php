@@ -17,7 +17,7 @@
                         <select name="status" class="form-select">
                             <option value="">{{ trans('recruitment.admin.all_statuses') }}</option>
                             @foreach (['new', 'in_review', 'accepted', 'rejected'] as $status)
-                                <option value="{{ $status }}" {{ () ? 'selected' : '' }} }}</option>
+                                <option value="{{ $status }}" @selected(request('status') === $status)>{{ trans('recruitment.statuses.application.' . $status) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -25,7 +25,7 @@
                         <select name="post_id" class="form-select">
                             <option value="">{{ trans('recruitment.admin.all_job_posts') }}</option>
                             @foreach ($posts as $post)
-                                <option value="{{ $post->id }}" {{ () ? 'selected' : '' }}>{{ $post->title }}</option>
+                                <option value="{{ $post->id }}" @selected((string)request('post_id') === (string)$post->id)>{{ $post->title }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -66,7 +66,7 @@
                                         @method('PATCH')
                                         <select name="status" class="form-select form-select-sm">
                                             @foreach (['new', 'in_review', 'accepted', 'rejected'] as $status)
-                                                <option value="{{ $status }}" {{ () ? 'selected' : '' }} }}</option>
+                                                <option value="{{ $status }}" @selected($application->status === $status)>{{ trans('recruitment.statuses.application.' . $status) }}</option>
                                             @endforeach
                                         </select>
                                         <button class="btn btn-sm btn-primary">{{ trans('recruitment.admin.save_status') }}</button>

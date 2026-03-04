@@ -57,9 +57,9 @@
                </thead>
                <tbody>
  
-                @php  @endphp
+                @php($i = ($promotions->currentPage() - 1) * $promotions->perPage())
                 @forelse ($promotions as $ins)
-                @php  @endphp
+                @php($i++)
                   <tr>
                     
                      <td>{{ $i }}</td> 

@@ -1,6 +1,6 @@
 <div>
     @if ($paginator->hasPages())
-        @php  @endphp
+        @php(isset($this->numberOfPaginatorsRendered[$paginator->getPageName()]) ? $this->numberOfPaginatorsRendered[$paginator->getPageName()]++ : $this->numberOfPaginatorsRendered[$paginator->getPageName()] = 1)
         
         <nav>
             <ul class="pagination">
