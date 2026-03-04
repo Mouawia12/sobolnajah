@@ -30,6 +30,12 @@
   - حماية `NoteStudents.show` بمعالجة استثناء آمنة مع إعادة توجيه ورسالة خطأ بدل صفحة 500.
   - إضافة `update()` في `NoteStudentController` لإرجاع `405` بدل رمي خطأ "method does not exist".
   - تقوية `addnotestudent.blade.php` ضد بيانات ناقصة (`user`/الحقول المترجمة) لمنع انهيار أثناء عرض الجدول.
+- [x] (2026-03-04) إصلاح نهائي لخطأ Blade في `NoteStudents`:
+  - إضافة directive متوافقة لـ `@selected` داخل `AppServiceProvider` لضمان التوافق مع بيئات Laravel القديمة.
+  - منع `ParseError: unexpected token "@"` في الصفحات التي تحتوي `@selected(...)`.
+- [x] (2026-03-04) ضمان ظهور القسم فورًا في إضافة التلميذ:
+  - إلغاء كاش `lookup.classSections` و `lookup.sectionById` في `SectionController`.
+  - جلب الأقسام مباشرة من قاعدة البيانات لتفادي نتائج lookup قديمة بعد إضافة/تعديل قسم.
 
 ## تعديلات مستقبلية
 - [ ] (YYYY-MM-DD) اكتب وصف التعديل هنا.

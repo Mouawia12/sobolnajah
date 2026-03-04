@@ -349,28 +349,18 @@ class SectionController extends Controller
 
     public function listByClassroom($id)
     {
-        $schoolId = (int) ($this->currentSchoolId() ?? 0);
-        $cacheKey = sprintf('lookup:school:%d:classroom:%d:sections', $schoolId, (int) $id);
-
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($id) {
-            return Section::query()
-                ->forSchool($this->currentSchoolId())
-                ->where("classroom_id", $id)
-                ->pluck("name_section", "id");
-        });
+        return Section::query()
+            ->forSchool($this->currentSchoolId())
+            ->where("classroom_id", $id)
+            ->pluck("name_section", "id");
     }
 
     public function getSectionById($id)
     {
-        $schoolId = (int) ($this->currentSchoolId() ?? 0);
-        $cacheKey = sprintf('lookup:school:%d:section:%d', $schoolId, (int) $id);
-
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($id) {
-            return Section::query()
-                ->forSchool($this->currentSchoolId())
-                ->where("id", $id)
-                ->pluck("name_section", "id");
-        });
+        return Section::query()
+            ->forSchool($this->currentSchoolId())
+            ->where("id", $id)
+            ->pluck("name_section", "id");
     }
 
     // Backward-compatible aliases for legacy naming.

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Inscription\StudentInfo;
 use App\Services\HomeDashboardCacheService;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Compatibility for older Blade compilers that don't provide @selected.
+        Blade::directive('selected', function ($expression) {
+            return "<?php echo ($expression) ? 'selected' : ''; ?>";
+        });
+
         StudentInfo::saved(function (StudentInfo $student): void {
             app(HomeDashboardCacheService::class)->forgetForStudent($student);
         });
