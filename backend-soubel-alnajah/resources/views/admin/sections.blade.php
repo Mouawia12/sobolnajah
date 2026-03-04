@@ -60,6 +60,11 @@
                   </div>
                </div>
             </form>
+            <div class="d-flex justify-content-end mt-15">
+               <a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">
+                  {{ trans('main_sidebar.addsection') }}
+               </a>
+            </div>
          </div>
       </div>
       <?php $j = 0; ?>
@@ -74,7 +79,7 @@
          </div>
 
          <div class="box-body">
-            <h3 class="box-title"><a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">{{ trans('main_sidebar.addclasseroom') }}</a></h3>
+            <h3 class="box-title"><a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">{{ trans('main_sidebar.addsection') }}</a></h3>
 
                <div class="table-responsive">
                <table class="table table-bordered text-center" style="width:100%">
@@ -285,6 +290,9 @@
       <div class="box">
          <div class="box-body text-center">
             <div class="admin-empty-state">لا توجد أقسام مطابقة للفلترة الحالية.</div>
+            <a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info mt-10">
+               {{ trans('main_sidebar.addsection') }}
+            </a>
          </div>
       </div>
       @endforelse
