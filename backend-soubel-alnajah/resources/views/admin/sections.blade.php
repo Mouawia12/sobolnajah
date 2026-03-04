@@ -71,7 +71,7 @@
       @forelse ($Schoolgrade as $grade)
       <div class="box box-slided-up">
          <div class="box-header with-border bg-info">
-            <h4 class="box-title"><strong>{{ $grade->school->name_school}} - {{ $grade->name_grade}}</strong></h4>
+            <h4 class="box-title"><strong>{{ $grade->school->name_school ?? '-' }} - {{ $grade->name_grade ?? '-' }}</strong></h4>
                <ul class="box-controls pull-right">
                   <li><a class="box-btn-slide text-white" href="#"></a></li>
                   <li><a class="box-btn-fullscreen text-white" href="#"></a></li>
@@ -99,11 +99,16 @@
                <?php $i = 0; ?>
                @foreach ($grade->sections as $sc)
                    <?php $i++; ?>
+                   @php
+                      $classroom = $sc->classroom;
+                      $gradeModel = $classroom?->schoolgrade;
+                      $schoolModel = $gradeModel?->school;
+                   @endphp
                      <tr>
                         <td>{{ $i }}</td>
-                        <td>{{ $sc->classroom->name_class }}</td>
-                        <td>{{ $sc->name_section }}</td>
-                        <td>{{ $sc->classroom->schoolgrade->school->name_school }}</td>
+                        <td>{{ $classroom->name_class ?? '-' }}</td>
+                        <td>{{ $sc->name_section ?? '-' }}</td>
+                        <td>{{ $schoolModel->name_school ?? '-' }}</td>
 
                         <td>
                            <form method="POST" action="{{ route('Sections.status', $sc->id) }}">
@@ -169,10 +174,10 @@
                                               <div class="form-croup">
                                                 <label class="form-label">{{ trans('inscription.ecole') }}</label>
                                                 <select id="school_id" class="form-select" name="school_id" onchange="console.log($(this).val())">
-                                                 <option value="{{ $sc->classroom->schoolgrade->school->id }}" selected >{{ $sc->classroom->schoolgrade->school->name_school }}</option>
+                                                 <option value="{{ $schoolModel->id ?? '' }}" selected>{{ $schoolModel->name_school ?? '-' }}</option>
 
                                                    @foreach ($School as $schol)
-                                                   @if ($schol->id != $sc->classroom->schoolgrade->school->id)
+                                                   @if (!$schoolModel || $schol->id != $schoolModel->id)
                                                    <option value="{{ $schol->id }}">{{ $schol->name_school }}</option>
                                                    @endif
                                                    @endforeach
@@ -186,7 +191,7 @@
                                                 <div class="form-croup">
                                                   <label class="form-label">{{ trans('inscription.niveau') }}</label>
                                                   <select id="schoolgrade_id" class="form-select" name="grade_id">
-                                                   <option value="{{ $sc->classroom->schoolgrade->id }}" selected >{{ $sc->classroom->schoolgrade->name_grade }}</option>
+                                                   <option value="{{ $gradeModel->id ?? '' }}" selected>{{ $gradeModel->name_grade ?? '-' }}</option>
                                                 </select>
                                                 </div>
                                             </div>
@@ -196,7 +201,7 @@
                                              <div class="form-group">
                                                  <label class="form-label">{{ trans('inscription.Anneescolaire') }}</label>
                                                  <select id="classroom_id" class="form-select" name="classroom_id" required>
-                                                   <option value="{{ $sc->classroom->id }}" selected >{{ $sc->classroom->name_class}}</option>
+                                                   <option value="{{ $classroom->id ?? '' }}" selected>{{ $classroom->name_class ?? '-' }}</option>
                                                  </select>
                                                </div>
                                             </div>
