@@ -26,7 +26,7 @@
                                 <option value="" selected disabled>{{ trans('inscription.choisir') }}</option>
                                 @foreach ($UploadStudents as $studentOption)
                                     <option value="{{ $studentOption->id }}">
-                                        #{{ $studentOption->id }} - {{ $studentOption->prenom }} {{ $studentOption->nom }}
+                                        #{{ $studentOption->id }} - {{ (string) ($studentOption->prenom ?? '-') }} {{ (string) ($studentOption->nom ?? '-') }}
                                     </option>
                                 @endforeach
                             </select>
@@ -99,9 +99,9 @@
                             <tr>
                                 <td class="col-md-1">{{ $i }}</td>
                                 <td class="col-md-3">
-                                    <a href="#" class="text-dark fw-600 hover-primary fs-16">{{ $student->prenom }} {{ $student->nom }}</a>
-                                    <span class="text-fade d-block">{{ $student->user->email ?? '-' }}</span>
-                                    <span class="text-fade d-block">{{ $student->numtelephone }}</span>
+                                    <a href="#" class="text-dark fw-600 hover-primary fs-16">{{ (string) ($student->prenom ?? '-') }} {{ (string) ($student->nom ?? '-') }}</a>
+                                    <span class="text-fade d-block">{{ optional($student->user)->email ?? '-' }}</span>
+                                    <span class="text-fade d-block">{{ $student->numtelephone ?? '-' }}</span>
                                 </td>
 
                                 @foreach (['urlfile1', 'urlfile2', 'urlfile3'] as $column)
