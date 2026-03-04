@@ -67,12 +67,23 @@ class UserManagementController extends Controller
             ->get()
             ->filter(fn (User $guardian) => $guardian->parentProfile);
 
+        $users = User::query()
+            ->when($currentSchoolId, fn ($query) => $query->where('school_id', $currentSchoolId))
+            ->with([
+                'roles:id,name,display_name',
+                'school:id,name_school',
+            ])
+            ->select(['id', 'name', 'email', 'school_id', 'created_at'])
+            ->orderByDesc('id')
+            ->paginate(20);
+
         return view('admin.users.create', [
             'roles' => $roles,
             'schools' => $schools,
             'sections' => $sections,
             'specializations' => $specializations,
             'guardians' => $guardians,
+            'users' => $users,
             'notify' => $this->notifications(),
             'breadcrumbs' => [
                 ['label' => 'لوحة التحكم', 'url' => url('/admin')],
