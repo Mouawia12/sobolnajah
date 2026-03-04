@@ -1,7 +1,7 @@
 @extends('layoutsadmin.masteradmin')
 
 @section('titlea')
-    {{ trans('student.studentlist') }}
+    كشف نقاط التلاميذ
 @stop
 
 @section('contenta')
@@ -9,7 +9,7 @@
     <div class="col-12">
         <div class="box box-slided-down">
             <div class="box-header with-border bg-info">
-                <h4 class="box-title"><strong>{{ trans('student.studentspromotion') }}</strong></h4>
+                <h4 class="box-title"><strong>كشف نقاط التلاميذ</strong></h4>
                 <ul class="box-controls pull-right">
                     <li><a class="box-btn-slide text-white" href="#"></a></li>
                     <li><a class="box-btn-fullscreen text-white" href="#"></a></li>
@@ -22,6 +22,13 @@
                     <div class="row">
                         <div class="form-group col-md-4">
                             <label class="form-label">{{ trans('inscription.student') }}</label>
+                            <input
+                                type="text"
+                                id="student_search"
+                                class="form-control mb-5"
+                                placeholder="ابحث عن التلميذ بالاسم أو الرقم"
+                                autocomplete="off"
+                            >
                             <select id="student" class="form-select" name="student_id" required>
                                 <option value="" selected disabled>{{ trans('inscription.choisir') }}</option>
                                 @foreach ($UploadStudents as $studentOption)
@@ -174,4 +181,41 @@
 @endsection
 
 @section('jsa')
+<script>
+    (function () {
+        const searchInput = document.getElementById('student_search');
+        const studentSelect = document.getElementById('student');
+        if (!searchInput || !studentSelect) {
+            return;
+        }
+
+        const optionsSource = Array.from(studentSelect.options).map((option) => ({
+            value: option.value,
+            label: option.textContent,
+            disabled: option.disabled,
+        }));
+
+        const renderOptions = (query) => {
+            const term = query.trim().toLowerCase();
+            const selectedValue = studentSelect.value;
+            const filtered = term === ''
+                ? optionsSource
+                : optionsSource.filter((item) => item.label.toLowerCase().includes(term));
+
+            studentSelect.innerHTML = '';
+            filtered.forEach((item) => {
+                const option = document.createElement('option');
+                option.value = item.value;
+                option.textContent = item.label;
+                option.disabled = item.disabled;
+                option.selected = item.value === selectedValue;
+                studentSelect.appendChild(option);
+            });
+        };
+
+        searchInput.addEventListener('input', function () {
+            renderOptions(this.value);
+        });
+    })();
+</script>
 @endsection
