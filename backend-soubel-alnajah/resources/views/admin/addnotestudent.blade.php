@@ -73,8 +73,8 @@
                         <label class="form-label">حالة الملفات</label>
                         <select name="has_notes" class="form-select">
                             <option value="">الكل</option>
-                            <option value="1" @selected(request('has_notes') === '1')>لديه ملفات</option>
-                            <option value="0" @selected(request('has_notes') === '0')>بدون ملفات</option>
+                            <option value="1" {{ request('has_notes') === '1' ? 'selected' : '' }}>لديه ملفات</option>
+                            <option value="0" {{ request('has_notes') === '0' ? 'selected' : '' }}>بدون ملفات</option>
                         </select>
                     </div>
                     <div class="col-md-5 d-flex align-items-end gap-2">
@@ -97,7 +97,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @php($i = ($StudentInfo->currentPage() - 1) * $StudentInfo->perPage())
+                        @php $i = ($StudentInfo->currentPage() - 1) * $StudentInfo->perPage(); @endphp
                         @forelse ($StudentInfo as $student)
                             @php
                                 $i++;
