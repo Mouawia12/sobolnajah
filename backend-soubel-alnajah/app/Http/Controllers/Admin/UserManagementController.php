@@ -13,6 +13,7 @@ use App\Models\School\Section;
 use App\Models\Specialization\Specialization;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -25,12 +26,12 @@ class UserManagementController extends Controller
         $this->middleware(['auth', 'role:admin', 'force.password.change']);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $currentSchoolId = $this->currentSchoolId();
-        $filterQuery = trim((string) request('filter_q'));
-        $filterRole = trim((string) request('filter_role'));
-        $filterSchoolId = request('filter_school_id');
+        $filterQuery = trim((string) $request->query('filter_q', ''));
+        $filterRole = trim((string) $request->query('filter_role', ''));
+        $filterSchoolId = $request->query('filter_school_id');
 
         $roles = [
             'admin' => 'مدير',
@@ -98,6 +99,14 @@ class UserManagementController extends Controller
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.users.partials.users_table', [
+                    'users' => $users,
+                ])->render(),
+            ]);
+        }
 
         return view('admin.users.create', [
             'roles' => $roles,

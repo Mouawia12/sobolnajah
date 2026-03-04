@@ -214,13 +214,14 @@
                 <h3 class="box-title">قائمة المستخدمين</h3>
             </div>
             <div class="box-body">
-                <form method="GET" action="{{ route('admin.users.create') }}" class="admin-form-panel mb-15">
+                <form method="GET" action="{{ route('admin.users.create') }}" class="admin-form-panel mb-15" id="users-filter-form">
                     <div class="row">
                         <div class="col-md-4">
                             <label class="form-label">بحث عام</label>
                             <input
                                 type="text"
                                 name="filter_q"
+                                id="filter_q"
                                 class="form-control"
                                 value="{{ request('filter_q') }}"
                                 placeholder="الاسم / البريد / رقم المستخدم"
@@ -228,7 +229,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">الدور</label>
-                            <select name="filter_role" class="form-select">
+                            <select name="filter_role" id="filter_role" class="form-select">
                                 <option value="">كل الأدوار</option>
                                 @foreach($roles as $value => $label)
                                     <option value="{{ $value }}" {{ request('filter_role') === $value ? 'selected' : '' }}>{{ $label }}</option>
@@ -237,7 +238,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">المؤسسة</label>
-                            <select name="filter_school_id" class="form-select" {{ auth()->user()?->school_id ? 'disabled' : '' }}>
+                            <select name="filter_school_id" id="filter_school_id" class="form-select" {{ auth()->user()?->school_id ? 'disabled' : '' }}>
                                 <option value="">كل المؤسسات</option>
                                 @foreach($schools as $school)
                                     <option value="{{ $school->id }}" {{ (string) request('filter_school_id') === (string) $school->id ? 'selected' : '' }}>
@@ -256,44 +257,8 @@
                     </div>
                 </form>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered text-center" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>الاسم</th>
-                                <th>البريد الإلكتروني</th>
-                                <th>الدور</th>
-                                <th>المؤسسة</th>
-                                <th>تاريخ الإنشاء</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($users as $index => $portalUser)
-                                @php
-                                    $roleText = $portalUser->roles
-                                        ->map(fn ($role) => $role->display_name ?: $role->name)
-                                        ->implode('، ');
-                                @endphp
-                                <tr>
-                                    <td>{{ $users->firstItem() + $index }}</td>
-                                    <td>{{ $portalUser->name }}</td>
-                                    <td>{{ $portalUser->email }}</td>
-                                    <td>{{ $roleText !== '' ? $roleText : '-' }}</td>
-                                    <td>{{ $portalUser->school->name_school ?? '-' }}</td>
-                                    <td>{{ optional($portalUser->created_at)->format('Y-m-d H:i') }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6">لا يوجد مستخدمون لعرضهم.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mt-15 d-flex justify-content-end">
-                    {{ $users->links() }}
+                <div id="users-table-container">
+                    @include('admin.users.partials.users_table', ['users' => $users])
                 </div>
             </div>
         </div>
@@ -369,6 +334,89 @@
         }
 
         applyRole();
+    })();
+</script>
+<script>
+    (function () {
+        const form = document.getElementById('users-filter-form');
+        const container = document.getElementById('users-table-container');
+        if (!form || !container) {
+            return;
+        }
+
+        let debounceTimer = null;
+
+        const serializeForm = () => {
+            const params = new URLSearchParams();
+            Array.from(new FormData(form).entries()).forEach(([key, value]) => {
+                if (value !== null && String(value).trim() !== '') {
+                    params.set(key, value);
+                }
+            });
+            return params;
+        };
+
+        const fetchUsers = async (url = null) => {
+            const targetUrl = url || `${form.action}?${serializeForm().toString()}`;
+            try {
+                const response = await fetch(targetUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                if (payload && payload.html) {
+                    container.innerHTML = payload.html;
+                }
+            } catch (error) {
+                // Keep page usable if AJAX fails.
+                console.error(error);
+            }
+        };
+
+        const debouncedFetch = () => {
+            window.clearTimeout(debounceTimer);
+            debounceTimer = window.setTimeout(() => fetchUsers(), 300);
+        };
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            fetchUsers();
+        });
+
+        const queryInput = document.getElementById('filter_q');
+        const roleSelect = document.getElementById('filter_role');
+        const schoolSelect = document.getElementById('filter_school_id');
+
+        if (queryInput) {
+            queryInput.addEventListener('input', debouncedFetch);
+        }
+        if (roleSelect) {
+            roleSelect.addEventListener('change', () => fetchUsers());
+        }
+        if (schoolSelect && !schoolSelect.disabled) {
+            schoolSelect.addEventListener('change', () => fetchUsers());
+        }
+
+        container.addEventListener('click', function (event) {
+            const link = event.target.closest('a');
+            if (!link) {
+                return;
+            }
+
+            const href = link.getAttribute('href') || '';
+            if (!href.includes('page=')) {
+                return;
+            }
+
+            event.preventDefault();
+            fetchUsers(href);
+        });
     })();
 </script>
 @endsection
