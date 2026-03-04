@@ -49,7 +49,7 @@
                             <label class="form-label">{{ trans('recruitment.admin.status') }}</label>
                             <select name="status" class="form-select" required>
                                 @foreach (['draft', 'published', 'closed'] as $status)
-                                    <option value="{{ $status }}" @selected(old('status') === $status)>{{ trans('recruitment.statuses.job.' . $status) }}</option>
+                                    <option value="{{ $status }}" {{ () ? 'selected' : '' }} }}</option>
                                 @endforeach
                             </select>
                         </div>

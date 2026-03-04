@@ -564,7 +564,7 @@
                         <select name="status" class="form-select">
                             <option value="">كل الحالات</option>
                             @foreach(['draft', 'active', 'partial', 'paid', 'overdue'] as $status)
-                                <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status }}</option>
+                                <option value="{{ $status }}" {{ () ? 'selected' : '' }}>{{ $status }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -625,7 +625,7 @@
                                         <div class="col-4">
                                             <select name="plan_type" class="form-select form-select-sm" required>
                                                 @foreach(['yearly','monthly','installments'] as $planType)
-                                                    <option value="{{ $planType }}" @selected($contract->plan_type === $planType)>{{ $planType }}</option>
+                                                    <option value="{{ $planType }}" {{ () ? 'selected' : '' }}>{{ $planType }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -641,7 +641,7 @@
                                         <div class="col-4">
                                             <select name="status" class="form-select form-select-sm" required>
                                                 @foreach(['draft','active','partial','paid','overdue'] as $status)
-                                                    <option value="{{ $status }}" @selected($contract->status === $status)>{{ $status }}</option>
+                                                    <option value="{{ $status }}" {{ () ? 'selected' : '' }}>{{ $status }}</option>
                                                 @endforeach
                                             </select>
                                         </div>

@@ -15,7 +15,7 @@
                             <label class="form-label">{{ trans('timetable.section') }}</label>
                             <select name="section_id" class="form-select" required>
                                 @foreach($sections as $section)
-                                    <option value="{{ $section->id }}" @selected((int)$section->id === (int)$timetable->section_id)>
+                                    <option value="{{ $section->id }}" {{ () ? 'selected' : '' }}>
                                         {{ $section->classroom->schoolgrade->name_grade ?? '' }} / {{ $section->classroom->name_class ?? '' }} / {{ $section->name_section }}
                                     </option>
                                 @endforeach
@@ -65,7 +65,7 @@
                                         <select class="form-select" name="entries[{{ $i }}][teacher_id]">
                                             <option value="">--</option>
                                             @foreach($teachers as $teacher)
-                                                <option value="{{ $teacher->id }}" @selected((int)$entry->teacher_id === (int)$teacher->id)>{{ $teacher->name }}</option>
+                                                <option value="{{ $teacher->id }}" {{ () ? 'selected' : '' }}>{{ $teacher->name }}</option>
                                             @endforeach
                                         </select>
                                     </td>

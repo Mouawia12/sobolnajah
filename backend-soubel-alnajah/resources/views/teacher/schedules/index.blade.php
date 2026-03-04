@@ -12,7 +12,7 @@
                         <select name="academic_year" class="form-select">
                             <option value="">{{ trans('teacher_schedule.academic_year') }}</option>
                             @foreach($years as $year)
-                                <option value="{{ $year }}" @selected((string)request('academic_year') === (string)$year)>{{ $year }}</option>
+                                <option value="{{ $year }}" {{ () ? 'selected' : '' }}>{{ $year }}</option>
                             @endforeach
                         </select>
                     </div>

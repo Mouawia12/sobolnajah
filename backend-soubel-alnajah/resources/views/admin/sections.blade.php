@@ -30,7 +30,7 @@
                      <select name="grade_id" class="form-select">
                         <option value="">الكل</option>
                         @foreach ($SchoolgradeFilterOptions as $gradeOption)
-                           <option value="{{ $gradeOption->id }}" @selected((string) request('grade_id') === (string) $gradeOption->id)>
+                           <option value="{{ $gradeOption->id }}" {{ (string) request('grade_id') === (string) $gradeOption->id ? 'selected' : '' }}>
                               {{ $gradeOption->name_grade }}
                            </option>
                         @endforeach
@@ -41,7 +41,7 @@
                      <select name="classroom_id" class="form-select">
                         <option value="">الكل</option>
                         @foreach ($ClassroomFilterOptions as $classOption)
-                           <option value="{{ $classOption->id }}" @selected((string) request('classroom_id') === (string) $classOption->id)>
+                           <option value="{{ $classOption->id }}" {{ (string) request('classroom_id') === (string) $classOption->id ? 'selected' : '' }}>
                               {{ $classOption->name_class }}
                            </option>
                         @endforeach
@@ -51,8 +51,8 @@
                      <label class="form-label">{{ trans('inscription.status') }}</label>
                      <select name="status" class="form-select">
                         <option value="">الكل</option>
-                        <option value="1" @selected(request('status') === '1')>{{ trans('inscription.sectionopen') }}</option>
-                        <option value="0" @selected(request('status') === '0')>{{ trans('inscription.sectionclose') }}</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>{{ trans('inscription.sectionopen') }}</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>{{ trans('inscription.sectionclose') }}</option>
                      </select>
                   </div>
                   <div class="col-md-1 d-flex align-items-end">

@@ -49,7 +49,7 @@
                         </blockquote>	
                 </div>
             </div>
-            @php($lastId = $pub->id) 
+            @php  @endphp 
  @endforeach
 
  <button type="button" data-id="{{ $lastId }}" id="loadMoreButton" class="waves-effect waves-light btn btn-rounded btn-info mb-5">{{ trans('pub.readmore') }}</button>

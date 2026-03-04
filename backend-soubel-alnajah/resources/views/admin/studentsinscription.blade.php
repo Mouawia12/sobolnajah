@@ -25,16 +25,16 @@
                     <div class="col-md-3">
                         <select name="status" class="form-select">
                             <option value="">كل الحالات</option>
-                            <option value="procec" @selected(request('status') === 'procec')>{{ trans('inscription.undefined') }}</option>
-                            <option value="accept" @selected(request('status') === 'accept')>{{ trans('inscription.accept') }}</option>
-                            <option value="noaccept" @selected(request('status') === 'noaccept')>{{ trans('inscription.noaccept') }}</option>
+                            <option value="procec" {{ () ? 'selected' : '' }} }}</option>
+                            <option value="accept" {{ () ? 'selected' : '' }} }}</option>
+                            <option value="noaccept" {{ () ? 'selected' : '' }} }}</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <select name="classroom_id" class="form-select">
                             <option value="">كل الأقسام الدراسية</option>
                             @foreach ($Classrooms as $classroom)
-                                <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>
+                                <option value="{{ $classroom->id }}" {{ () ? 'selected' : '' }}>
                                     {{ $classroom->schoolgrade->name_grade ?? '' }} / {{ $classroom->name_class }}
                                 </option>
                             @endforeach

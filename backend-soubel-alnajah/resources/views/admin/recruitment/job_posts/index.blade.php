@@ -18,7 +18,7 @@
                         <select name="status" class="form-select">
                             <option value="">{{ trans('recruitment.admin.all_statuses') }}</option>
                             @foreach (['draft', 'published', 'closed'] as $key)
-                                <option value="{{ $key }}" @selected(request('status') === $key)>{{ trans('recruitment.statuses.job.' . $key) }}</option>
+                                <option value="{{ $key }}" {{ () ? 'selected' : '' }} }}</option>
                             @endforeach
                         </select>
                     </div>

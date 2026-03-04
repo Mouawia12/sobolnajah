@@ -121,7 +121,7 @@
                   <select name="specialization_id" class="form-select">
                     <option value="">الكل</option>
                     @foreach ($Specializations as $sp)
-                      <option value="{{ $sp->id }}" @selected((string) request('specialization_id') === (string) $sp->id)>{{ $sp->name }}</option>
+                      <option value="{{ $sp->id }}" {{ () ? 'selected' : '' }}>{{ $sp->name }}</option>
                     @endforeach
                   </select>
                 </div>
@@ -130,7 +130,7 @@
                   <select name="grade_id" class="form-select">
                     <option value="">الكل</option>
                     @foreach ($Schoolgrade as $grade)
-                      <option value="{{ $grade->id }}" @selected((string) request('grade_id') === (string) $grade->id)>{{ $grade->name_grade }}</option>
+                      <option value="{{ $grade->id }}" {{ () ? 'selected' : '' }}>{{ $grade->name_grade }}</option>
                     @endforeach
                   </select>
                 </div>
@@ -139,7 +139,7 @@
                   <select name="classroom_id" class="form-select">
                     <option value="">الكل</option>
                     @foreach ($Classrooms as $classroom)
-                      <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->name_class }}</option>
+                      <option value="{{ $classroom->id }}" {{ () ? 'selected' : '' }}>{{ $classroom->name_class }}</option>
                     @endforeach
                   </select>
                 </div>
@@ -172,9 +172,9 @@
                  </thead>
                  <tbody>
                     
-                  @php($j = ($Exames->currentPage() - 1) * $Exames->perPage())
+                  @php  @endphp
                   @forelse ($Exames as $ex)
-                  @php($j++)
+                  @php  @endphp
                     <tr>
                       
                        <td>{{ $j }}</td> 

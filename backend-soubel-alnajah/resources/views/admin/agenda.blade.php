@@ -50,9 +50,9 @@
               </thead>
               <tbody>
 
-               @php($i = ($Agenda->currentPage() - 1) * $Agenda->perPage())
+               @php  @endphp
                @forelse ($Agenda as $ag)
-               @php($i++)
+               @php  @endphp
                  <tr>
                     <td>{{ $i }}</td>
                     <td>{{ $ag->name_agenda }}</td>

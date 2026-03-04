@@ -18,7 +18,7 @@
                         <select name="teacher_id" class="form-select">
                             <option value="">{{ trans('teacher_schedule.teacher') }}</option>
                             @foreach($teachers as $teacher)
-                                <option value="{{ $teacher->id }}" @selected((string)request('teacher_id') === (string)$teacher->id)>{{ $teacher->name }}</option>
+                                <option value="{{ $teacher->id }}" {{ () ? 'selected' : '' }}>{{ $teacher->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -26,15 +26,15 @@
                         <select name="academic_year" class="form-select">
                             <option value="">{{ trans('teacher_schedule.academic_year') }}</option>
                             @foreach($years as $year)
-                                <option value="{{ $year }}" @selected((string)request('academic_year') === (string)$year)>{{ $year }}</option>
+                                <option value="{{ $year }}" {{ () ? 'selected' : '' }}>{{ $year }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select name="status" class="form-select">
                             <option value="">{{ trans('teacher_schedule.status') }}</option>
-                            <option value="draft" @selected(request('status')==='draft')>{{ trans('teacher_schedule.draft') }}</option>
-                            <option value="published" @selected(request('status')==='published')>{{ trans('teacher_schedule.published') }}</option>
+                            <option value="draft" {{ () ? 'selected' : '' }} }}</option>
+                            <option value="published" {{ () ? 'selected' : '' }} }}</option>
                         </select>
                     </div>
                     <div class="col-md-3">

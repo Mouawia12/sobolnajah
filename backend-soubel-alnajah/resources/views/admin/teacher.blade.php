@@ -24,7 +24,7 @@
                 <select name="specialization_id" class="form-select">
                   <option value="">كل التخصصات</option>
                   @foreach ($Specializations as $sp)
-                    <option value="{{ $sp->id }}" @selected((string) request('specialization_id') === (string) $sp->id)>
+                    <option value="{{ $sp->id }}" {{ () ? 'selected' : '' }}>
                       {{ $sp->name }}
                     </option>
                   @endforeach
@@ -33,8 +33,8 @@
               <div class="col-md-3">
                 <select name="gender" class="form-select">
                   <option value="">كل الجنس</option>
-                  <option value="1" @selected(request('gender') === '1')>{{ trans('inscription.male') }}</option>
-                  <option value="0" @selected(request('gender') === '0')>{{ trans('inscription.female') }}</option>
+                  <option value="1" {{ () ? 'selected' : '' }} }}</option>
+                  <option value="0" {{ () ? 'selected' : '' }} }}</option>
                 </select>
               </div>
               <div class="col-md-2 d-flex gap-1">

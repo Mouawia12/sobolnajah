@@ -32,7 +32,7 @@
                <select name="grade_id" class="form-select">
                  <option value="">كل المستويات</option>
                  @foreach ($Grade as $g)
-                   <option value="{{ $g->id }}" @selected((string) request('grade_id') === (string) $g->id)>{{ $g->name_grades }}</option>
+                   <option value="{{ $g->id }}" {{ () ? 'selected' : '' }}>{{ $g->name_grades }}</option>
                  @endforeach
                </select>
              </div>
@@ -40,7 +40,7 @@
                <select name="agenda_id" class="form-select">
                  <option value="">كل الأجندات</option>
                  @foreach ($Agenda as $ag)
-                   <option value="{{ $ag->id }}" @selected((string) request('agenda_id') === (string) $ag->id)>{{ $ag->name_agenda }}</option>
+                   <option value="{{ $ag->id }}" {{ () ? 'selected' : '' }}>{{ $ag->name_agenda }}</option>
                  @endforeach
                </select>
              </div>

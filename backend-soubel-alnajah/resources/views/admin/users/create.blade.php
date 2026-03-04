@@ -19,7 +19,7 @@
                             <select name="role" id="role" class="form-select" required>
                                 <option value="">اختر الدور</option>
                                 @foreach($roles as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('role') === $value)>{{ $label }}</option>
+                                    <option value="{{ $value }}" {{ () ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -30,7 +30,7 @@
                             <select name="school_id" id="school_id" class="form-select">
                                 <option value="">اختر المؤسسة</option>
                                 @foreach($schools as $school)
-                                    <option value="{{ $school->id }}" @selected((string) old('school_id') === (string) $school->id)>
+                                    <option value="{{ $school->id }}" {{ () ? 'selected' : '' }}>
                                         {{ $school->name_school }}
                                     </option>
                                 @endforeach
@@ -78,7 +78,7 @@
                                 <select name="specialization_id" class="form-select">
                                     <option value="">اختر التخصص</option>
                                     @foreach($specializations as $specialization)
-                                        <option value="{{ $specialization->id }}" @selected((string) old('specialization_id') === (string) $specialization->id)>
+                                        <option value="{{ $specialization->id }}" {{ () ? 'selected' : '' }}>
                                             {{ $specialization->name }}
                                         </option>
                                     @endforeach
@@ -88,8 +88,8 @@
                                 <label class="form-label">الجنس</label>
                                 <select name="gender" class="form-select">
                                     <option value="">اختر</option>
-                                    <option value="1" @selected(old('gender') === '1')>ذكر</option>
-                                    <option value="0" @selected(old('gender') === '0')>أنثى</option>
+                                    <option value="1" {{ () ? 'selected' : '' }}>ذكر</option>
+                                    <option value="0" {{ () ? 'selected' : '' }}>أنثى</option>
                                 </select>
                             </div>
                             <div class="col-12 col-md-4">
@@ -144,7 +144,7 @@
                                         <option
                                             value="{{ $guardian->id }}"
                                             data-school-id="{{ $guardian->school_id }}"
-                                            @selected((string) old('guardian_user_id') === (string) $guardian->id)
+                                            {{ () ? 'selected' : '' }}
                                         >
                                             {{ $guardian->name }} - {{ $guardian->email }}
                                         </option>
@@ -155,8 +155,8 @@
                                 <label class="form-label">الجنس</label>
                                 <select name="gender" class="form-select">
                                     <option value="">اختر</option>
-                                    <option value="1" @selected(old('gender') === '1')>ذكر</option>
-                                    <option value="0" @selected(old('gender') === '0')>أنثى</option>
+                                    <option value="1" {{ () ? 'selected' : '' }}>ذكر</option>
+                                    <option value="0" {{ () ? 'selected' : '' }}>أنثى</option>
                                 </select>
                             </div>
                             <div class="col-12 col-md-3">
@@ -171,7 +171,7 @@
                                         <option
                                             value="{{ $section->id }}"
                                             data-school-id="{{ $section->school_id }}"
-                                            @selected((string) old('section_id') === (string) $section->id)
+                                            {{ () ? 'selected' : '' }}
                                         >
                                             {{ $section->classroom->schoolgrade->name_grade ?? '-' }} / {{ $section->classroom->name_class ?? '-' }} / {{ $section->name_section }}
                                         </option>

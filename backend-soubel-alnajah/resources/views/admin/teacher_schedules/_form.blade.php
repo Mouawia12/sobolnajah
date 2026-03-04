@@ -18,7 +18,7 @@
         <select name="teacher_id" class="form-select" required>
             <option value="">--</option>
             @foreach($teachers as $teacher)
-                <option value="{{ $teacher->id }}" @selected((int) old('teacher_id', $editing ? $schedule->teacher_id : 0) === (int) $teacher->id)>
+                <option value="{{ $teacher->id }}" {{ () ? 'selected' : '' }}>
                     {{ $teacher->name }}
                 </option>
             @endforeach
@@ -35,15 +35,15 @@
     <div class="col-md-2 mb-3">
         <label class="form-label">{{ trans('teacher_schedule.status') }}</label>
         <select name="status" class="form-select" required>
-            <option value="draft" @selected(old('status', $editing ? $schedule->status : 'draft') === 'draft')>{{ trans('teacher_schedule.draft') }}</option>
-            <option value="published" @selected(old('status', $editing ? $schedule->status : 'draft') === 'published')>{{ trans('teacher_schedule.published') }}</option>
+            <option value="draft" {{ () ? 'selected' : '' }} }}</option>
+            <option value="published" {{ () ? 'selected' : '' }} }}</option>
         </select>
     </div>
     <div class="col-md-2 mb-3">
         <label class="form-label">{{ trans('teacher_schedule.visibility') }}</label>
         <select name="visibility" class="form-select" required>
-            <option value="authenticated" @selected(old('visibility', $editing ? $schedule->visibility : 'authenticated') === 'authenticated')>{{ trans('teacher_schedule.authenticated') }}</option>
-            <option value="public" @selected(old('visibility', $editing ? $schedule->visibility : 'authenticated') === 'public')>{{ trans('teacher_schedule.public') }}</option>
+            <option value="authenticated" {{ () ? 'selected' : '' }} }}</option>
+            <option value="public" {{ () ? 'selected' : '' }} }}</option>
         </select>
     </div>
     <div class="col-md-3 mb-3">
@@ -108,8 +108,8 @@
             <tr>
                 <th>{{ $dayLabel }}</th>
                 @foreach($slotsSource as $slot)
-                    @php($slotIndex = (int) $slot['slot_index'])
-                    @php($cell = $matrixSource[$dayIndex][$slotIndex] ?? [])
+                    @php  @endphp
+                    @php  @endphp
                     <td data-slot="{{ $slotIndex }}" style="min-width:220px">
                         <input type="text" class="form-control mb-1" name="entries[{{ $dayIndex }}][{{ $slotIndex }}][subject_name]" placeholder="{{ trans('teacher_schedule.subject') }}" value="{{ $cell['subject_name'] ?? '' }}">
                         <input type="text" class="form-control mb-1" name="entries[{{ $dayIndex }}][{{ $slotIndex }}][class_name]" placeholder="{{ trans('teacher_schedule.class_name') }}" value="{{ $cell['class_name'] ?? '' }}">
