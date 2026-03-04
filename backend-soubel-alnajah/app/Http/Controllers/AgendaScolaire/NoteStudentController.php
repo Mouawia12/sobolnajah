@@ -11,6 +11,7 @@ use App\Models\School\Section;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class NoteStudentController extends Controller
 {
@@ -40,44 +41,50 @@ class NoteStudentController extends Controller
      */
     public function show($id)
     {
-        $this->authorize('viewAny', NoteStudent::class);
+        try {
+            $this->authorize('viewAny', NoteStudent::class);
 
-        $schoolId = $this->currentSchoolId();
-        $search = trim((string) request('q'));
-        $hasNotes = request('has_notes');
+            $schoolId = $this->currentSchoolId();
+            $search = trim((string) request('q'));
+            $hasNotes = request('has_notes');
 
-        $section = Section::query()
-            ->forSchool($schoolId)
-            ->with('classroom.schoolgrade')
-            ->findOrFail($id);
+            $section = Section::query()
+                ->forSchool($schoolId)
+                ->with('classroom.schoolgrade')
+                ->findOrFail($id);
 
-        $data['section'] = $section;
-        $data['StudentInfo'] = StudentInfo::query()
-            ->forSchool($schoolId)
-            ->where("section_id", $id)
-            ->with(['user', 'noteStudent'])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($studentQuery) use ($search) {
-                    $studentQuery->where('prenom->fr', 'like', '%' . $search . '%')
-                        ->orWhere('prenom->ar', 'like', '%' . $search . '%')
-                        ->orWhere('nom->fr', 'like', '%' . $search . '%')
-                        ->orWhere('nom->ar', 'like', '%' . $search . '%')
-                        ->orWhere('numtelephone', 'like', '%' . $search . '%')
-                        ->orWhereHas('user', fn ($userQuery) => $userQuery->where('email', 'like', '%' . $search . '%'));
-                });
-            })
-            ->when($hasNotes === '1', fn ($query) => $query->whereHas('noteStudent'))
-            ->when($hasNotes === '0', fn ($query) => $query->whereDoesntHave('noteStudent'))
-            ->orderByDesc('created_at')
-            ->paginate(20)
-            ->withQueryString();
-        $data['UploadStudents'] = StudentInfo::query()
-            ->forSchool($schoolId)
-            ->where('section_id', $id)
-            ->orderBy('id')
-            ->get(['id', 'prenom', 'nom']);
-        $data['notify'] = $this->notifications();
-        return view('admin.addnotestudent',$data);
+            $data['section'] = $section;
+            $data['StudentInfo'] = StudentInfo::query()
+                ->forSchool($schoolId)
+                ->where("section_id", $id)
+                ->with(['user', 'noteStudent'])
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($studentQuery) use ($search) {
+                        $studentQuery->where('prenom->fr', 'like', '%' . $search . '%')
+                            ->orWhere('prenom->ar', 'like', '%' . $search . '%')
+                            ->orWhere('nom->fr', 'like', '%' . $search . '%')
+                            ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                            ->orWhere('numtelephone', 'like', '%' . $search . '%')
+                            ->orWhereHas('user', fn ($userQuery) => $userQuery->where('email', 'like', '%' . $search . '%'));
+                    });
+                })
+                ->when($hasNotes === '1', fn ($query) => $query->whereHas('noteStudent'))
+                ->when($hasNotes === '0', fn ($query) => $query->whereDoesntHave('noteStudent'))
+                ->orderByDesc('created_at')
+                ->paginate(20)
+                ->withQueryString();
+            $data['UploadStudents'] = StudentInfo::query()
+                ->forSchool($schoolId)
+                ->where('section_id', $id)
+                ->orderBy('id')
+                ->get(['id', 'prenom', 'nom']);
+            $data['notify'] = $this->notifications();
+
+            return view('admin.addnotestudent',$data);
+        } catch (Throwable $exception) {
+            return redirect()->route('Sections.index')
+                ->withErrors(['error' => trans('messages.error')]);
+        }
     }
 
 
@@ -90,6 +97,11 @@ class NoteStudentController extends Controller
     public function edit($id)
     {
         return 0;
+    }
+
+    public function update(StoreNoteStudentRequest $request, $id)
+    {
+        abort(405);
     }
 
 

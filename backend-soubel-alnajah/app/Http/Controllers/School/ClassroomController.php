@@ -248,6 +248,12 @@ class ClassroomController extends Controller
     {
         Cache::forget(sprintf('lookup:school:%d:grade:%d:classes', $schoolId, $gradeId));
         Cache::forget(sprintf('exam:school:%d:classrooms', $schoolId));
+
+        $viewerSchoolId = (int) ($this->currentSchoolId() ?? 0);
+        if ($viewerSchoolId !== $schoolId) {
+            Cache::forget(sprintf('lookup:school:%d:grade:%d:classes', $viewerSchoolId, $gradeId));
+            Cache::forget(sprintf('exam:school:%d:classrooms', $viewerSchoolId));
+        }
     }
 
     // Backward-compatible alias for legacy naming.

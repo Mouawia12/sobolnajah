@@ -139,15 +139,25 @@ class SectionController extends Controller
     public function store(StoreSection $request)
     {
         $this->authorize('create', Section::class);
-        $request->validated();
+        $validated = $request->validated();
 
         $schoolId = $this->currentSchoolId();
 
-        if ($schoolId && (int) $request->school_id !== $schoolId) {
+        if ($schoolId && (int) $validated['school_id'] !== $schoolId) {
             return back()->withErrors(['school_id' => trans('messages.error')]);
         }
 
-        $teacherIds = collect($request->teacher_id)->filter()->unique()->all();
+        $classroom = Classroom::query()
+            ->whereKey((int) $validated['classroom_id'])
+            ->where('grade_id', (int) $validated['grade_id'])
+            ->where('school_id', (int) $validated['school_id'])
+            ->first();
+
+        if (!$classroom) {
+            return back()->withErrors(['classroom_id' => trans('messages.error')])->withInput();
+        }
+
+        $teacherIds = collect($validated['teacher_id'] ?? [])->filter()->unique()->all();
 
         if ($schoolId) {
             $teacherIds = Teacher::query()
@@ -268,8 +278,18 @@ class SectionController extends Controller
             $this->authorize('update', $Sections);
             $originalClassroomId = (int) $Sections->classroom_id;
 
-            if ($this->currentSchoolId() && (int) $request->school_id !== $Sections->school_id) {
+            if ($this->currentSchoolId() && (int) $validated['school_id'] !== $Sections->school_id) {
                 return back()->withErrors(['school_id' => trans('messages.error')]);
+            }
+
+            $classroom = Classroom::query()
+                ->whereKey((int) $validated['classroom_id'])
+                ->where('grade_id', (int) $validated['grade_id'])
+                ->where('school_id', (int) $validated['school_id'])
+                ->first();
+
+            if (!$classroom) {
+                return back()->withErrors(['classroom_id' => trans('messages.error')])->withInput();
             }
 
             $teacherIds = Teacher::query()
@@ -367,10 +387,20 @@ class SectionController extends Controller
     private function forgetClassSectionsLookupCache(int $schoolId, int $classroomId): void
     {
         Cache::forget(sprintf('lookup:school:%d:classroom:%d:sections', $schoolId, $classroomId));
+
+        $viewerSchoolId = (int) ($this->currentSchoolId() ?? 0);
+        if ($viewerSchoolId !== $schoolId) {
+            Cache::forget(sprintf('lookup:school:%d:classroom:%d:sections', $viewerSchoolId, $classroomId));
+        }
     }
 
     private function forgetSectionByIdLookupCache(int $schoolId, int $sectionId): void
     {
         Cache::forget(sprintf('lookup:school:%d:section:%d', $schoolId, $sectionId));
+
+        $viewerSchoolId = (int) ($this->currentSchoolId() ?? 0);
+        if ($viewerSchoolId !== $schoolId) {
+            Cache::forget(sprintf('lookup:school:%d:section:%d', $viewerSchoolId, $sectionId));
+        }
     }
 }

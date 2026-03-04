@@ -49,11 +49,23 @@ class StoreSection extends FormRequest
     }
 
     return [
-        'name_sectionfr' => 'required',
-        'name_sectionar' => 'required',
-        'grade_id' => 'required',
-        'classroom_id' => 'required',
-        'school_id' => ['required', $uniqueRule],
+        'name_sectionfr' => ['required', 'string'],
+        'name_sectionar' => ['required', 'string'],
+        'school_id' => ['required', 'integer', Rule::exists('schools', 'id'), $uniqueRule],
+        'grade_id' => [
+            'required',
+            'integer',
+            Rule::exists('schoolgrades', 'id')->where(fn ($query) => $query->where('school_id', $school_id)),
+        ],
+        'classroom_id' => [
+            'required',
+            'integer',
+            Rule::exists('classrooms', 'id')->where(fn ($query) => $query
+                ->where('school_id', $school_id)
+                ->where('grade_id', $grade_id)),
+        ],
+        'teacher_id' => ['nullable', 'array'],
+        'teacher_id.*' => ['integer', Rule::exists('teachers', 'id')],
     ];
 }
 
