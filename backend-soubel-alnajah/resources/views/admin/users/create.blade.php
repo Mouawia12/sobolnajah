@@ -214,6 +214,48 @@
                 <h3 class="box-title">قائمة المستخدمين</h3>
             </div>
             <div class="box-body">
+                <form method="GET" action="{{ route('admin.users.create') }}" class="admin-form-panel mb-15">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">بحث عام</label>
+                            <input
+                                type="text"
+                                name="filter_q"
+                                class="form-control"
+                                value="{{ request('filter_q') }}"
+                                placeholder="الاسم / البريد / رقم المستخدم"
+                            >
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">الدور</label>
+                            <select name="filter_role" class="form-select">
+                                <option value="">كل الأدوار</option>
+                                @foreach($roles as $value => $label)
+                                    <option value="{{ $value }}" {{ request('filter_role') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">المؤسسة</label>
+                            <select name="filter_school_id" class="form-select" {{ auth()->user()?->school_id ? 'disabled' : '' }}>
+                                <option value="">كل المؤسسات</option>
+                                @foreach($schools as $school)
+                                    <option value="{{ $school->id }}" {{ (string) request('filter_school_id') === (string) $school->id ? 'selected' : '' }}>
+                                        {{ $school->name_school }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if (auth()->user()?->school_id)
+                                <input type="hidden" name="filter_school_id" value="{{ auth()->user()->school_id }}">
+                            @endif
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button class="btn btn-primary" type="submit">تصفية</button>
+                            <a href="{{ route('admin.users.create') }}" class="btn btn-outline-secondary">إعادة</a>
+                        </div>
+                    </div>
+                </form>
+
                 <div class="table-responsive">
                     <table class="table table-bordered text-center" style="width:100%">
                         <thead>

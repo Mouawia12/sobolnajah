@@ -28,6 +28,9 @@ class UserManagementController extends Controller
     public function create()
     {
         $currentSchoolId = $this->currentSchoolId();
+        $filterQuery = trim((string) request('filter_q'));
+        $filterRole = trim((string) request('filter_role'));
+        $filterSchoolId = request('filter_school_id');
 
         $roles = [
             'admin' => 'مدير',
@@ -74,8 +77,27 @@ class UserManagementController extends Controller
                 'school:id,name_school',
             ])
             ->select(['id', 'name', 'email', 'school_id', 'created_at'])
+            ->when($filterQuery !== '', function ($query) use ($filterQuery) {
+                $query->where(function ($nested) use ($filterQuery) {
+                    $nested->where('email', 'like', '%' . $filterQuery . '%')
+                        ->orWhere('name->fr', 'like', '%' . $filterQuery . '%')
+                        ->orWhere('name->ar', 'like', '%' . $filterQuery . '%')
+                        ->orWhere('name->en', 'like', '%' . $filterQuery . '%');
+
+                    if (ctype_digit($filterQuery)) {
+                        $nested->orWhere('id', (int) $filterQuery);
+                    }
+                });
+            })
+            ->when($filterRole !== '', function ($query) use ($filterRole) {
+                $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', $filterRole));
+            })
+            ->when(!$currentSchoolId && $filterSchoolId, function ($query) use ($filterSchoolId) {
+                $query->where('school_id', (int) $filterSchoolId);
+            })
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.users.create', [
             'roles' => $roles,
