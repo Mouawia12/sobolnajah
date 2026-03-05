@@ -7,6 +7,43 @@
 @section('contenta')
 <div class="row">
     <div class="col-12">
+        <style>
+            .student-search-select {
+                position: relative;
+            }
+            .student-search-menu {
+                position: absolute;
+                inset-inline: 0;
+                top: calc(100% + 4px);
+                z-index: 1050;
+                background: #fff;
+                border: 1px solid #d9d9d9;
+                border-radius: 8px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+                padding: 8px;
+                display: none;
+            }
+            .student-search-menu.is-open {
+                display: block;
+            }
+            .student-search-list {
+                max-height: 240px;
+                overflow-y: auto;
+                margin-top: 6px;
+            }
+            .student-search-option {
+                width: 100%;
+                border: 0;
+                background: transparent;
+                text-align: start;
+                padding: 6px 8px;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+            .student-search-option:hover {
+                background: #eef5ff;
+            }
+        </style>
         <div class="box box-slided-down">
             <div class="box-header with-border bg-info">
                 <h4 class="box-title"><strong>كشف نقاط التلاميذ</strong></h4>
@@ -22,21 +59,24 @@
                     <div class="row">
                         <div class="form-group col-md-4">
                             <label class="form-label">{{ trans('inscription.student') }}</label>
-                            <input
-                                type="text"
-                                id="student_search"
-                                class="form-control mb-5"
-                                placeholder="ابحث عن التلميذ بالاسم أو الرقم"
-                                autocomplete="off"
-                            >
-                            <select id="student" class="form-select" name="student_id" required>
+                            <select id="student" class="d-none" name="student_id">
                                 <option value="" selected disabled>{{ trans('inscription.choisir') }}</option>
                                 @foreach ($UploadStudents as $studentOption)
-                                    <option value="{{ $studentOption->id }}">
+                                    <option value="{{ $studentOption->id }}" {{ (string) old('student_id') === (string) $studentOption->id ? 'selected' : '' }}>
                                         #{{ $studentOption->id }} - {{ (string) ($studentOption->prenom ?? '-') }} {{ (string) ($studentOption->nom ?? '-') }}
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="student-search-select" id="studentSearchSelect">
+                                <button type="button" id="studentSearchToggle" class="form-control text-start d-flex justify-content-between align-items-center">
+                                    <span id="studentSearchSelectedText">{{ trans('inscription.choisir') }}</span>
+                                    <span>▾</span>
+                                </button>
+                                <div class="student-search-menu" id="studentSearchMenu">
+                                    <input type="text" id="studentSearchInput" class="form-control" placeholder="ابحث عن التلميذ بالاسم أو الرقم">
+                                    <div class="student-search-list" id="studentSearchList"></div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group col-md-4">
@@ -183,39 +223,91 @@
 @section('jsa')
 <script>
     (function () {
-        const searchInput = document.getElementById('student_search');
         const studentSelect = document.getElementById('student');
-        if (!searchInput || !studentSelect) {
+        const wrapper = document.getElementById('studentSearchSelect');
+        const toggle = document.getElementById('studentSearchToggle');
+        const menu = document.getElementById('studentSearchMenu');
+        const searchInput = document.getElementById('studentSearchInput');
+        const list = document.getElementById('studentSearchList');
+        const selectedText = document.getElementById('studentSearchSelectedText');
+        if (!studentSelect || !wrapper || !toggle || !menu || !searchInput || !list || !selectedText) {
             return;
         }
 
-        const optionsSource = Array.from(studentSelect.options).map((option) => ({
-            value: option.value,
-            label: option.textContent,
-            disabled: option.disabled,
-        }));
+        const studentOptions = Array.from(studentSelect.options)
+            .filter((option) => option.value !== '')
+            .map((option) => ({
+                value: option.value,
+                text: option.textContent.trim(),
+            }));
 
-        const renderOptions = (query) => {
-            const term = query.trim().toLowerCase();
-            const selectedValue = studentSelect.value;
-            const filtered = term === ''
-                ? optionsSource
-                : optionsSource.filter((item) => item.label.toLowerCase().includes(term));
+        function updateSelectedText() {
+            const selected = studentSelect.options[studentSelect.selectedIndex];
+            selectedText.textContent = selected && selected.value
+                ? selected.textContent
+                : "{{ trans('inscription.choisir') }}";
+        }
 
-            studentSelect.innerHTML = '';
+        function closeMenu() {
+            menu.classList.remove('is-open');
+        }
+
+        function openMenu() {
+            menu.classList.add('is-open');
+            searchInput.focus();
+            searchInput.select();
+        }
+
+        function renderList(term) {
+            const normalized = (term || '').trim().toLowerCase();
+            const filtered = studentOptions.filter((item) => item.text.toLowerCase().includes(normalized));
+
+            list.innerHTML = '';
+            if (filtered.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'admin-empty-state';
+                empty.textContent = 'لا توجد نتائج';
+                list.appendChild(empty);
+                return;
+            }
+
             filtered.forEach((item) => {
-                const option = document.createElement('option');
-                option.value = item.value;
-                option.textContent = item.label;
-                option.disabled = item.disabled;
-                option.selected = item.value === selectedValue;
-                studentSelect.appendChild(option);
+                const optionButton = document.createElement('button');
+                optionButton.type = 'button';
+                optionButton.className = 'student-search-option';
+                optionButton.textContent = item.text;
+                optionButton.dataset.value = item.value;
+                optionButton.addEventListener('click', () => {
+                    studentSelect.value = item.value;
+                    updateSelectedText();
+                    closeMenu();
+                    searchInput.value = '';
+                    renderList('');
+                });
+                list.appendChild(optionButton);
             });
-        };
+        }
+
+        toggle.addEventListener('click', () => {
+            if (menu.classList.contains('is-open')) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        });
 
         searchInput.addEventListener('input', function () {
-            renderOptions(this.value);
+            renderList(this.value);
         });
+
+        document.addEventListener('click', (event) => {
+            if (!wrapper.contains(event.target)) {
+                closeMenu();
+            }
+        });
+
+        updateSelectedText();
+        renderList('');
     })();
 </script>
 @endsection

@@ -226,14 +226,66 @@ class ContractController extends Controller
         $paidTotal = (float) $contract->payments->sum('amount');
         $remaining = max(((float) $contract->total_amount - $paidTotal), 0);
 
-        $pdf = Pdf::loadView('admin.accounting.contracts.print', [
+        $pdf = Pdf::setOptions([
+                'defaultFont' => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+            ])
+            ->loadView('admin.accounting.contracts.print', [
             'contract' => $contract,
             'paidTotal' => $paidTotal,
             'remaining' => $remaining,
             'isPdf' => true,
-        ]);
+        ])
+            ->setPaper('a4');
 
         return $pdf->download('contract-' . $contract->id . '.pdf');
+    }
+
+    public function printRange(Request $request)
+    {
+        $this->authorize('viewAny', StudentContract::class);
+        $this->ensureAccountingRole();
+
+        $validated = $request->validate([
+            'from_date' => ['required', 'date'],
+            'to_date' => ['required', 'date', 'after_or_equal:from_date'],
+        ]);
+
+        $fromDate = Carbon::parse($validated['from_date'])->startOfDay();
+        $toDate = Carbon::parse($validated['to_date'])->endOfDay();
+
+        $contracts = StudentContract::query()
+            ->forSchool($this->currentSchoolId())
+            ->select([
+                'id',
+                'student_id',
+                'academic_year',
+                'total_amount',
+                'plan_type',
+                'status',
+                'created_at',
+            ])
+            ->with([
+                'student:id,user_id',
+                'student.user:id,name,email',
+            ])
+            ->withSum('payments as paid_total', 'amount')
+            ->whereBetween('created_at', [$fromDate, $toDate])
+            ->orderBy('created_at')
+            ->get();
+
+        $totals = [
+            'total_amount' => (float) $contracts->sum('total_amount'),
+            'paid_total' => (float) $contracts->sum('paid_total'),
+        ];
+        $totals['remaining'] = max($totals['total_amount'] - $totals['paid_total'], 0);
+
+        return view('admin.accounting.contracts.print-range', [
+            'contracts' => $contracts,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'totals' => $totals,
+        ]);
     }
 
     public function destroy(StudentContract $contract)

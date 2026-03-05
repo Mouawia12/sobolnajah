@@ -602,21 +602,34 @@
                 <h4 class="box-title">العقود</h4>
             </div>
             <div class="box-body">
-                <form method="GET" class="row mb-3">
+                <form method="GET" class="row mb-3" id="contractsFilterForm">
                     <div class="col-md-4">
-                        <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="بحث باسم التلميذ/البريد/رقم العقد">
+                        <input type="text" name="q" id="contractsSearchInput" class="form-control" value="{{ request('q') }}" placeholder="بحث باسم التلميذ/البريد/رقم العقد">
                     </div>
                     <div class="col-md-3">
-                        <select name="status" class="form-select">
+                        <select name="status" id="contractsStatusFilter" class="form-select">
                             <option value="">كل الحالات</option>
-                            @foreach(['draft', 'active', 'partial', 'paid', 'overdue'] as $status)
-                                <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>{{ $status }}</option>
+                            @foreach(['draft' => 'مسودة', 'active' => 'نشط', 'partial' => 'جزئي', 'paid' => 'مدفوع', 'overdue' => 'متأخر'] as $status => $statusLabel)
+                                <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>{{ $statusLabel }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <button class="btn btn-primary" type="submit">تصفية</button>
+                        <button class="btn btn-primary" type="submit" id="contractsFilterButton">تصفية</button>
                         <a href="{{ route('accounting.contracts.index') }}" class="btn btn-outline-secondary">إعادة ضبط</a>
+                    </div>
+                </form>
+                <form method="GET" action="{{ route('accounting.contracts.print-range') }}" target="_blank" class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">طباعة من تاريخ</label>
+                        <input type="date" name="from_date" class="form-control" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">إلى تاريخ</label>
+                        <input type="date" name="to_date" class="form-control" required>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button class="btn btn-outline-primary" type="submit">طباعة العقود حسب الفترة</button>
                     </div>
                 </form>
                 @if(request('highlight_contract'))
@@ -642,22 +655,30 @@
                             <th>الإجراءات</th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="contractsTableBody">
                         @forelse($contracts as $i => $contract)
                             @php
                                 $paidTotal = (float) ($contract->paid_total ?? 0);
                                 $remaining = (float) $contract->total_amount - $paidTotal;
+                                $statusLabels = ['draft' => 'مسودة', 'active' => 'نشط', 'partial' => 'جزئي', 'paid' => 'مدفوع', 'overdue' => 'متأخر'];
+                                $planLabels = ['yearly' => 'سنوي', 'monthly' => 'شهري', 'installments' => 'أقساط'];
+                                $studentName = (string) ($contract->student->user->name ?? ('Student #' . $contract->student_id));
                             @endphp
-                            <tr data-contract-id="{{ (string) $contract->id }}" data-external-contract="{{ (string) ($contract->external_contract_no ?? '') }}">
+                            <tr
+                                data-contract-id="{{ (string) $contract->id }}"
+                                data-external-contract="{{ (string) ($contract->external_contract_no ?? '') }}"
+                                data-status="{{ $contract->status }}"
+                                data-search="{{ strtolower(trim($studentName . ' ' . ($contract->student->user->email ?? '') . ' ' . $contract->id . ' ' . ($contract->external_contract_no ?? ''))) }}"
+                            >
                                 <td>{{ $contracts->firstItem() + $i }}</td>
                                 <td>{{ $contract->id }}</td>
-                                <td>{{ $contract->student->user->name ?? ('Student #' . $contract->student_id) }}</td>
+                                <td>{{ $studentName }}</td>
                                 <td>{{ $contract->academic_year }}</td>
-                                <td>{{ $contract->plan_type }}</td>
+                                <td>{{ $planLabels[$contract->plan_type] ?? $contract->plan_type }}</td>
                                 <td>{{ number_format((float) $contract->total_amount, 2) }}</td>
                                 <td>{{ number_format($paidTotal, 2) }}</td>
                                 <td>{{ number_format(max($remaining, 0), 2) }}</td>
-                                <td><span class="admin-status admin-status-{{ $contract->status }}">{{ $contract->status }}</span></td>
+                                <td><span class="admin-status admin-status-{{ $contract->status }}">{{ $statusLabels[$contract->status] ?? $contract->status }}</span></td>
                                 <td style="min-width:280px;">
                                     <button type="button" class="btn btn-sm btn-info mb-1" data-bs-toggle="modal" data-bs-target="#contract-edit-modal-{{ $contract->id }}">
                                         تعديل
@@ -678,6 +699,9 @@
                         @empty
                             <tr><td colspan="10"><div class="admin-empty-state">لا توجد عقود بعد.</div></td></tr>
                         @endforelse
+                        <tr id="contractsNoResultsRow" style="display:none;">
+                            <td colspan="10"><div class="admin-empty-state">لا توجد نتائج مطابقة للفلاتر الحالية.</div></td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -892,6 +916,59 @@
 
                 updateSelectedText();
                 renderList('');
+            })();
+        </script>
+        <script>
+            (function () {
+                const form = document.getElementById('contractsFilterForm');
+                const searchInput = document.getElementById('contractsSearchInput');
+                const statusFilter = document.getElementById('contractsStatusFilter');
+                const filterButton = document.getElementById('contractsFilterButton');
+                const body = document.getElementById('contractsTableBody');
+                const noResultsRow = document.getElementById('contractsNoResultsRow');
+                if (!form || !searchInput || !statusFilter || !body || !noResultsRow) {
+                    return;
+                }
+
+                const dataRows = Array.from(body.querySelectorAll('tr[data-contract-id]'));
+                if (dataRows.length === 0) {
+                    return;
+                }
+
+                function applyFilters() {
+                    const term = searchInput.value.trim().toLowerCase();
+                    const status = statusFilter.value.trim().toLowerCase();
+                    let visibleCount = 0;
+
+                    dataRows.forEach((row) => {
+                        const rowText = (row.getAttribute('data-search') || '').toLowerCase();
+                        const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+                        const matchesText = term === '' || rowText.indexOf(term) !== -1;
+                        const matchesStatus = status === '' || rowStatus === status;
+                        const show = matchesText && matchesStatus;
+                        row.style.display = show ? '' : 'none';
+                        if (show) {
+                            visibleCount++;
+                        }
+                    });
+
+                    noResultsRow.style.display = visibleCount === 0 ? '' : 'none';
+                }
+
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    applyFilters();
+                });
+
+                searchInput.addEventListener('input', applyFilters);
+                statusFilter.addEventListener('change', applyFilters);
+
+                if (filterButton) {
+                    filterButton.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        applyFilters();
+                    });
+                }
             })();
         </script>
 

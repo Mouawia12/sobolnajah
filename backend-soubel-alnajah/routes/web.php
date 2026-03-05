@@ -216,6 +216,7 @@ Route::group(
             Route::get('/accounting/contracts', [ContractController::class, 'index'])->name('accounting.contracts.index');
             Route::post('/accounting/contracts', [ContractController::class, 'store'])->name('accounting.contracts.store');
             Route::post('/accounting/contracts/import', [ContractController::class, 'import'])->name('accounting.contracts.import');
+            Route::get('/accounting/contracts/print-range', [ContractController::class, 'printRange'])->name('accounting.contracts.print-range');
             Route::get('/accounting/contracts/import-reports/{filename}', [ContractController::class, 'downloadImportReport'])
                 ->middleware('signed')
                 ->where('filename', '[A-Za-z0-9._-]+\\.csv')
