@@ -54,8 +54,13 @@
       <div class="navbar-custom-menu r-side">
         <ul class="nav navbar-nav">	
 			<li class="btn-group nav-item d-lg-inline-flex d-none">
-				<a href="{{ LaravelLocalization::localizeUrl('/') }}" class="waves-effect waves-light nav-link" title="الصفحة الرئيسية" target="_blank" rel="noopener noreferrer">
-					<i class="fa fa-home"></i>
+				<a
+					href="{{ route('Publications.index') }}"
+					class="waves-effect waves-light nav-link svg-bt-icon"
+					title="الصفحة الرئيسية"
+					style="font-size: 20px; padding: 10px 12px;"
+				>
+					<i class="fa fa-home" style="font-size: 20px;"></i>
 			    </a>
 			</li>
 			<li class="btn-group nav-item d-lg-inline-flex d-none">

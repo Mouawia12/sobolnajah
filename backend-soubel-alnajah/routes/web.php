@@ -52,7 +52,7 @@ Route::group(
     ], function(){
 
 
-        Route::get('/', [PublicationController::class, 'welcome']);
+        Route::get('/', fn () => redirect()->route('Publications.index'));
 
 
 
