@@ -486,10 +486,18 @@
                     @csrf
                     <div class="col-md-4">
                         <label class="form-label">التلميذ</label>
-                        <select name="student_id" class="form-select" required>
+                        <select
+                            name="student_id"
+                            class="selectpicker form-control"
+                            data-live-search="true"
+                            data-width="100%"
+                            data-size="8"
+                            title="اختر التلميذ"
+                            required
+                        >
                             <option value="">اختر التلميذ</option>
                             @foreach($students as $student)
-                                <option value="{{ $student->id }}">
+                                <option value="{{ $student->id }}" {{ (string) old('student_id') === (string) $student->id ? 'selected' : '' }}>
                                     {{ $student->user->name ?? ('Student #' . $student->id) }}
                                 </option>
                             @endforeach
