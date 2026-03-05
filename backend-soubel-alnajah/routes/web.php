@@ -52,7 +52,8 @@ Route::group(
     ], function(){
 
 
-        Route::get('/', fn () => redirect()->route('Publications.index'));
+        Route::get('/', [PublicationController::class, 'welcome'])->name('landing');
+        Route::get('/site-home', [PublicationController::class, 'siteHome'])->name('site.home');
 
 
 

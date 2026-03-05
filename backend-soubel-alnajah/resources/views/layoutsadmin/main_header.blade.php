@@ -55,12 +55,12 @@
         <ul class="nav navbar-nav">	
 			<li class="btn-group nav-item d-lg-inline-flex d-none">
 				<a
-					href="{{ route('Publications.index') }}"
+					href="{{ route('site.home') }}"
 					class="waves-effect waves-light nav-link svg-bt-icon"
 					title="الصفحة الرئيسية"
-					style="font-size: 20px; padding: 10px 12px;"
+					style="font-size: 24px; padding: 10px 14px;"
 				>
-					<i class="fa fa-home" style="font-size: 20px;"></i>
+					<i class="fa fa-home" style="font-size: 24px;"></i>
 			    </a>
 			</li>
 			<li class="btn-group nav-item d-lg-inline-flex d-none">

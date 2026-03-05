@@ -178,4 +178,10 @@ class PublicationController extends Controller
         }
     }
 
+    public function siteHome()
+    {
+        $Publication = Publication::orderBy('id', 'desc')->take(3)->get();
+        return view('welcome', compact('Publication'));
+    }
+
 }
