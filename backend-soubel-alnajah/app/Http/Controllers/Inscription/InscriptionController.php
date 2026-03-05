@@ -123,6 +123,16 @@ class InscriptionController extends Controller
         return view('front-end.inscription', $data);
     }
 
+    public function publicIndex()
+    {
+        $data['School'] = School::query()
+            ->with('schoolgrades')
+            ->orderBy('name_school')
+            ->get();
+
+        return view('front-end.inscription', $data);
+    }
+
 
     public function create()
     {

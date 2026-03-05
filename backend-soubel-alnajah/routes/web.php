@@ -52,8 +52,11 @@ Route::group(
     ], function(){
 
 
-        Route::get('/', [PublicationController::class, 'welcome'])->name('landing');
+        Route::get('/', [PublicationController::class, 'siteHome'])->name('landing');
         Route::get('/site-home', [PublicationController::class, 'siteHome'])->name('site.home');
+        Route::get('/site/inscriptions', [InscriptionController::class, 'publicIndex'])->name('public.inscriptions.index');
+        Route::get('/site/publications', [PublicationController::class, 'publicIndex'])->name('public.publications.index');
+        Route::get('/site/exams', [ExamesController::class, 'publicIndex'])->name('public.exams.index');
 
 
 

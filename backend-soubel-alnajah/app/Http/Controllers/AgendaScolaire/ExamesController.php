@@ -111,6 +111,47 @@ class ExamesController extends Controller
         }
     }
 
+    public function publicIndex()
+    {
+        $search = trim((string) request('q'));
+        $gradeId = request('grade_id');
+        $classroomId = request('classroom_id');
+        $specializationId = request('specialization_id');
+        $year = request('Annscolaire');
+
+        $query = Exames::query()
+            ->select([
+                'id',
+                'name',
+                'file',
+                'specialization_id',
+                'grade_id',
+                'classroom_id',
+                'Annscolaire',
+                'created_at',
+            ])
+            ->with([
+                'classroom:id,name_class',
+                'schoolgrade:id,name_grade',
+                'specialization:id,name',
+            ])
+            ->when($gradeId, fn ($q) => $q->where('grade_id', (int) $gradeId))
+            ->when($classroomId, fn ($q) => $q->where('classroom_id', (int) $classroomId))
+            ->when($specializationId, fn ($q) => $q->where('specialization_id', (int) $specializationId))
+            ->when($year, fn ($q) => $q->where('Annscolaire', $year))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($textQuery) use ($search) {
+                    $textQuery->where('name->ar', 'like', '%' . $search . '%')
+                        ->orWhere('name->fr', 'like', '%' . $search . '%')
+                        ->orWhere('name->en', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderByDesc('created_at');
+
+        $data['Exames'] = $query->paginate(20)->withQueryString();
+        return view('front-end.exam', $data);
+    }
+
     /**
      * Store a newly created resource in storage.
      */

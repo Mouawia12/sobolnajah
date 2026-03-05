@@ -184,4 +184,9 @@ class PublicationController extends Controller
         return view('welcome', compact('Publication'));
     }
 
+    public function publicIndex()
+    {
+        return view('front-end.publications');
+    }
+
 }

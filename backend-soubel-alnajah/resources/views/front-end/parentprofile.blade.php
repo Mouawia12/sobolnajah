@@ -67,7 +67,7 @@
                                     <span class="icon-Mail fs-20 me-5"></span>{{ trans('student.message') }}</a>
                             </div>
                             <div class="col-6">
-                                <a href="{{ route('Exames.index')}}" class="link d-flex align-items-center justify-content-center font-medium">
+                                <a href="{{ route('public.exams.index') }}" class="link d-flex align-items-center justify-content-center font-medium">
                                     <span class="icon-Code1 fs-20 me-5"><span class="path1"></span><span class="path2"></span></span>{{ trans('student.library') }}</a>
                             </div>
                         </div>						

@@ -82,8 +82,8 @@
                 <a href="{{ LaravelLocalization::localizeUrl('/') }}" class="btn btn-link">{{ trans('main_header.accueil') }}</a>
                 {{-- <a href="#" class="btn btn-link">About Us</a>
                 <a href="#" class="btn btn-link">Courses</a> --}}
-                <a href="{{route('Inscriptions.index')}}" class="btn btn-link">{{ trans('main_header.inscription') }}</a>
-                <a href="{{route('Publications.index')}}" class="btn btn-link">{{ trans('main_header.agendascolaire') }}</a>
+                <a href="{{ route('public.inscriptions.index') }}" class="btn btn-link">{{ trans('main_header.inscription') }}</a>
+                <a href="{{ route('public.publications.index') }}" class="btn btn-link">{{ trans('main_header.agendascolaire') }}</a>
                 <a href="{{route('public.jobs.index')}}" class="btn btn-link">{{ trans('main_header.recruitment') }}</a>
                 <a href="{{route('public.timetables.index')}}" class="btn btn-link">{{ trans('main_header.timetables') }}</a>
                 <a href="{{ LaravelLocalization::localizeUrl('/contact') }}" class="btn btn-link">{{ trans('main_header.contact') }}</a>

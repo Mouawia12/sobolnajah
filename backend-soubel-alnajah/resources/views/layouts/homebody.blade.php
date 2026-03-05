@@ -135,7 +135,7 @@
                             <h1 class="mb-15">{{ trans('home.phases') }}</h1>
                             {{-- <h4 class="fw-400">{{ trans('home.clesucces') }}</h4> --}}
                             <p class="fs-22"> {{ trans('home.clesucces2') }} </p>
-                            <a href="{{route('Publications.index')}}" class="btn btn-outline btn-info">{{ trans('home.readmore') }}</a>
+                            <a href="{{ route('public.publications.index') }}" class="btn btn-outline btn-info">{{ trans('home.readmore') }}</a>
                         </div>
                         <div class="col-lg-6 col-12 position-relative">
                             <div class="media-list media-list-hover media-list-divided md-post mt-lg-0 mt-30">
@@ -371,7 +371,7 @@
                         </div>
                         <div class="entry-share d-flex justify-content-between align-items-center">
                             <div class="entry-button">
-                                <a href="{{route('Publications.index')}}" class="btn btn-primary btn-sm">{{ trans('home.readmore') }}</a>
+                                <a href="{{ route('public.publications.index') }}" class="btn btn-primary btn-sm">{{ trans('home.readmore') }}</a>
                             </div>
                             <div class="social">
                                 <strong>{{ trans('home.share') }} : </strong>

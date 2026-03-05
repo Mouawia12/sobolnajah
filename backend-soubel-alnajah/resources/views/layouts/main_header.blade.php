@@ -42,7 +42,7 @@
 
 					 @endif
 					 @if (Route::has('register'))
-					 <li class="me-10 ps-10"><a href="{{route('Inscriptions.index')}}"><i class="text-white fa fa-user"></i>{{ trans('main_header.register') }}</a></li>
+					 <li class="me-10 ps-10"><a href="{{ route('public.inscriptions.index') }}"><i class="text-white fa fa-user"></i>{{ trans('main_header.register') }}</a></li>
 					 @endif
 					 @endguest
 					 @auth
@@ -83,12 +83,12 @@
 					<a href="{{ LaravelLocalization::localizeUrl('/') }}">{{ trans('main_header.accueil') }}</a>
 				</li>
 				<li >
-					<a href="{{route('Inscriptions.index')}}">{{ trans('main_header.inscription') }}</a>
+					<a href="{{ route('public.inscriptions.index') }}">{{ trans('main_header.inscription') }}</a>
 				</li>
 				
 				
 				<li >
-					<a href="{{route('Publications.index')}}">{{ trans('main_header.agendascolaire') }}</a>
+					<a href="{{ route('public.publications.index') }}">{{ trans('main_header.agendascolaire') }}</a>
 				</li>
 
 				<li >
@@ -145,7 +145,7 @@
 				</li> --}}
 
 				<li>
-					<a href="{{route('Exames.index')}}">{{ trans('main_header.examens') }}</a>
+					<a href="{{ route('public.exams.index') }}">{{ trans('main_header.examens') }}</a>
 				</li>
 
 
@@ -211,7 +211,6 @@
 			</div>
 		</nav>
 	</header>
-
 
 
 

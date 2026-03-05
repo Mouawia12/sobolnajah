@@ -127,11 +127,11 @@
                     </h4>
                     
                     <ul class="list list-unstyled">
-                        <li><a  href="{{route('Publications.index')}}"><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i> {{ trans('pub.all') }} </a></li>
+                        <li><a href="{{ route('public.publications.index') }}"><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i> {{ trans('pub.all') }} </a></li>
 
                         @foreach ($Grade as $g)
                                 
-                            <li><a href="{{route('Publications.index')}}" ><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i>{{$g->name_grades}}</a></li>
+                            <li><a href="{{ route('public.publications.index') }}" ><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i>{{$g->name_grades}}</a></li>
     
                         @endforeach
     
@@ -141,10 +141,10 @@
                 <div class="widget clearfix">
                     <h4 class="pb-15 mb-25 bb-1">{{ trans('pub.agenda') }}       <span class="mx-0 badge badge-danger-light">{{$Agenda->count()}}</span></h4>
                     <ul class="list list-unstyled">
-                        <li><a  href="{{route('Publications.index')}}" ><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i> {{ trans('pub.all') }} </a></li>
+                        <li><a href="{{ route('public.publications.index') }}" ><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i> {{ trans('pub.all') }} </a></li>
 
                         @foreach ($Agenda as $a)
-                        <li><a href="{{route('Publications.index')}}" ><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i> {{$a->name_agenda}}</a></li>
+                        <li><a href="{{ route('public.publications.index') }}" ><i class="fa fa-angle-double-{{ trans('pub.lang') }}"></i> {{$a->name_agenda}}</a></li>
                         @endforeach
     
                     </ul>
