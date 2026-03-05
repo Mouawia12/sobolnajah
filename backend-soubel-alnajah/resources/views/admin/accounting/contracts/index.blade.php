@@ -486,13 +486,11 @@
                     @csrf
                     <div class="col-md-4">
                         <label class="form-label">التلميذ</label>
+                        <input type="text" id="studentSearchInput" class="form-control mb-1" placeholder="ابحث عن التلميذ بالاسم...">
                         <select
                             name="student_id"
-                            class="selectpicker form-control"
-                            data-live-search="true"
-                            data-width="100%"
-                            data-size="8"
-                            title="اختر التلميذ"
+                            id="studentSelect"
+                            class="form-select"
                             required
                         >
                             <option value="">اختر التلميذ</option>
@@ -757,6 +755,50 @@
                 })();
             </script>
         @endif
+        <script>
+            (function () {
+                const searchInput = document.getElementById('studentSearchInput');
+                const select = document.getElementById('studentSelect');
+                if (!searchInput || !select) {
+                    return;
+                }
+
+                const originalOptions = Array.from(select.options).map(function (option) {
+                    return {
+                        value: option.value,
+                        text: option.text,
+                        selected: option.selected
+                    };
+                });
+
+                function renderFilteredOptions(term) {
+                    const normalized = (term || '').trim().toLowerCase();
+                    const currentValue = select.value;
+                    select.innerHTML = '';
+
+                    originalOptions.forEach(function (item) {
+                        if (!item.value || item.text.toLowerCase().indexOf(normalized) !== -1) {
+                            const option = document.createElement('option');
+                            option.value = item.value;
+                            option.textContent = item.text;
+                            option.selected = (item.value === currentValue) || (currentValue === '' && item.selected);
+                            select.appendChild(option);
+                        }
+                    });
+
+                    if (select.options.length === 0) {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = 'لا توجد نتائج';
+                        select.appendChild(emptyOption);
+                    }
+                }
+
+                searchInput.addEventListener('input', function () {
+                    renderFilteredOptions(searchInput.value);
+                });
+            })();
+        </script>
 
         <div class="box">
             <div class="box-header with-border">
