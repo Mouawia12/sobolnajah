@@ -27,6 +27,11 @@ class StudentContractPolicy
         return $this->canAccess($user, $contract->school_id);
     }
 
+    public function delete(User $user, StudentContract $contract): bool
+    {
+        return $this->canAccess($user, $contract->school_id);
+    }
+
     private function canAccess(User $user, int $schoolId): bool
     {
         if (!$user->hasRole('admin') && !$user->hasRole('accountant')) {

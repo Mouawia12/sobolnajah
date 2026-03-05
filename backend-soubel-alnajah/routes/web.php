@@ -221,6 +221,9 @@ Route::group(
                 ->where('filename', '[A-Za-z0-9._-]+\\.csv')
                 ->name('accounting.contracts.import.report');
             Route::patch('/accounting/contracts/{contract}', [ContractController::class, 'update'])->name('accounting.contracts.update');
+            Route::get('/accounting/contracts/{contract}/print', [ContractController::class, 'print'])->name('accounting.contracts.print');
+            Route::get('/accounting/contracts/{contract}/download', [ContractController::class, 'download'])->name('accounting.contracts.download');
+            Route::delete('/accounting/contracts/{contract}', [ContractController::class, 'destroy'])->name('accounting.contracts.destroy');
 
             Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
             Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');

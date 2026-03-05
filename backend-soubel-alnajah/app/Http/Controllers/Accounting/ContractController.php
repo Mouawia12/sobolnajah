@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Actions\Accounting\ImportAccountingWorkbookAction;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportAccountingWorkbookRequest;
 use App\Http\Requests\StoreStudentContractRequest;
@@ -126,6 +127,7 @@ class ContractController extends Controller
                     'school_id' => $student->section?->school_id,
                     'student_id' => $student->id,
                     'payment_plan_id' => $validated['payment_plan_id'] ?? null,
+                    'external_contract_no' => null,
                     'academic_year' => $validated['academic_year'],
                     'total_amount' => $validated['total_amount'],
                     'plan_type' => $validated['plan_type'],
@@ -136,6 +138,10 @@ class ContractController extends Controller
                     'notes' => $validated['notes'] ?? null,
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
+                ]);
+
+                $contract->update([
+                    'external_contract_no' => (string) $contract->id,
                 ]);
 
                 $this->regenerateInstallments($contract);
@@ -178,6 +184,72 @@ class ContractController extends Controller
         }
 
         toastr()->success(trans('accounting.messages.contract_updated'));
+        return redirect()->route('accounting.contracts.index');
+    }
+
+    public function print(StudentContract $contract)
+    {
+        $this->authorize('view', $contract);
+        $this->ensureAccountingRole();
+
+        $contract->load([
+            'student:id,user_id',
+            'student.user:id,name,email',
+            'plan:id,name',
+            'installments:id,contract_id,installment_no,due_date,amount,paid_amount,status,label',
+            'payments:id,contract_id,receipt_number,paid_on,amount,payment_method,notes',
+        ]);
+
+        $paidTotal = (float) $contract->payments->sum('amount');
+        $remaining = max(((float) $contract->total_amount - $paidTotal), 0);
+
+        return view('admin.accounting.contracts.print', [
+            'contract' => $contract,
+            'paidTotal' => $paidTotal,
+            'remaining' => $remaining,
+        ]);
+    }
+
+    public function download(StudentContract $contract)
+    {
+        $this->authorize('view', $contract);
+        $this->ensureAccountingRole();
+
+        $contract->load([
+            'student:id,user_id',
+            'student.user:id,name,email',
+            'plan:id,name',
+            'installments:id,contract_id,installment_no,due_date,amount,paid_amount,status,label',
+            'payments:id,contract_id,receipt_number,paid_on,amount,payment_method,notes',
+        ]);
+
+        $paidTotal = (float) $contract->payments->sum('amount');
+        $remaining = max(((float) $contract->total_amount - $paidTotal), 0);
+
+        $pdf = Pdf::loadView('admin.accounting.contracts.print', [
+            'contract' => $contract,
+            'paidTotal' => $paidTotal,
+            'remaining' => $remaining,
+            'isPdf' => true,
+        ]);
+
+        return $pdf->download('contract-' . $contract->id . '.pdf');
+    }
+
+    public function destroy(StudentContract $contract)
+    {
+        $this->authorize('delete', $contract);
+        $this->ensureAccountingRole();
+
+        try {
+            DB::transaction(function () use ($contract): void {
+                $contract->delete();
+            });
+        } catch (Throwable $exception) {
+            return back()->withErrors(['error' => $exception->getMessage()]);
+        }
+
+        toastr()->success('تم حذف العقد بنجاح.');
         return redirect()->route('accounting.contracts.index');
     }
 

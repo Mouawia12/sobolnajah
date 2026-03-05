@@ -564,7 +564,7 @@
                         <select name="status" class="form-select">
                             <option value="">كل الحالات</option>
                             @foreach(['draft', 'active', 'partial', 'paid', 'overdue'] as $status)
-                                <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status }}</option>
+                                <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>{{ $status }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -593,7 +593,7 @@
                             <th>المدفوع</th>
                             <th>المتبقي</th>
                             <th>الحالة</th>
-                            <th>تعديل</th>
+                            <th>الإجراءات</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -602,9 +602,9 @@
                                 $paidTotal = (float) ($contract->paid_total ?? 0);
                                 $remaining = (float) $contract->total_amount - $paidTotal;
                             @endphp
-                            <tr data-external-contract="{{ (string) ($contract->external_contract_no ?? '') }}">
+                            <tr data-contract-id="{{ (string) $contract->id }}" data-external-contract="{{ (string) ($contract->external_contract_no ?? '') }}">
                                 <td>{{ $contracts->firstItem() + $i }}</td>
-                                <td>{{ $contract->external_contract_no ?: '-' }}</td>
+                                <td>{{ $contract->id }}</td>
                                 <td>{{ $contract->student->user->name ?? ('Student #' . $contract->student_id) }}</td>
                                 <td>{{ $contract->academic_year }}</td>
                                 <td>{{ $contract->plan_type }}</td>
@@ -612,46 +612,20 @@
                                 <td>{{ number_format($paidTotal, 2) }}</td>
                                 <td>{{ number_format(max($remaining, 0), 2) }}</td>
                                 <td><span class="admin-status admin-status-{{ $contract->status }}">{{ $contract->status }}</span></td>
-                                <td style="min-width:300px;">
-                                    <form method="POST" action="{{ route('accounting.contracts.update', $contract) }}" class="row g-1">
+                                <td style="min-width:280px;">
+                                    <button type="button" class="btn btn-sm btn-info mb-1" data-bs-toggle="modal" data-bs-target="#contract-edit-modal-{{ $contract->id }}">
+                                        تعديل
+                                    </button>
+                                    <a href="{{ route('accounting.contracts.print', $contract) }}" target="_blank" class="btn btn-sm btn-outline-primary mb-1">
+                                        طباعة
+                                    </a>
+                                    <a href="{{ route('accounting.contracts.download', $contract) }}" class="btn btn-sm btn-outline-success mb-1">
+                                        تنزيل
+                                    </a>
+                                    <form method="POST" action="{{ route('accounting.contracts.destroy', $contract) }}" class="d-inline-block mb-1" onsubmit="return confirm('هل أنت متأكد من حذف هذا العقد؟');">
                                         @csrf
-                                        @method('PATCH')
-                                        <div class="col-4">
-                                            <input type="text" class="form-control form-control-sm" name="academic_year" value="{{ $contract->academic_year }}" required>
-                                        </div>
-                                        <div class="col-4">
-                                            <input type="number" class="form-control form-control-sm" min="0" step="0.01" name="total_amount" value="{{ $contract->total_amount }}" required>
-                                        </div>
-                                        <div class="col-4">
-                                            <select name="plan_type" class="form-select form-select-sm" required>
-                                                @foreach(['yearly','monthly','installments'] as $planType)
-                                                    <option value="{{ $planType }}" @selected($contract->plan_type === $planType)>{{ $planType }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-4">
-                                            <input type="number" class="form-control form-control-sm" name="installments_count" value="{{ $contract->installments_count }}">
-                                        </div>
-                                        <div class="col-4">
-                                            <input type="date" class="form-control form-control-sm" name="starts_on" value="{{ optional($contract->starts_on)->format('Y-m-d') }}">
-                                        </div>
-                                        <div class="col-4">
-                                            <input type="date" class="form-control form-control-sm" name="ends_on" value="{{ optional($contract->ends_on)->format('Y-m-d') }}">
-                                        </div>
-                                        <div class="col-4">
-                                            <select name="status" class="form-select form-select-sm" required>
-                                                @foreach(['draft','active','partial','paid','overdue'] as $status)
-                                                    <option value="{{ $status }}" @selected($contract->status === $status)>{{ $status }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-8">
-                                            <input type="text" class="form-control form-control-sm" name="notes" value="{{ $contract->notes }}" placeholder="ملاحظات">
-                                        </div>
-                                        <input type="hidden" name="payment_plan_id" value="{{ $contract->payment_plan_id }}">
-                                        <div class="col-12">
-                                            <button class="btn btn-sm btn-info" type="submit">تحديث</button>
-                                        </div>
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
                                     </form>
                                 </td>
                             </tr>
@@ -661,6 +635,79 @@
                         </tbody>
                     </table>
                 </div>
+                @foreach($contracts as $contract)
+                    <div class="modal fade" id="contract-edit-modal-{{ $contract->id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ route('accounting.contracts.update', $contract) }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">تحديث العقد رقم {{ $contract->id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <label class="form-label">السنة الدراسية</label>
+                                                <input type="text" class="form-control" name="academic_year" value="{{ $contract->academic_year }}" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">المبلغ الإجمالي</label>
+                                                <input type="number" class="form-control" min="0" step="0.01" name="total_amount" value="{{ $contract->total_amount }}" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">الخطة</label>
+                                                <select name="plan_type" class="form-select" required>
+                                                    @foreach(['yearly' => 'سنوي', 'monthly' => 'شهري', 'installments' => 'أقساط'] as $planType => $planLabel)
+                                                        <option value="{{ $planType }}" {{ $contract->plan_type === $planType ? 'selected' : '' }}>{{ $planLabel }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">عدد الدفعات</label>
+                                                <input type="number" class="form-control" min="1" max="24" name="installments_count" value="{{ $contract->installments_count }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">تاريخ البداية</label>
+                                                <input type="date" class="form-control" name="starts_on" value="{{ optional($contract->starts_on)->format('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">تاريخ النهاية</label>
+                                                <input type="date" class="form-control" name="ends_on" value="{{ optional($contract->ends_on)->format('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">الحالة</label>
+                                                <select name="status" class="form-select" required>
+                                                    @foreach(['draft' => 'مسودة', 'active' => 'نشط', 'partial' => 'جزئي', 'paid' => 'مدفوع', 'overdue' => 'متأخر'] as $status => $statusLabel)
+                                                        <option value="{{ $status }}" {{ $contract->status === $status ? 'selected' : '' }}>{{ $statusLabel }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">نموذج الخطة</label>
+                                                <select name="payment_plan_id" class="form-select">
+                                                    <option value="">بدون</option>
+                                                    @foreach($plans as $plan)
+                                                        <option value="{{ $plan->id }}" {{ (int) $contract->payment_plan_id === (int) $plan->id ? 'selected' : '' }}>{{ $plan->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">ملاحظات</label>
+                                                <input type="text" class="form-control" name="notes" value="{{ $contract->notes }}" placeholder="ملاحظات">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                        <button type="submit" class="btn btn-info">حفظ التعديلات</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
                 {{ $contracts->links() }}
             </div>
         </div>
@@ -672,11 +719,12 @@
                     const notice = document.getElementById('contractHighlightNotice');
                     const noticeText = document.getElementById('contractHighlightNoticeText');
                     const clearButton = document.getElementById('clearContractHighlight');
-                    const rows = document.querySelectorAll('#contractsList table tbody tr[data-external-contract]');
+                    const rows = document.querySelectorAll('#contractsList table tbody tr[data-contract-id]');
                     let highlightedRow = null;
                     for (const row of rows) {
-                        const contractNo = (row.getAttribute('data-external-contract') || '').trim().toLowerCase();
-                        if (contractNo === target) {
+                        const contractId = (row.getAttribute('data-contract-id') || '').trim().toLowerCase();
+                        const externalContractNo = (row.getAttribute('data-external-contract') || '').trim().toLowerCase();
+                        if (contractId === target || externalContractNo === target) {
                             row.style.outline = '2px solid #2f7d32';
                             row.style.backgroundColor = '#eef8ee';
                             row.scrollIntoView({ behavior: 'smooth', block: 'center' });
