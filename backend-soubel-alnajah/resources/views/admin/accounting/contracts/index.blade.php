@@ -11,6 +11,42 @@
             #warningsTable .js-contract-shortcut:hover {
                 background-color: #f4f9ff;
             }
+            .student-search-select {
+                position: relative;
+            }
+            .student-search-menu {
+                position: absolute;
+                inset-inline: 0;
+                top: calc(100% + 4px);
+                z-index: 1050;
+                background: #fff;
+                border: 1px solid #d9d9d9;
+                border-radius: 8px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+                padding: 8px;
+                display: none;
+            }
+            .student-search-menu.is-open {
+                display: block;
+            }
+            .student-search-list {
+                max-height: 240px;
+                overflow-y: auto;
+                margin-top: 6px;
+            }
+            .student-search-option {
+                width: 100%;
+                border: 0;
+                background: transparent;
+                text-align: start;
+                padding: 6px 8px;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+            .student-search-option:hover,
+            .student-search-option.is-active {
+                background: #eef5ff;
+            }
         </style>
         <div class="box mb-3">
             <div class="box-header with-border">
@@ -486,13 +522,7 @@
                     @csrf
                     <div class="col-md-4">
                         <label class="form-label">التلميذ</label>
-                        <input type="text" id="studentSearchInput" class="form-control mb-1" placeholder="ابحث عن التلميذ بالاسم...">
-                        <select
-                            name="student_id"
-                            id="studentSelect"
-                            class="form-select"
-                            required
-                        >
+                        <select name="student_id" id="studentSelect" class="d-none">
                             <option value="">اختر التلميذ</option>
                             @foreach($students as $student)
                                 <option value="{{ $student->id }}" {{ (string) old('student_id') === (string) $student->id ? 'selected' : '' }}>
@@ -500,6 +530,16 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="student-search-select" id="studentSearchSelect">
+                            <button type="button" id="studentSearchToggle" class="form-control text-start d-flex justify-content-between align-items-center">
+                                <span id="studentSearchSelectedText">اختر التلميذ</span>
+                                <span>▾</span>
+                            </button>
+                            <div class="student-search-menu" id="studentSearchMenu">
+                                <input type="text" id="studentSearchInput" class="form-control" placeholder="ابحث بالاسم...">
+                                <div class="student-search-list" id="studentSearchList"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">السنة الدراسية</label>
@@ -757,46 +797,101 @@
         @endif
         <script>
             (function () {
-                const searchInput = document.getElementById('studentSearchInput');
                 const select = document.getElementById('studentSelect');
-                if (!searchInput || !select) {
+                const wrapper = document.getElementById('studentSearchSelect');
+                const toggle = document.getElementById('studentSearchToggle');
+                const menu = document.getElementById('studentSearchMenu');
+                const searchInput = document.getElementById('studentSearchInput');
+                const list = document.getElementById('studentSearchList');
+                const selectedText = document.getElementById('studentSearchSelectedText');
+                if (!select || !wrapper || !toggle || !menu || !searchInput || !list || !selectedText) {
                     return;
                 }
 
-                const originalOptions = Array.from(select.options).map(function (option) {
-                    return {
-                        value: option.value,
-                        text: option.text,
-                        selected: option.selected
-                    };
-                });
-
-                function renderFilteredOptions(term) {
-                    const normalized = (term || '').trim().toLowerCase();
-                    const currentValue = select.value;
-                    select.innerHTML = '';
-
-                    originalOptions.forEach(function (item) {
-                        if (!item.value || item.text.toLowerCase().indexOf(normalized) !== -1) {
-                            const option = document.createElement('option');
-                            option.value = item.value;
-                            option.textContent = item.text;
-                            option.selected = (item.value === currentValue) || (currentValue === '' && item.selected);
-                            select.appendChild(option);
-                        }
+                const studentOptions = Array.from(select.options)
+                    .filter(function (option) { return option.value !== ''; })
+                    .map(function (option) {
+                        return {
+                            value: option.value,
+                            text: option.text.trim()
+                        };
                     });
 
-                    if (select.options.length === 0) {
-                        const emptyOption = document.createElement('option');
-                        emptyOption.value = '';
-                        emptyOption.textContent = 'لا توجد نتائج';
-                        select.appendChild(emptyOption);
-                    }
+                function updateSelectedText() {
+                    const current = select.options[select.selectedIndex];
+                    selectedText.textContent = current && current.value ? current.text : 'اختر التلميذ';
                 }
 
-                searchInput.addEventListener('input', function () {
-                    renderFilteredOptions(searchInput.value);
+                function closeMenu() {
+                    menu.classList.remove('is-open');
+                }
+
+                function openMenu() {
+                    menu.classList.add('is-open');
+                    searchInput.focus();
+                    searchInput.select();
+                }
+
+                function renderList(term) {
+                    const normalized = (term || '').trim().toLowerCase();
+                    const filtered = studentOptions.filter(function (item) {
+                        return item.text.toLowerCase().indexOf(normalized) !== -1;
+                    });
+
+                    list.innerHTML = '';
+                    if (filtered.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'admin-empty-state';
+                        empty.textContent = 'لا توجد نتائج';
+                        list.appendChild(empty);
+                        return;
+                    }
+
+                    filtered.forEach(function (item) {
+                        const optionButton = document.createElement('button');
+                        optionButton.type = 'button';
+                        optionButton.className = 'student-search-option';
+                        optionButton.textContent = item.text;
+                        optionButton.dataset.value = item.value;
+                        optionButton.addEventListener('click', function () {
+                            select.value = item.value;
+                            updateSelectedText();
+                            closeMenu();
+                            searchInput.value = '';
+                            renderList('');
+                        });
+                        list.appendChild(optionButton);
+                    });
+                }
+
+                toggle.addEventListener('click', function () {
+                    if (menu.classList.contains('is-open')) {
+                        closeMenu();
+                    } else {
+                        openMenu();
+                    }
                 });
+
+                searchInput.addEventListener('input', function () {
+                    renderList(searchInput.value);
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (!wrapper.contains(event.target)) {
+                        closeMenu();
+                    }
+                });
+
+                select.addEventListener('invalid', function () {
+                    toggle.classList.add('is-invalid');
+                });
+
+                select.addEventListener('change', function () {
+                    toggle.classList.remove('is-invalid');
+                });
+
+                updateSelectedText();
+                renderList('');
             })();
         </script>
 
