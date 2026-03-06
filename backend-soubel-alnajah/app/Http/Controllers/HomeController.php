@@ -163,11 +163,17 @@ class HomeController extends Controller
             return redirect()->route('accountant.dashboard');
         } else if(Auth::user()->hasRole('student')){
 
-            $data['StudentInfo'] = StudentInfo::where('user_id',Auth::user()->id)->first();
+            $data['StudentInfo'] = StudentInfo::query()
+                ->where('user_id', Auth::user()->id)
+                ->with(['user', 'section.classroom.schoolgrade.school', 'noteStudent'])
+                ->first();
             return view('front-end.studentprofile',$data);
             
         }else if(Auth::user()->hasRole('guardian')){
-            $data['ParentInfo'] = MyParent::where('user_id',Auth::user()->id)->first();
+            $data['ParentInfo'] = MyParent::query()
+                ->where('user_id', Auth::user()->id)
+                ->with(['user', 'students.user', 'students.noteStudent', 'students.section.classroom.schoolgrade'])
+                ->first();
             return view('front-end.parentprofile',$data);
             //return Auth::user()->id;
         }

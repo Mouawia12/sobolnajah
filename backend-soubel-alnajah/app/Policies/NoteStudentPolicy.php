@@ -34,19 +34,34 @@ class NoteStudentPolicy
 
     private function canAccessNote(User $user, NoteStudent $noteStudent): bool
     {
-        if (!$user->hasRole('admin')) {
+        if ($user->hasRole('admin')) {
+            if (!$user->school_id) {
+                return true;
+            }
+
+            $studentSchoolId = $noteStudent->student?->section?->school_id;
+            if (!$studentSchoolId) {
+                return false;
+            }
+
+            return (int) $studentSchoolId === (int) $user->school_id;
+        }
+
+        $student = $noteStudent->student;
+        if (!$student) {
             return false;
         }
 
-        if (!$user->school_id) {
-            return true;
+        if ($user->hasRole('student')) {
+            return (int) $student->user_id === (int) $user->id;
         }
 
-        $studentSchoolId = $noteStudent->student?->section?->school_id;
-        if (!$studentSchoolId) {
-            return false;
+        if ($user->hasRole('guardian')) {
+            $guardianId = $user->parentProfile?->id;
+
+            return $guardianId !== null && (int) $student->parent_id === (int) $guardianId;
         }
 
-        return (int) $studentSchoolId === (int) $user->school_id;
+        return false;
     }
 }

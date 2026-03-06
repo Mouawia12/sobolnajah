@@ -63,7 +63,7 @@
                     <div class="p-15 bt-1 bb-1">
                         <div class="row text-center">
                             <div class="col-6 be-1">
-                                <a href="#" class="link d-flex align-items-center justify-content-center font-medium">
+                                <a href="{{ route('Chats.index') }}" class="link d-flex align-items-center justify-content-center font-medium">
                                     <span class="icon-Mail fs-20 me-5"></span>{{ trans('student.message') }}</a>
                             </div>
                             <div class="col-6">
@@ -87,6 +87,11 @@
                             <a class="nav-link" data-bs-target="#modal-status" data-bs-toggle="modal"  >
                                 <i class="me-10 mdi mdi-bookmark-plus"></i>{{ trans('student.schoolcertificaterequest') }}
                                 {{-- <span class="pull-right badge bg-success-light">120</span> --}}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('reports.index') }}">
+                                <i class="me-10 mdi mdi-file-document"></i>كشف النقاط
                             </a>
                         </li>
                         {{-- <li class="nav-item">

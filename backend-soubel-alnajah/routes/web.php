@@ -36,6 +36,7 @@ use App\Http\Controllers\Accounting\PaymentController;
 use App\Http\Controllers\Accounting\AccountantDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Portal\StudentReportController;
 
 
 
@@ -124,6 +125,18 @@ Route::group(
         Route::middleware(['auth', 'force.password.change'])->group(function () {
             Route::get('/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('password.change.page');
             Route::get('/changepass', [FunctionController::class, 'changepass'])->name('changepass');
+            Route::get('/reports', [StudentReportController::class, 'index'])
+                ->middleware('role:student|guardian')
+                ->name('reports.index');
+            Route::get('/DownloadNoteFromAdmin/{url}', [NoteStudentController::class, 'DownloadNoteFromAdmin'])
+                ->middleware('role:admin|student|guardian')
+                ->name('DownloadNoteFromAdmin');
+            Route::get('/DisplayNoteFromAdmin/{url}', [NoteStudentController::class, 'displayNoteFromAdmin'])
+                ->middleware('role:admin|student|guardian')
+                ->name('DisplayNoteFromAdmin');
+            Route::get('/DisplqyNoteFromAdmin/{url}', [NoteStudentController::class, 'DisplqyNoteFromAdmin'])
+                ->middleware('role:admin|student|guardian')
+                ->name('DisplqyNoteFromAdmin');
 
             Route::get('/chat-gpt', [OpenAIServiceController::class, 'index'])->name('chat.ai');
             Route::post('/chat-gpt', [OpenAIServiceController::class, 'send'])->name('chat.send');
@@ -160,9 +173,6 @@ Route::group(
             Route::post('/delete_all',[ClassroomController::class,'delete_all'])->name('delete_all');
             Route::post('/store/{id}',[FunctionController::class,'store']);
             Route::get('/admin/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('admin.password.change.page');
-            Route::get('/DownloadNoteFromAdmin/{url}', [NoteStudentController::class, 'DownloadNoteFromAdmin'])->name('DownloadNoteFromAdmin');
-            Route::get('/DisplayNoteFromAdmin/{url}', [NoteStudentController::class, 'displayNoteFromAdmin'])->name('DisplayNoteFromAdmin');
-            Route::get('/DisplqyNoteFromAdmin/{url}', [NoteStudentController::class, 'DisplqyNoteFromAdmin'])->name('DisplqyNoteFromAdmin');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');
             Route::get('/absences/today', [AbsenceController::class, 'getToday'])->name('absence.today');

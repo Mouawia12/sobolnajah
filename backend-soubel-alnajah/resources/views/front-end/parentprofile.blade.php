@@ -63,7 +63,7 @@
                     <div class="p-15 bt-1 bb-1">
                         <div class="row text-center">
                             <div class="col-6 be-1">
-                                <a href="#" class="link d-flex align-items-center justify-content-center font-medium">
+                                <a href="{{ route('Chats.index') }}" class="link d-flex align-items-center justify-content-center font-medium">
                                     <span class="icon-Mail fs-20 me-5"></span>{{ trans('student.message') }}</a>
                             </div>
                             <div class="col-6">
@@ -90,7 +90,7 @@
                             </a>
                         </li> --}}
                         <li class="nav-item">
-                            <a class="nav-link" id="pills-profile-tab" data-bs-toggle="pill" href="#pills-profile" role="tab" aria-controls="pills-profile" aria-selected="true">
+                            <a class="nav-link" href="{{ route('reports.index') }}">
                                 <i class="me-10 mdi mdi-bookmark-plus"></i>{{ trans('parent.studentnote') }}
                             </a>
                         </li>

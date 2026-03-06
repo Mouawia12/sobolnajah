@@ -17,7 +17,12 @@ class NoteStudentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'role:admin']);
+        $this->middleware('auth');
+        $this->middleware('role:admin')->except([
+            'DownloadNoteFromAdmin',
+            'displayNoteFromAdmin',
+            'DisplqyNoteFromAdmin',
+        ]);
     }
 
     /**
