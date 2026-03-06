@@ -37,17 +37,6 @@ class StoreStudent extends FormRequest
             'wilaya' => 'required|string',
             'dayra' => 'required|string',
             'baladia' => 'required|string',
-            'relationetudiant' => 'required|string',
-            'adressewali' => 'required|string',
-            'numtelephonewali' => 'required',
-            'emailwali' => 'required|email',
-            'wilayawali' => 'required|string',
-            'dayrawali' => 'required|string',
-            'baladiawali' => 'required|string',
-            'prenomfrwali' => 'required|string',
-            'prenomarwali' => 'required|string',
-            'nomfrwali' => 'required|string',
-            'nomarwali' => 'required|string',
             'password' => 'nullable|string|min:8',
         ];
 
@@ -55,10 +44,32 @@ class StoreStudent extends FormRequest
             $rules['school_id'] = 'required|exists:schools,id';
             $rules['grade_id'] = 'required|exists:schoolgrades,id';
             $rules['classroom_id'] = 'required|exists:classrooms,id';
+            $rules['relationetudiant'] = 'required|string';
+            $rules['adressewali'] = 'required|string';
+            $rules['numtelephonewali'] = 'required';
+            $rules['emailwali'] = 'required|email';
+            $rules['wilayawali'] = 'required|string';
+            $rules['dayrawali'] = 'required|string';
+            $rules['baladiawali'] = 'required|string';
+            $rules['prenomfrwali'] = 'required|string';
+            $rules['prenomarwali'] = 'required|string';
+            $rules['nomfrwali'] = 'required|string';
+            $rules['nomarwali'] = 'required|string';
         } else {
             $rules['school_id'] = 'sometimes|exists:schools,id';
             $rules['grade_id'] = 'sometimes|exists:schoolgrades,id';
             $rules['classroom_id'] = 'sometimes|exists:classrooms,id';
+            $rules['relationetudiant'] = 'sometimes|nullable|string';
+            $rules['adressewali'] = 'sometimes|nullable|string';
+            $rules['numtelephonewali'] = 'sometimes|nullable';
+            $rules['emailwali'] = 'sometimes|nullable|email';
+            $rules['wilayawali'] = 'sometimes|nullable|string';
+            $rules['dayrawali'] = 'sometimes|nullable|string';
+            $rules['baladiawali'] = 'sometimes|nullable|string';
+            $rules['prenomfrwali'] = 'sometimes|nullable|string';
+            $rules['prenomarwali'] = 'sometimes|nullable|string';
+            $rules['nomfrwali'] = 'sometimes|nullable|string';
+            $rules['nomarwali'] = 'sometimes|nullable|string';
         }
 
         return $rules;
