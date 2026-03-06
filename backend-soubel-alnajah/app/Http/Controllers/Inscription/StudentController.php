@@ -194,16 +194,32 @@ class StudentController extends Controller
         $request->validated();
 
         $schoolId = $this->currentSchoolId();
+        $import = new StudentsImport($this->enrollmentService, $schoolId);
 
         try {
-            Excel::import(new StudentsImport($this->enrollmentService, $schoolId), $request->file('file'));
+            Excel::import($import, $request->file('file'));
         } catch (ValidationException $exception) {
             return back()->withErrors($exception->errors());
         } catch (Throwable $exception) {
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
 
-        toastr()->success('تم استيراد التلاميذ بنجاح');
+        toastr()->success(
+            sprintf(
+                'تم الاستيراد بنجاح: %d صف ناجح، %d صف متخطي، %d قيمة تم تعويضها تلقائيًا.',
+                $import->getImportedRows(),
+                $import->getSkippedRows(),
+                $import->getAutoFilledFields()
+            )
+        );
+
+        $issues = $import->getIssues();
+        if (!empty($issues)) {
+            $preview = implode(' | ', array_slice($issues, 0, 3));
+            $remaining = count($issues) - 3;
+            $suffix = $remaining > 0 ? " (+{$remaining} مشاكل إضافية)" : '';
+            toastr()->warning('بعض الصفوف لم تُستورد: ' . $preview . $suffix);
+        }
 
         return redirect()->route('Students.index');
     }
