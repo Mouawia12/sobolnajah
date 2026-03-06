@@ -48,6 +48,7 @@ class StoreStudent extends FormRequest
             'prenomarwali' => 'required|string',
             'nomfrwali' => 'required|string',
             'nomarwali' => 'required|string',
+            'password' => 'nullable|string|min:8',
         ];
 
         if ($this->isMethod('POST')) {

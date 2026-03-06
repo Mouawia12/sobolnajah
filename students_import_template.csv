@@ -1,0 +1,2 @@
+section_id,prenom_fr,prenom_ar,nom_fr,nom_ar,email,gender,numtelephone,datenaissance,lieunaissance,wilaya,dayra,baladia,prenom_wali_fr,prenom_wali_ar,nom_wali_fr,nom_wali_ar,relationetudiant,adressewali,wilayawali,dayrawali,baladiawali,numtelephonewali,emailwali
+1,Ahmed,احمد,Benali,بن علي,ahmed.benali@example.com,1,0555123456,2010-09-15,El Oued,El Oued,El Oued,Bayadha,Mohamed,محمد,Benali,بن علي,Pere,Hay El Moustakbal,El Oued,El Oued,Bayadha,0666123456,wali.benali@example.com

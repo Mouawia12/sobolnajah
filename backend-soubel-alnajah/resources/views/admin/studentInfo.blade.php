@@ -386,6 +386,13 @@
                                                         </div>
                                                         <div class="col-md-4">
                                                             <div class="form-group">
+                                                                <label class="form-label">كلمة سر جديدة (اختياري)</label>
+                                                                <input type="password" name="password" class="form-control"
+                                                                    placeholder="اتركه فارغًا بدون تغيير">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <div class="form-group">
                                                                 <label
                                                                     class="form-label">{{ trans('inscription.gender') }}</label>
                                                                 <select class="form-select" name="gender" required>

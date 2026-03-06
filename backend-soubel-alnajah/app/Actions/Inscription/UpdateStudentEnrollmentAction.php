@@ -5,6 +5,7 @@ namespace App\Actions\Inscription;
 use App\Models\Inscription\StudentInfo;
 use App\Models\School\Section;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class UpdateStudentEnrollmentAction
 {
@@ -33,7 +34,7 @@ class UpdateStudentEnrollmentAction
             ]);
 
             if ($student->user) {
-                $student->user->update([
+                $userData = [
                     'name' => [
                         'fr' => $input['prenomfr'] ?? null,
                         'ar' => $input['prenomar'] ?? null,
@@ -41,7 +42,14 @@ class UpdateStudentEnrollmentAction
                     ],
                     'email' => $input['email'] ?? null,
                     'school_id' => $section->school_id,
-                ]);
+                ];
+
+                if (!empty($input['password'])) {
+                    $userData['password'] = Hash::make($input['password']);
+                    $userData['must_change_password'] = false;
+                }
+
+                $student->user->update($userData);
             }
 
             if ($student->parent) {
@@ -79,4 +87,3 @@ class UpdateStudentEnrollmentAction
         });
     }
 }
-
