@@ -168,8 +168,8 @@ class StudentGuardianPortalAccessTest extends TestCase
         $this->actingAs($guardianUser)
             ->get(route('reports.index'))
             ->assertStatus(200)
-            ->assertSee('ChildA')
-            ->assertSee('ChildB')
+            ->assertSee('طفل أ')
+            ->assertSee('طفل ب')
             ->assertSee(route('DownloadNoteFromAdmin', ['url' => 'guardian-child-a.pdf']), false);
     }
 
