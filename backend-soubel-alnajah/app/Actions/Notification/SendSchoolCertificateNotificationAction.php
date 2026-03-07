@@ -4,6 +4,8 @@ namespace App\Actions\Notification;
 
 use App\Models\User;
 use App\Notifications\StudentSchoolCertificateNotification;
+use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 
 class SendSchoolCertificateNotificationAction
 {
@@ -11,13 +13,24 @@ class SendSchoolCertificateNotificationAction
     {
         $targetUser = User::query()->findOrFail($targetUserId);
 
-        $schoolAdmins = User::query()
-            ->when($sender->school_id, fn ($query) => $query->where('school_id', $sender->school_id))
-            ->get()
-            ->filter(fn (User $user) => $user->hasRole('admin'));
+        $adminsQuery = User::query()
+            ->whereHas('roles', fn ($query) => $query->where('name', 'admin'));
 
-        foreach ($schoolAdmins as $admin) {
-            $admin->notify(new StudentSchoolCertificateNotification($targetUser, $requestDetails, $nameFr, $nameAr));
+        $schoolAdmins = $sender->school_id
+            ? (clone $adminsQuery)->where('school_id', $sender->school_id)->get()
+            : collect();
+
+        $recipients = $schoolAdmins->isNotEmpty()
+            ? $schoolAdmins
+            : $adminsQuery->get();
+
+        if ($recipients->isEmpty()) {
+            throw new RuntimeException('No admin recipients available for certificate request notification.');
         }
+
+        Notification::send(
+            $recipients,
+            new StudentSchoolCertificateNotification($targetUser, $requestDetails, $nameFr, $nameAr)
+        );
     }
 }

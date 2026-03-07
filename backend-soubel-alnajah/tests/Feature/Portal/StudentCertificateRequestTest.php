@@ -92,4 +92,37 @@ class StudentCertificateRequestTest extends TestCase
             'delivery_method',
         ]);
     }
+
+    public function test_certificate_request_falls_back_to_any_admin_when_same_school_admin_missing(): void
+    {
+        $student = User::factory()->create([
+            'must_change_password' => false,
+            'school_id' => 7,
+        ]);
+
+        $fallbackAdmin = User::factory()->create([
+            'must_change_password' => false,
+            'school_id' => 99,
+        ]);
+        $fallbackAdmin->attachRole('admin');
+
+        $response = $this
+            ->actingAs($student)
+            ->from('/home')
+            ->post(route('notify', ['id' => $student->id]), [
+                'year' => '2025/2026',
+                'purpose' => 'enrollment',
+                'copies' => 1,
+                'preferred_language' => 'ar',
+                'delivery_method' => 'printed',
+                'notes' => '',
+            ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $fallbackAdmin->id,
+        ]);
+    }
 }

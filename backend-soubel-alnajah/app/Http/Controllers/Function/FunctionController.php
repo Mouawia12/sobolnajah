@@ -122,7 +122,7 @@ class FunctionController extends Controller
         }
   
         catch (\Exception $e){
-            return redirect()->back()->withErrors(['لقد ارسلت طلب شهادة مدرسية بالفعل !']);
+            return redirect()->back()->withErrors(['تعذر إرسال طلب الشهادة المدرسية حاليًا. يرجى التواصل مع الإدارة.']);
         }
         
     }
