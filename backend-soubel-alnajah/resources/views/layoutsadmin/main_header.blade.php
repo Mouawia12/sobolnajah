@@ -1,3 +1,58 @@
+<style>
+	.notifications-menu .notify-trigger {
+		width: 42px;
+		height: 42px;
+		border-radius: 50%;
+		display: inline-flex !important;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		background: linear-gradient(135deg, #f8fbff, #edf3ff);
+		border: 1px solid rgba(59, 130, 246, 0.25);
+		box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+		transform: translateY(-3px);
+	}
+
+	.notifications-menu .notify-trigger:hover {
+		background: linear-gradient(135deg, #eef5ff, #e2edff);
+		box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+	}
+
+	.notifications-menu .notify-bell {
+		font-size: 20px;
+		color: #1d4ed8;
+		line-height: 1;
+	}
+
+	.notifications-menu .notify-count {
+		position: absolute;
+		top: -5px;
+		right: -5px;
+		min-width: 20px;
+		height: 20px;
+		padding: 0 6px;
+		border-radius: 999px;
+		background: #ef4444;
+		color: #fff;
+		font-size: 11px;
+		font-weight: 700;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 2px solid #fff;
+		box-shadow: 0 6px 12px rgba(239, 68, 68, 0.35);
+	}
+
+	body.dark-skin .notifications-menu .notify-trigger {
+		background: linear-gradient(135deg, #16324e, #0f2740);
+		border-color: rgba(96, 165, 250, 0.35);
+	}
+
+	body.dark-skin .notifications-menu .notify-bell {
+		color: #93c5fd;
+	}
+</style>
+
 <header class="main-header">
 	<div class="d-flex align-items-center logo-box justify-content-start">
 		<a href="#" class="waves-effect waves-light nav-link d-none d-md-inline-block mx-10 push-btn bg-transparent" data-toggle="push-menu" role="button">
@@ -90,12 +145,14 @@
 					<?php $i++; ?>
 				@endif
 			@endforeach
-		  <!-- Notifications -->
-		  <li class="dropdown notifications-menu">
-			<a href="#" class="waves-effect waves-light dropdown-toggle" data-bs-toggle="dropdown" title="Notifications">
-			  <i class="icon-Notifications"><span class="path1"></span><span class="path2 text-danger">{{$i}}</span>
-			  </i>
-			</a>
+			  <!-- Notifications -->
+			  <li class="dropdown notifications-menu">
+				<a href="#" class="waves-effect waves-light dropdown-toggle notify-trigger" data-bs-toggle="dropdown" title="Notifications">
+				  <i class="mdi mdi-bell-outline notify-bell"></i>
+				  @if($i > 0)
+				  	<span class="notify-count">{{ $i }}</span>
+				  @endif
+				</a>
 			
 			<ul class="dropdown-menu animated bounceIn">
 
