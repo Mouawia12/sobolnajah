@@ -22,9 +22,12 @@ class NotifySchoolCertificateRequest extends FormRequest
     {
         return [
             'id' => ['required', 'integer', 'exists:users,id'],
-            'year' => ['required', 'string', 'max:20'],
-            'namefr' => ['required', 'string', 'max:255'],
-            'namear' => ['required', 'string', 'max:255'],
+            'year' => ['required', 'string', 'max:20', 'regex:/^\d{4}\s*\/\s*\d{4}$/'],
+            'purpose' => ['required', 'string', 'in:enrollment,scholarship,administrative,other'],
+            'copies' => ['required', 'integer', 'min:1', 'max:5'],
+            'preferred_language' => ['required', 'string', 'in:ar,fr,en'],
+            'delivery_method' => ['required', 'string', 'in:printed,digital'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

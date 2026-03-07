@@ -1,36 +1,83 @@
 @extends('layoutsadmin.masteradmin')
-@section('cssa')
 
 @section('titlea')
-   student notify
+   {{ trans('student.certificate_modal_title') }}
 @stop
-@endsection
 
 @section('contenta')
+@php
+    $requestData = is_string($arryear) ? (json_decode($arryear, true) ?: []) : (is_array($arryear) ? $arryear : []);
+    $purposeLabels = [
+        'enrollment' => trans('student.certificate_purpose_enrollment'),
+        'scholarship' => trans('student.certificate_purpose_scholarship'),
+        'administrative' => trans('student.certificate_purpose_administrative'),
+        'other' => trans('student.certificate_purpose_other'),
+    ];
+    $deliveryLabels = [
+        'printed' => trans('student.certificate_delivery_printed'),
+        'digital' => trans('student.certificate_delivery_digital'),
+    ];
+    $langLabels = [
+        'ar' => 'العربية',
+        'fr' => 'Français',
+        'en' => 'English',
+    ];
+@endphp
+
 <div class="row">
-    <div class="col-12">
-
+    <div class="col-12 col-xl-4">
         <div class="box">
-        <div class="box-body text-center">
-            <div class="mb-20 mt-20">
-                <img src="{{ asset('images/avatar/avatar-12.png')}}" width="150" class="rounded-circle bg-info-light" alt="user" />
-                <h4 class="mt-20 mb-0">{{ $StudentInfo->prenom }} {{ $StudentInfo->nom }}</h4>
-                <a href="mailto:dummy@gmail.com">{{ $StudentInfo->user->email }}</a>
+            <div class="box-body text-center">
+                <img src="{{ $StudentInfo->user->profile_photo_url ?? asset('images/avatar/avatar-12.png') }}" width="120" class="rounded-circle bg-info-light mb-15" alt="user" />
+                <h4 class="mb-5">{{ $StudentInfo->prenom }} {{ $StudentInfo->nom }}</h4>
+                <p class="text-muted mb-10">{{ $StudentInfo->user->email }}</p>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <span class="badge badge-pill badge-info-light fs-14">0{{ $StudentInfo->numtelephone }}</span>
+                    <span class="badge badge-pill badge-primary-light fs-14">{{ $StudentInfo->section->classroom->name_class }}</span>
+                    <span class="badge badge-pill badge-warning-light fs-14">{{ $StudentInfo->section->name_section }}</span>
+                </div>
             </div>
-            <div class="badge badge-pill badge-info-light fs-16">0{{ $StudentInfo->numtelephone }}</div>
-            <div class="badge badge-pill badge-primary-light fs-16">{{ $StudentInfo->datenaissance}}</div>
-            <div class="badge badge-pill badge-danger-light fs-16">{{ $StudentInfo->section->classroom->name_class}}</div>
-            <div class="badge badge-pill badge-warning-light fs-16">{{ $StudentInfo->section->name_section}}</div>
-            <div class="badge badge-pill badge-warning-light fs-16"> <?php $arryear = json_decode($arryear, true); print_r($arryear['year']); ?>   </div>
-
-      </div>
         </div>
+    </div>
 
+    <div class="col-12 col-xl-8">
+        <div class="box">
+            <div class="box-header with-border">
+                <h4 class="box-title">{{ trans('student.certificate_modal_title') }}</h4>
+            </div>
+            <div class="box-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">{{ trans('student.certificate_year') }}</label>
+                        <div class="fw-semibold">{{ $requestData['year'] ?? '—' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">{{ trans('student.certificate_purpose') }}</label>
+                        <div class="fw-semibold">{{ $purposeLabels[$requestData['purpose'] ?? ''] ?? trans('student.certificate_purpose_other') }}</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-muted">{{ trans('student.certificate_copies') }}</label>
+                        <div class="fw-semibold">{{ (int) ($requestData['copies'] ?? 1) }}</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-muted">{{ trans('student.certificate_language') }}</label>
+                        <div class="fw-semibold">{{ $langLabels[$requestData['preferred_language'] ?? ''] ?? '—' }}</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-muted">{{ trans('student.certificate_delivery') }}</label>
+                        <div class="fw-semibold">{{ $deliveryLabels[$requestData['delivery_method'] ?? ''] ?? '—' }}</div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label text-muted">{{ trans('student.certificate_notes') }}</label>
+                        <div class="p-10 bg-light rounded">{{ $requestData['notes'] ?: '—' }}</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted">{{ __('تاريخ الطلب') }}</label>
+                        <div class="fw-semibold">{{ $requestData['requested_at'] ?? '—' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-@endsection
-
-
-@section('jsa')
-
 @endsection

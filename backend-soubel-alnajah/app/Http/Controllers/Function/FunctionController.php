@@ -95,15 +95,30 @@ class FunctionController extends Controller
 
         try {
             if(auth()->user()){
+                if ((int) $validated['id'] !== (int) auth()->id()) {
+                    abort(403);
+                }
+
+                $currentUser = auth()->user();
+                $requestDetails = [
+                    'year' => (string) $validated['year'],
+                    'purpose' => (string) $validated['purpose'],
+                    'copies' => (int) $validated['copies'],
+                    'preferred_language' => (string) $validated['preferred_language'],
+                    'delivery_method' => (string) $validated['delivery_method'],
+                    'notes' => (string) ($validated['notes'] ?? ''),
+                    'requested_at' => now()->toDateTimeString(),
+                ];
+
                 $this->sendSchoolCertificateNotificationAction->execute(
-                    auth()->user(),
+                    $currentUser,
                     (int) $validated['id'],
-                    (string) $validated['year'],
-                    (string) $validated['namefr'],
-                    (string) $validated['namear']
+                    $requestDetails,
+                    $this->translatedName($currentUser, 'fr'),
+                    $this->translatedName($currentUser, 'ar')
                 );
             }
-            return back()->withSuccess('a');
+            return back()->withSuccess('certificate_request_sent');
         }
   
         catch (\Exception $e){
@@ -136,6 +151,31 @@ class FunctionController extends Controller
     // Backward-compatible alias for legacy method naming.
     public function changepass(){
         return $this->showChangePasswordPage();
+    }
+
+    private function translatedName($user, string $locale): string
+    {
+        if (method_exists($user, 'getTranslation')) {
+            try {
+                return (string) $user->getTranslation('name', $locale);
+            } catch (Throwable $exception) {
+                // Fallback to raw "name" when legacy rows are not JSON-translatable.
+            }
+        }
+
+        $value = $user->name ?? '';
+        if (is_array($value)) {
+            return (string) ($value[$locale] ?? reset($value) ?? '');
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return (string) ($decoded[$locale] ?? reset($decoded) ?? $value);
+            }
+        }
+
+        return (string) $value;
     }
 
 

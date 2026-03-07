@@ -18,10 +18,10 @@ class StudentSchoolCertificateNotification extends Notification
      *
      * @return void
      */
-    public function __construct($user,$year,$namefr,$namear)
+    public function __construct($user, array $requestDetails, $namefr, $namear)
     {
         $this->user = $user;
-        $this->year = $year;
+        $this->requestDetails = $requestDetails;
         $this->namefr = $namefr;
         $this->namear = $namear;
     }
@@ -44,7 +44,13 @@ class StudentSchoolCertificateNotification extends Notification
             'namefr'=> $this->namefr,
             'namear'=> $this->namear,
             'email'=> $this->user['email'],
-            'year'=> $this->year
+            'year'=> $this->requestDetails['year'] ?? null,
+            'purpose' => $this->requestDetails['purpose'] ?? null,
+            'copies' => $this->requestDetails['copies'] ?? null,
+            'preferred_language' => $this->requestDetails['preferred_language'] ?? null,
+            'delivery_method' => $this->requestDetails['delivery_method'] ?? null,
+            'notes' => $this->requestDetails['notes'] ?? null,
+            'requested_at' => $this->requestDetails['requested_at'] ?? now()->toDateTimeString(),
         ];
     }
 

@@ -157,29 +157,61 @@
 </div>
 
             <!-- update  status-->
-<div class="modal center-modal fade" id="modal-status" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="modal-status" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
      <div class="modal-content">
-       <div class="modal-body">
           <form id="status-form" action="{{ route('notify', Auth::user()->id)}}" method="POST" > 
             @csrf
-             <div class="box-body">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ trans('student.certificate_modal_title') }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+                <p class="text-muted mb-3">{{ trans('student.certificate_modal_subtitle') }}</p>
                 <div class="row">
-                  <div class="form-group text-center">
-                    <label class="form-label">{{ trans('student.schoolyear') }}</label><br>
-                    <input type="text"  name="year"/>
-                    <input type="hidden" name="namefr" value="{{ $ParentInfo->getTranslation('prenomwali', 'fr') }}">
-                    <input type="hidden" name="namear" value="{{ $ParentInfo->getTranslation('prenomwali', 'ar') }}">
-                  </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ trans('student.certificate_year') }}</label>
+                        <input type="text" name="year" class="form-control" value="{{ old('year', now()->year . '/' . (now()->year + 1)) }}" placeholder="{{ trans('student.certificate_year_placeholder') }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ trans('student.certificate_purpose') }}</label>
+                        <select name="purpose" class="form-select" required>
+                            <option value="enrollment" @selected(old('purpose') === 'enrollment')>{{ trans('student.certificate_purpose_enrollment') }}</option>
+                            <option value="scholarship" @selected(old('purpose') === 'scholarship')>{{ trans('student.certificate_purpose_scholarship') }}</option>
+                            <option value="administrative" @selected(old('purpose') === 'administrative')>{{ trans('student.certificate_purpose_administrative') }}</option>
+                            <option value="other" @selected(old('purpose') === 'other')>{{ trans('student.certificate_purpose_other') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ trans('student.certificate_copies') }}</label>
+                        <input type="number" name="copies" class="form-control" min="1" max="5" value="{{ old('copies', 1) }}" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ trans('student.certificate_language') }}</label>
+                        <select name="preferred_language" class="form-select" required>
+                            <option value="ar" @selected(old('preferred_language', app()->getLocale()) === 'ar')>العربية</option>
+                            <option value="fr" @selected(old('preferred_language', app()->getLocale()) === 'fr')>Français</option>
+                            <option value="en" @selected(old('preferred_language', app()->getLocale()) === 'en')>English</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ trans('student.certificate_delivery') }}</label>
+                        <select name="delivery_method" class="form-select" required>
+                            <option value="printed" @selected(old('delivery_method', 'printed') === 'printed')>{{ trans('student.certificate_delivery_printed') }}</option>
+                            <option value="digital" @selected(old('delivery_method') === 'digital')>{{ trans('student.certificate_delivery_digital') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">{{ trans('student.certificate_notes') }}</label>
+                        <textarea name="notes" rows="3" class="form-control" placeholder="{{ trans('student.certificate_notes_placeholder') }}">{{ old('notes') }}</textarea>
+                    </div>
                 </div>
-             </div>
+          </div>
+          <div class="modal-footer modal-footer-uniform">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button>
+            <button type="submit" class="btn btn-primary">{{ trans('student.certificate_submit') }}</button>
+          </div>
           </form>
-       </div>
-       <div class="modal-footer modal-footer-uniform">
-        <a type="button" class="btn btn-danger" data-bs-dismiss="modal">{{ trans('opt.close') }}</a>
-        <a type="button" class="btn btn-success float-end" onclick="event.preventDefault();
-        document.getElementById('status-form').submit();">{{ trans('opt.save') }}</a>
-       </div>
      </div>
     </div>
     </div>
@@ -194,10 +226,10 @@
                                 </div>
                             @endforeach
                         @endif
-                        @if(Session::get('success')=='a')   
+                        @if(Session::get('success') === 'certificate_request_sent')   
                             <div class="alert alert-success alert-dismissible">
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            <h6>لقد تم اسال طلب شهادة مدرسية, سيتم الاتصال بك قريبا شكرا</h6>
+                            <h6>{{ trans('student.certificate_request_sent') }}</h6>
                             </div>
                         @endif
                         @if(Session::get('success')=='b')   
@@ -206,7 +238,7 @@
                             <h6>تم تغيير كلمة السر بنجاح</h6>
                             </div>
                         @endif
-                        @if(Session::has('success') && !in_array(Session::get('success'), ['a', 'b'], true))
+                        @if(Session::has('success') && !in_array(Session::get('success'), ['certificate_request_sent', 'b'], true))
                             <div class="alert alert-success alert-dismissible">
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                                 <h6>{{ Session::get('success') }}</h6>

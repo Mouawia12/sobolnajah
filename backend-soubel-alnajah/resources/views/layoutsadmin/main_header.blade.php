@@ -177,12 +177,24 @@
 							@csrf
 							<button type="submit" class="w-full text-start border-0 bg-transparent p-0">
 								<i class="fa fa-users text-info"></i>
-								@if (App::isLocale('fr'))
-									<?php $data = json_decode($nt->data, true); print_r($data['namefr']); ?>
-								@else
-									<?php $data = json_decode($nt->data, true); print_r($data['namear']); ?>
-								@endif
-								طلب شهادة مدرسية
+								@php
+									$data = json_decode($nt->data, true) ?: [];
+									$purposeLabels = [
+										'enrollment' => trans('student.certificate_purpose_enrollment'),
+										'scholarship' => trans('student.certificate_purpose_scholarship'),
+										'administrative' => trans('student.certificate_purpose_administrative'),
+										'other' => trans('student.certificate_purpose_other'),
+									];
+									$displayName = App::isLocale('fr')
+										? ($data['namefr'] ?? ($data['namear'] ?? trans('student.name')))
+										: ($data['namear'] ?? ($data['namefr'] ?? trans('student.name')));
+									$purpose = $purposeLabels[$data['purpose'] ?? ''] ?? trans('student.certificate_purpose_other');
+									$year = $data['year'] ?? '—';
+									$copies = (int) ($data['copies'] ?? 1);
+								@endphp
+								<span class="fw-semibold">{{ $displayName }}</span>
+								<span class="d-block text-muted small">{{ trans('student.certificate_modal_title') }} - {{ $purpose }}</span>
+								<span class="d-block text-muted small">{{ trans('student.certificate_year') }}: {{ $year }} | {{ trans('student.certificate_copies') }}: {{ $copies }}</span>
 							</button>
 						</form>
 					</li>
@@ -192,12 +204,24 @@
 								@csrf
 								<button type="submit" class="w-full text-start border-0 bg-transparent p-0">
 									<i class="fa fa-users text-success"></i>
-									@if (App::isLocale('fr'))
-										<?php $data = json_decode($nt->data, true); print_r($data['namefr']); ?>
-									@else
-										<?php $data = json_decode($nt->data, true); print_r($data['namear']); ?>
-									@endif
-									طلب شهادة مدرسية
+									@php
+										$data = json_decode($nt->data, true) ?: [];
+										$purposeLabels = [
+											'enrollment' => trans('student.certificate_purpose_enrollment'),
+											'scholarship' => trans('student.certificate_purpose_scholarship'),
+											'administrative' => trans('student.certificate_purpose_administrative'),
+											'other' => trans('student.certificate_purpose_other'),
+										];
+										$displayName = App::isLocale('fr')
+											? ($data['namefr'] ?? ($data['namear'] ?? trans('student.name')))
+											: ($data['namear'] ?? ($data['namefr'] ?? trans('student.name')));
+										$purpose = $purposeLabels[$data['purpose'] ?? ''] ?? trans('student.certificate_purpose_other');
+										$year = $data['year'] ?? '—';
+										$copies = (int) ($data['copies'] ?? 1);
+									@endphp
+									<span class="fw-semibold">{{ $displayName }}</span>
+									<span class="d-block text-muted small">{{ trans('student.certificate_modal_title') }} - {{ $purpose }}</span>
+									<span class="d-block text-muted small">{{ trans('student.certificate_year') }}: {{ $year }} | {{ trans('student.certificate_copies') }}: {{ $copies }}</span>
 								</button>
 							</form>
 						</li>
