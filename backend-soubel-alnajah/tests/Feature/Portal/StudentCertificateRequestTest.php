@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Portal;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -23,11 +24,21 @@ class StudentCertificateRequestTest extends TestCase
             LocalizationRedirect::class,
             LocaleViewPath::class,
         ]);
+
+        Role::firstOrCreate(['name' => 'admin']);
     }
 
     public function test_student_can_submit_professional_certificate_request_payload(): void
     {
-        $user = User::factory()->create(['must_change_password' => false]);
+        $user = User::factory()->create([
+            'must_change_password' => false,
+            'school_id' => 1,
+        ]);
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+            'school_id' => 1,
+        ]);
+        $admin->attachRole('admin');
 
         $response = $this
             ->actingAs($user)
@@ -45,10 +56,13 @@ class StudentCertificateRequestTest extends TestCase
         $response->assertSessionHasNoErrors();
 
         $notificationRow = DB::table('notifications')
-            ->where('notifiable_id', $user->id)
+            ->where('notifiable_id', $admin->id)
             ->first();
 
         $this->assertNotNull($notificationRow);
+        $this->assertDatabaseMissing('notifications', [
+            'notifiable_id' => $user->id,
+        ]);
 
         $payload = json_decode($notificationRow->data, true);
         $this->assertSame('2025/2026', $payload['year'] ?? null);
