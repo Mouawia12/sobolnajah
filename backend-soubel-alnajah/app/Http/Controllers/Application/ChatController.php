@@ -347,10 +347,11 @@ class ChatController extends Controller
             return 'chat.student';
         }
 
-        if ($user->hasRole('guardian')) {
+        if ($user->hasRole('guardian') || $user->hasRole('parent')) {
             return 'chat.guardian';
         }
 
-        abort(403, 'هذا الدور غير مدعوم في المحادثات.');
+        // Safe fallback: keep chat available even if legacy/custom role names are used.
+        return 'chat.student';
     }
 }
