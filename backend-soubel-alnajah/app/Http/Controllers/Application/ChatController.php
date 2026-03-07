@@ -49,8 +49,9 @@ class ChatController extends Controller
             ->get(['id', 'name', 'email']);
 
         $activeRoomId = $request->integer('room') ?: null;
+        $chatView = $this->resolveChatView($currentUser);
 
-        return view('chat.index', [
+        return view($chatView, [
             'rooms' => $rooms,
             'availableUsers' => $availableUsers,
             'activeRoomId' => $activeRoomId,
@@ -326,5 +327,30 @@ class ChatController extends Controller
         }
 
         return (string) $value;
+    }
+
+    protected function resolveChatView(User $user): string
+    {
+        if ($user->hasRole('admin')) {
+            return 'chat.admin';
+        }
+
+        if ($user->hasRole('teacher')) {
+            return 'chat.teacher';
+        }
+
+        if ($user->hasRole('accountant')) {
+            return 'chat.accountant';
+        }
+
+        if ($user->hasRole('student')) {
+            return 'chat.student';
+        }
+
+        if ($user->hasRole('guardian')) {
+            return 'chat.guardian';
+        }
+
+        abort(403, 'هذا الدور غير مدعوم في المحادثات.');
     }
 }
