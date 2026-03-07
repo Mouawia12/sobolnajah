@@ -102,16 +102,29 @@
                     </div>
                     <div class="tab-pane" id="contacts-tab" role="tabpanel">
                         <div class="chat-box-one-side media-list-hover" id="contacts-list">
+                            @if($availableUsers->isNotEmpty())
+                                <div class="px-2 pb-2">
+                                    <input
+                                        type="text"
+                                        id="contacts-search-input"
+                                        class="form-control form-control-sm"
+                                        placeholder="{{ trans('opt.search') }}"
+                                        autocomplete="off"
+                                    >
+                                </div>
+                            @endif
                             @forelse ($availableUsers as $user)
                                 @php
                                     $translatedName = method_exists($user, 'getTranslation')
                                         ? $user->getTranslation('name', $locale)
                                         : (is_array($user->name) ? ($user->name[$locale] ?? reset($user->name)) : $user->name);
                                     $initials = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($translatedName ?? $user->name, 0, 2));
+                                    $searchContent = mb_strtolower(($translatedName ?? $user->name) . ' ' . $user->email, 'UTF-8');
                                 @endphp
                                 <div class="media align-items-center justify-content-between start-direct-chat-row"
                                      data-start-direct="true"
                                      data-user-id="{{ $user->id }}"
+                                     data-search-content="{{ $searchContent }}"
                                     role="button">
                                     <div class="d-flex align-items-center">
                                         <div class="chat-avatar me-2 bg-secondary">
@@ -133,6 +146,12 @@
                                     <p>{{ __('لا يوجد مستخدمون متاحون') }}</p>
                                 </div>
                             @endforelse
+                            @if($availableUsers->isNotEmpty())
+                                <div class="chat-empty-state d-none" id="contacts-search-empty">
+                                    <i class="mdi mdi-magnify-close text-warning"></i>
+                                    <p>{{ __('لا توجد نتائج مطابقة') }}</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>

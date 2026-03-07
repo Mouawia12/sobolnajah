@@ -13,6 +13,8 @@
         const roomsContainer = document.getElementById('rooms-container');
         const messagesContainer = document.getElementById('chat-messages');
         const contactsListEl = document.getElementById('contacts-list');
+        const contactsSearchInput = document.getElementById('contacts-search-input');
+        const contactsSearchEmpty = document.getElementById('contacts-search-empty');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
         const messageSubmit = document.getElementById('message-submit');
@@ -283,6 +285,34 @@
                 row.classList.remove('disabled');
             }
         });
+
+        const normalizeSearch = (value = '') => String(value).toLocaleLowerCase().trim();
+
+        const filterContacts = () => {
+            if (!contactsListEl) return;
+
+            const query = normalizeSearch(contactsSearchInput?.value || '');
+            const rows = Array.from(
+                contactsListEl.querySelectorAll('.start-direct-chat-row[data-start-direct="true"]')
+            );
+
+            if (!rows.length) return;
+
+            let matches = 0;
+
+            rows.forEach((row) => {
+                const source = normalizeSearch(row.getAttribute('data-search-content') || '');
+                const visible = query === '' || source.includes(query);
+                row.classList.toggle('d-none', !visible);
+                if (visible) matches += 1;
+            });
+
+            if (contactsSearchEmpty) {
+                contactsSearchEmpty.classList.toggle('d-none', matches !== 0);
+            }
+        };
+
+        contactsSearchInput?.addEventListener('input', filterContacts);
 
         const sendCurrentMessage = async () => {
             if (!activeRoomId) return;
