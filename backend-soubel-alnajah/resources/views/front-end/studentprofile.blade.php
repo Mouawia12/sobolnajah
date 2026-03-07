@@ -140,7 +140,7 @@
             </div>
 
 <div class="modal fade" id="profile-photo-modal-student" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{{ route('profile.photo.update') }}" method="POST" enctype="multipart/form-data">
                 @csrf
