@@ -104,7 +104,7 @@
                 </a>
             </div>
             <div class="lookup lookup-sm lookup-right d-none d-lg-block">
-                <input type="text" name="s" id="sidebar-chat-search" placeholder="{{ __('Search') }}" class="w-p100" autocomplete="off">
+                <input type="text" name="s" id="sidebar-chat-search" placeholder="{{ trans('opt.search') }}" class="w-p100" autocomplete="off">
             </div>
             <div class="media-list media-list-hover mt-20" id="sidebar-chat-results">
                 @forelse ($sidebarRooms as $room)

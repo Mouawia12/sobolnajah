@@ -6,12 +6,12 @@
                 <ul class="nav nav-tabs customtab nav-justified" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" data-bs-toggle="tab" href="#messages-tab" role="tab">
-                            {{ __('Chat') }}
+                            {{ trans('opt.chat_tab') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#contacts-tab" role="tab">
-                            {{ __('New') }}
+                            {{ trans('opt.new_tab') }}
                         </a>
                     </li>
                 </ul>

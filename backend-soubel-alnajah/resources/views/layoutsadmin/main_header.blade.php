@@ -73,7 +73,7 @@
 					<div class="search-bx mx-5">
 						<form action="/" method="GET">
 							<div class="input-group">
-							  <input type="search" class="form-control" placeholder="Search" aria-label="Search" aria-describedby="button-addon2">
+							  <input type="search" class="form-control" placeholder="{{ trans('opt.search') }}" aria-label="{{ trans('opt.search') }}" aria-describedby="button-addon2">
 							  <div class="input-group-append">
 								<button class="btn" type="button" id="button-addon3"><i class="ti-search"></i></button>
 							  </div>
