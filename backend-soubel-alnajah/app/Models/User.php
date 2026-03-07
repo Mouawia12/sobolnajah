@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Laratrust\Traits\LaratrustUserTrait;
 use Spatie\Translatable\HasTranslations;
@@ -38,6 +39,7 @@ class User extends Authenticatable
         'password',
         'must_change_password',
         'school_id',
+        'profile_photo_path',
     ];
     
     public $translatable = ['name'];
@@ -87,5 +89,19 @@ class User extends Authenticatable
     public function chatMessages(): HasMany
     {
         return $this->hasMany(ChatMessage::class);
+    }
+
+    public function hasProfilePhoto(): bool
+    {
+        return !empty($this->profile_photo_path);
+    }
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        if (!$this->hasProfilePhoto()) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->profile_photo_path);
     }
 }

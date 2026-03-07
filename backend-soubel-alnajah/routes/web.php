@@ -37,6 +37,7 @@ use App\Http\Controllers\Accounting\AccountantDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Portal\StudentReportController;
+use App\Http\Controllers\Profile\ProfilePhotoController;
 
 
 
@@ -125,6 +126,7 @@ Route::group(
         Route::middleware(['auth', 'force.password.change'])->group(function () {
             Route::get('/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('password.change.page');
             Route::get('/changepass', [FunctionController::class, 'changepass'])->name('changepass');
+            Route::post('/profile/photo', [ProfilePhotoController::class, 'update'])->name('profile.photo.update');
             Route::get('/reports', [StudentReportController::class, 'index'])
                 ->middleware('role:student|guardian')
                 ->name('reports.index');

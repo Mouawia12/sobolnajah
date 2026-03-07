@@ -2,6 +2,50 @@
 @section('titlea', __('لوحة المحاسب المالي'))
 
 @section('contenta')
+<style>
+    .profile-photo-wrapper {
+        width: 120px;
+        height: 120px;
+    }
+    .profile-photo-preview {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+    .profile-photo-trigger {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 50%;
+        background: #0d6efd;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 18px rgba(13, 110, 253, 0.35);
+    }
+</style>
+<div class="row">
+    <div class="col-12 col-md-4">
+        <div class="box">
+            <div class="box-body text-center">
+                <div class="profile-photo-wrapper position-relative d-inline-block mb-10">
+                    <img src="{{ auth()->user()->profile_photo_url ?? asset('/images/avatar/avatar-1.png') }}" class="profile-photo-preview bg-primary-light" alt="user">
+                    <button type="button" class="profile-photo-trigger" data-bs-toggle="modal" data-bs-target="#profile-photo-modal-accountant">
+                        <i class="fa fa-camera"></i>
+                    </button>
+                </div>
+                <h4 class="mb-5">{{ auth()->user()->name }}</h4>
+                <p class="text-muted mb-0">{{ auth()->user()->email }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12 col-md-3">
         <div class="box bg-primary text-white"><div class="box-body"><h6>{{ __('إجمالي العقود') }}</h6><h3>{{ number_format($stats['contracts_count'] ?? 0) }}</h3></div></div>
@@ -52,6 +96,28 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="profile-photo-modal-accountant" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('profile.photo.update') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('تحديث الصورة الشخصية') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">{{ __('اختر صورة') }}</label>
+                    <input type="file" name="profile_photo" accept="image/png,image/jpeg,image/webp" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ trans('opt.save') }}</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

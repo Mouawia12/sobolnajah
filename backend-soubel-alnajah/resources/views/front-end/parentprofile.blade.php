@@ -7,6 +7,32 @@
 @endsection
 
 @section('content')
+<style>
+    .profile-photo-wrapper {
+        width: 150px;
+        height: 150px;
+    }
+    .profile-photo-preview {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+    }
+    .profile-photo-trigger {
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 50%;
+        background: #0d6efd;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 18px rgba(13, 110, 253, 0.35);
+    }
+</style>
 <!---page Title --->
 <section class="bg-img pt-150 pb-20" data-overlay="1" style="background-image: url({{ asset('images/logincover.jpg') }});">
     <div class="container">
@@ -34,11 +60,16 @@
                 <div class="box position-sticky t-100">
                     <div class="box-body text-center">
                         <div class="mb-20 mt-20">
-                            @if ( $ParentInfo->relationetudiant == 0 )
-                            <img src="{{ asset('/images/avatar/5.jpg')}}" width="150" class="rounded-circle bg-info-light" alt="user">
-                            @else
-                            <img src="{{ asset('/images/avatar/2.jpg')}}" width="150" class="rounded-circle bg-info-light" alt="user">
-                            @endif
+                            @php
+                                $profilePhotoUrl = $ParentInfo->user->profile_photo_url
+                                    ?? ($ParentInfo->relationetudiant == 0 ? asset('/images/avatar/5.jpg') : asset('/images/avatar/2.jpg'));
+                            @endphp
+                            <div class="profile-photo-wrapper d-inline-block position-relative">
+                                <img src="{{ $profilePhotoUrl }}" class="rounded-circle bg-info-light profile-photo-preview" alt="user">
+                                <button type="button" class="profile-photo-trigger" data-bs-toggle="modal" data-bs-target="#profile-photo-modal-parent">
+                                    <i class="fa fa-camera"></i>
+                                </button>
+                            </div>
                             <h4 class="mt-20 mb-0">{{ $ParentInfo->prenomwali }}&nbsp;{{ $ParentInfo->nomwali }}</h4>
                             <a href="mailto:{{ $ParentInfo->user->email }}">{{ $ParentInfo->user->email }}</a>
                         </div>
@@ -103,6 +134,28 @@
                 </div>
             </div>
 
+<div class="modal fade" id="profile-photo-modal-parent" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('profile.photo.update') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('تحديث الصورة الشخصية') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">{{ __('اختر صورة') }}</label>
+                    <input type="file" name="profile_photo" accept="image/png,image/jpeg,image/webp" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ trans('opt.save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
             <!-- update  status-->
 <div class="modal center-modal fade" id="modal-status" tabindex="-1">
     <div class="modal-dialog">
@@ -151,6 +204,12 @@
                             <div class="alert alert-success alert-dismissible">
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             <h6>تم تغيير كلمة السر بنجاح</h6>
+                            </div>
+                        @endif
+                        @if(Session::has('success') && !in_array(Session::get('success'), ['a', 'b'], true))
+                            <div class="alert alert-success alert-dismissible">
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <h6>{{ Session::get('success') }}</h6>
                             </div>
                         @endif
 
