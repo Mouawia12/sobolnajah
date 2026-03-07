@@ -43,6 +43,7 @@ class StudentSchoolCertificateNotification extends Notification
         return [
             'namefr'=> $this->namefr,
             'namear'=> $this->namear,
+            'requester_user_id' => $this->user['id'] ?? null,
             'email'=> $this->user['email'],
             'year'=> $this->requestDetails['year'] ?? null,
             'purpose' => $this->requestDetails['purpose'] ?? null,

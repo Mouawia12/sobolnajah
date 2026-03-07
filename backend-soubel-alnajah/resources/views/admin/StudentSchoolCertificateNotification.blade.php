@@ -22,19 +22,22 @@
         'fr' => 'Français',
         'en' => 'English',
     ];
+    $fallbackName = app()->isLocale('fr')
+        ? ($requestData['namefr'] ?? ($requestData['namear'] ?? trans('student.name')))
+        : ($requestData['namear'] ?? ($requestData['namefr'] ?? trans('student.name')));
 @endphp
 
 <div class="row">
     <div class="col-12 col-xl-4">
         <div class="box">
             <div class="box-body text-center">
-                <img src="{{ $StudentInfo->user->profile_photo_url ?? asset('images/avatar/avatar-12.png') }}" width="120" class="rounded-circle bg-info-light mb-15" alt="user" />
-                <h4 class="mb-5">{{ $StudentInfo->prenom }} {{ $StudentInfo->nom }}</h4>
-                <p class="text-muted mb-10">{{ $StudentInfo->user->email }}</p>
+                <img src="{{ optional($StudentInfo?->user)->profile_photo_url ?? asset('images/avatar/avatar-12.png') }}" width="120" class="rounded-circle bg-info-light mb-15" alt="user" />
+                <h4 class="mb-5">{{ $StudentInfo ? ($StudentInfo->prenom . ' ' . $StudentInfo->nom) : $fallbackName }}</h4>
+                <p class="text-muted mb-10">{{ $StudentInfo?->user->email ?? ($requestData['email'] ?? '—') }}</p>
                 <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <span class="badge badge-pill badge-info-light fs-14">0{{ $StudentInfo->numtelephone }}</span>
-                    <span class="badge badge-pill badge-primary-light fs-14">{{ $StudentInfo->section->classroom->name_class }}</span>
-                    <span class="badge badge-pill badge-warning-light fs-14">{{ $StudentInfo->section->name_section }}</span>
+                    <span class="badge badge-pill badge-info-light fs-14">{{ $StudentInfo ? ('0' . $StudentInfo->numtelephone) : '—' }}</span>
+                    <span class="badge badge-pill badge-primary-light fs-14">{{ $StudentInfo?->section?->classroom?->name_class ?? '—' }}</span>
+                    <span class="badge badge-pill badge-warning-light fs-14">{{ $StudentInfo?->section?->name_section ?? '—' }}</span>
                 </div>
             </div>
         </div>

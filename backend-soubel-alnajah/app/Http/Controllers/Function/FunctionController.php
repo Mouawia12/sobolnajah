@@ -136,9 +136,25 @@ class FunctionController extends Controller
             abort(404);
         }
 
+        $requestData = json_decode($notify['data'] ?? '[]', true);
+        if (!is_array($requestData)) {
+            $requestData = [];
+        }
+
+        $studentInfoQuery = StudentInfo::query()->with(['user', 'section.classroom']);
+
+        if (!empty($requestData['requester_user_id'])) {
+            $studentInfoQuery->where('user_id', (int) $requestData['requester_user_id']);
+        } elseif (!empty($requestData['email'])) {
+            $email = (string) $requestData['email'];
+            $studentInfoQuery->whereHas('user', fn ($query) => $query->where('email', $email));
+        } else {
+            $studentInfoQuery->whereRaw('1 = 0');
+        }
+
         $data['notify'] = $this->notifications();
-        $data['StudentInfo'] = StudentInfo::query()->where('user_id', $notify['notifiable_id'])->first();
-        $data['arryear'] = $notify['data'];
+        $data['StudentInfo'] = $studentInfoQuery->first();
+        $data['arryear'] = $requestData;
 
         return view('admin.StudentSchoolCertificateNotification', $data);
     }
