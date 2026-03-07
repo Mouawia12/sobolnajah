@@ -70,6 +70,14 @@
             return room.participants?.[0]?.name || 'محادثة';
         };
 
+        const renderAvatar = (avatarUrl, fallbackText) => {
+            if (avatarUrl) {
+                return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(fallbackText || 'avatar')}">`;
+            }
+
+            return escapeHtml(fallbackText || '??');
+        };
+
         const renderRooms = () => {
             if (!rooms.length) {
                 roomsContainer.innerHTML = `
@@ -90,12 +98,13 @@
                 const timestamp = latest && latest.created_at ? new Date(latest.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
                 const displayName = formatRoomName(room);
                 const initials = displayName ? displayName.substring(0, 2).toUpperCase() : '??';
+                const avatarHtml = renderAvatar(room.avatar_url || null, initials);
 
                 return `
                     <div class="media chat-room-item ${isActive ? 'active' : ''}" data-room-id="${room.id}">
                         <div class="align-self-center me-2">
                             <div class="chat-avatar">
-                                ${escapeHtml(initials)}
+                                ${avatarHtml}
                             </div>
                         </div>
                         <div class="media-body">

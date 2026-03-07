@@ -35,7 +35,7 @@ class ChatController extends Controller
         $rooms = ChatRoom::query()
             ->forUser($currentUser->id)
             ->with([
-                'participants' => fn ($q) => $q->select('users.id', 'users.name'),
+                'participants' => fn ($q) => $q->select('users.id', 'users.name', 'users.profile_photo_path'),
                 'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
             ])
             ->orderByDesc('updated_at')
@@ -46,7 +46,7 @@ class ChatController extends Controller
             ->when($schoolId, fn (Builder $query) => $query->where('school_id', $schoolId))
             ->orderBy('name')
             ->limit(self::AVAILABLE_USERS_LIMIT)
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'profile_photo_path']);
 
         $activeRoomId = $request->integer('room') ?: null;
         $chatView = $this->resolveChatView($currentUser);
@@ -66,7 +66,7 @@ class ChatController extends Controller
         $rooms = ChatRoom::query()
             ->forUser($request->user()->id)
             ->with([
-                'participants:id,name',
+                'participants:id,name,profile_photo_path',
                 'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
             ])
             ->orderByDesc('updated_at')
@@ -133,7 +133,7 @@ class ChatController extends Controller
         $room = $this->findOrCreateDirectRoom($request->user(), $target);
 
         $room->loadMissing([
-            'participants:id,name',
+            'participants:id,name,profile_photo_path',
             'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
         ]);
 
@@ -164,7 +164,7 @@ class ChatController extends Controller
         ));
 
         $room->loadMissing([
-            'participants:id,name',
+            'participants:id,name,profile_photo_path',
             'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
         ]);
 
@@ -218,13 +218,14 @@ class ChatController extends Controller
             })
             ->orderByDesc('created_at')
             ->limit(8)
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'profile_photo_path']);
 
         return response()->json([
             'users' => $users->map(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $this->translated($user, 'name'),
                 'email' => $user->email,
+                'avatar_url' => $user->profile_photo_url,
             ]),
         ]);
     }
@@ -261,7 +262,7 @@ class ChatController extends Controller
     protected function roomsPayload(Collection $rooms, int $currentUserId): Collection
     {
         $rooms->loadMissing([
-            'participants:id,name',
+            'participants:id,name,profile_photo_path',
             'messages' => fn ($q) => $q->latest()->limit(1)->with('sender:id,name'),
         ]);
 
@@ -273,6 +274,7 @@ class ChatController extends Controller
         $participants = $room->participants->map(fn (User $user) => [
             'id' => $user->id,
             'name' => $this->translated($user, 'name'),
+            'avatar_url' => $user->profile_photo_url,
         ])->values();
 
         $otherNames = $participants->reject(fn (array $participant) => $participant['id'] === $currentUserId)->pluck('name');
@@ -281,10 +283,14 @@ class ChatController extends Controller
             ? $room->name
             : ($otherNames->first() ?? $participants->first()['name'] ?? __('محادثة'));
 
+        $roomAvatar = $participants->first(fn (array $participant) => $participant['id'] !== $currentUserId);
+        $roomAvatarUrl = $roomAvatar['avatar_url'] ?? null;
+
         return [
             'id' => $room->id,
             'name' => $room->name,
             'display_name' => $displayName,
+            'avatar_url' => $roomAvatarUrl,
             'is_group' => (bool) $room->is_group,
             'participants' => $participants,
             'messages' => $room->messages->map(fn (ChatMessage $message) => $this->messagePayload($message))->values(),

@@ -55,13 +55,20 @@
                                         ? \Illuminate\Support\Str::limit($latest->body, 50)
                                         : __('لا توجد رسائل بعد');
                                     $roomDisplayName = $formatRoomName($room);
+                                    $roomAvatarUrl = optional(
+                                        $room->participants->firstWhere('id', '!=', $currentUserId)
+                                    )->profile_photo_url;
                                 @endphp
                                 <div class="media chat-room-item rounded {{ $loop->first && !$activeRoomId ? 'active' : '' }}{{ $activeRoomId === $room->id ? ' active' : '' }}"
                                      data-room-id="{{ $room->id }}"
                                      data-room-name="{{ $roomDisplayName }}">
                                     <div class="align-self-center me-2">
                                         <div class="chat-avatar">
-                                            {{ mb_substr($roomDisplayName, 0, 2) }}
+                                            @if($roomAvatarUrl)
+                                                <img src="{{ $roomAvatarUrl }}" alt="{{ $roomDisplayName }}">
+                                            @else
+                                                {{ mb_substr($roomDisplayName, 0, 2) }}
+                                            @endif
                                         </div>
                                     </div>
                                     <div class="media-body">
@@ -105,10 +112,14 @@
                                 <div class="media align-items-center justify-content-between start-direct-chat-row"
                                      data-start-direct="true"
                                      data-user-id="{{ $user->id }}"
-                                     role="button">
+                                    role="button">
                                     <div class="d-flex align-items-center">
                                         <div class="chat-avatar me-2 bg-secondary">
-                                            {{ $initials }}
+                                            @if($user->profile_photo_url)
+                                                <img src="{{ $user->profile_photo_url }}" alt="{{ $translatedName ?? $user->name }}">
+                                            @else
+                                                {{ $initials }}
+                                            @endif
                                         </div>
                                         <div class="media-body">
                                             <p class="mb-0 fw-semibold">{{ $translatedName ?? $user->name }}</p>
