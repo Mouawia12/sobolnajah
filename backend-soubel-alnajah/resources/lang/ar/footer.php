@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'AllRightsReserved'=>'كل الحقوق محفوظة',
+    'AllRightsReserved' => 'جميع الحقوق محفوظة فن الاحتراف لنظم المعلومات',
  
 
 

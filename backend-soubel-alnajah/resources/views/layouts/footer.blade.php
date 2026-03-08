@@ -93,8 +93,8 @@
     <div class="footer-bottom bg-dark3">
         <div class="container">
             <div class="row align-items-center">
-                <div class="col-md-6 col-12 text-md-start text-center">	
-                    	2022 <a href="https://www.souftech.com/" style="color: rgb(0, 201, 251);"> SoufTech </a> {{ trans('footer.AllRightsReserved') }}
+                <div class="col-md-6 col-12 text-md-start text-center">
+                    &copy; {{ date('Y') }} {{ trans('footer.AllRightsReserved') }}
                 </div>
                 <div class="col-md-6 mt-md-0 mt-20">
                     <div class="social-icons">
