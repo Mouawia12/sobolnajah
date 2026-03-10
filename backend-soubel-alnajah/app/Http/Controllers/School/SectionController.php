@@ -64,7 +64,7 @@ class SectionController extends Controller
             ->orderBy('name_class')
             ->get();
 
-        $sectionFilters = function ($sectionsQuery) use ($schoolId, $gradeFilter, $classroomFilter, $statusFilter, $query) {
+        $applySectionConstraints = function ($sectionsQuery) use ($schoolId, $gradeFilter, $classroomFilter, $statusFilter, $query) {
             $sectionsQuery
                 ->forSchool($schoolId)
                 ->when($gradeFilter, fn ($q) => $q->where('grade_id', (int) $gradeFilter))
@@ -81,15 +81,22 @@ class SectionController extends Controller
                                     ->orWhere('name_class->en', 'like', '%' . $query . '%');
                             });
                     });
-                })
-                ->orderByDesc('created_at');
+                });
+        };
+
+        $sectionFilters = function ($sectionsQuery) use ($applySectionConstraints) {
+            $applySectionConstraints($sectionsQuery);
+            $sectionsQuery
+                ->orderByDesc('created_at')
+                ->orderByDesc('updated_at');
         };
 
         $data['Schoolgrade'] = Schoolgrade::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->select(['id', 'school_id', 'name_grade'])
             ->when($gradeFilter, fn ($q) => $q->whereKey((int) $gradeFilter))
-            ->whereHas('sections', $sectionFilters)
+            ->whereHas('sections', $applySectionConstraints)
+            ->withMax(['sections as latest_section_created_at' => $applySectionConstraints], 'created_at')
             ->with([
                 'school:id,name_school',
                 'sections' => function ($sectionsQuery) use ($sectionFilters) {
@@ -104,7 +111,8 @@ class SectionController extends Controller
                         ]);
                 },
             ])
-            ->orderBy('name_grade')
+            ->orderByDesc('latest_section_created_at')
+            ->orderByDesc('created_at')
             ->paginate(6)
             ->withQueryString();
 
