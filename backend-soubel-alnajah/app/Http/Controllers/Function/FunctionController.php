@@ -94,30 +94,35 @@ class FunctionController extends Controller
         $validated = $request->validated();
 
         try {
-            if(auth()->user()){
-                if ((int) $validated['id'] !== (int) auth()->id()) {
-                    abort(403);
-                }
-
-                $currentUser = auth()->user();
-                $requestDetails = [
-                    'year' => (string) $validated['year'],
-                    'purpose' => (string) $validated['purpose'],
-                    'copies' => (int) $validated['copies'],
-                    'preferred_language' => (string) $validated['preferred_language'],
-                    'delivery_method' => (string) $validated['delivery_method'],
-                    'notes' => (string) ($validated['notes'] ?? ''),
-                    'requested_at' => now()->toDateTimeString(),
-                ];
-
-                $this->sendSchoolCertificateNotificationAction->execute(
-                    $currentUser,
-                    (int) $validated['id'],
-                    $requestDetails,
-                    $this->translatedName($currentUser, 'fr'),
-                    $this->translatedName($currentUser, 'ar')
-                );
+            $currentUser = auth()->user();
+            if (!$currentUser) {
+                abort(403);
             }
+
+            $targetUserId = (int) $validated['id'];
+            $canRequestForOthers = $currentUser->hasRole('admin') || $currentUser->hasRole('administrator');
+            if (!$canRequestForOthers && $targetUserId !== (int) $currentUser->id) {
+                abort(403);
+            }
+
+            $requestDetails = [
+                'year' => (string) $validated['year'],
+                'purpose' => (string) ($validated['purpose'] ?? 'administrative'),
+                'copies' => (int) ($validated['copies'] ?? 1),
+                'preferred_language' => (string) ($validated['preferred_language'] ?? 'ar'),
+                'delivery_method' => (string) ($validated['delivery_method'] ?? 'printed'),
+                'notes' => (string) ($validated['notes'] ?? ''),
+                'requested_at' => now()->toDateTimeString(),
+            ];
+
+            $this->sendSchoolCertificateNotificationAction->execute(
+                $currentUser,
+                $targetUserId,
+                $requestDetails,
+                $this->translatedName($currentUser, 'fr'),
+                $this->translatedName($currentUser, 'ar')
+            );
+
             return back()->withSuccess('certificate_request_sent');
         }
   

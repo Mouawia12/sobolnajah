@@ -238,7 +238,15 @@ class ContractController extends Controller
         ])
             ->setPaper('a4');
 
-        return $pdf->download('contract-' . $contract->id . '.pdf');
+        $pdfBinary = $pdf->output();
+
+        return response()->streamDownload(
+            function () use ($pdfBinary): void {
+                echo $pdfBinary;
+            },
+            'contract-' . $contract->id . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
     }
 
     public function printRange(Request $request)

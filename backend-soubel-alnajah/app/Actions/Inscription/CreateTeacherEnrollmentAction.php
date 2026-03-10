@@ -14,7 +14,7 @@ class CreateTeacherEnrollmentAction
     {
     }
 
-    public function execute(array $input, int $schoolId): void
+    public function execute(array $input, ?int $schoolId): void
     {
         DB::transaction(function () use ($input, $schoolId) {
             $payload = $this->buildTeacherEnrollmentPayloadAction->execute($input);

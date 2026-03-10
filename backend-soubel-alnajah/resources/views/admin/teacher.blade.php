@@ -320,14 +320,14 @@
                    </div>
                    <div class="col-md-6">
                     <div class="form-group">
-                      <label class="form-label">{{ __('كلمة المرور') }}</label>
-                      <input type="password" name="password" class="form-control" placeholder="{{ __('أدخل كلمة مرور المعلم') }}" required>
+                      <label class="form-label">{{ __('كلمة المرور (اختياري)') }}</label>
+                      <input type="password" name="password" class="form-control" placeholder="{{ __('اتركه فارغاً لإرسال رابط إعداد كلمة المرور') }}">
                     </div>
                    </div>
                    <div class="col-md-6">
                     <div class="form-group">
                       <label class="form-label">{{ __('تأكيد كلمة المرور') }}</label>
-                      <input type="password" name="password_confirmation" class="form-control" placeholder="{{ __('تأكيد كلمة المرور') }}" required>
+                      <input type="password" name="password_confirmation" class="form-control" placeholder="{{ __('تأكيد كلمة المرور') }}">
                     </div>
                    </div>
                 </div>

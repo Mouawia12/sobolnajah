@@ -13,6 +13,7 @@ use App\Models\Timetable\TimetableEntry;
 use App\Models\TeacherSchedule\TeacherSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
@@ -102,10 +103,17 @@ class HomeController extends Controller
                 "home:school:{$schoolCacheKey}:locale:{$locale}:students-monthly",
                 now()->addMinutes(5),
                 function () use ($schoolId, $locale) {
+                    $driver = DB::connection()->getDriverName();
+                    $monthExpression = match ($driver) {
+                        'sqlite' => "strftime('%Y-%m', created_at)",
+                        'pgsql' => "to_char(created_at, 'YYYY-MM')",
+                        default => "DATE_FORMAT(created_at, '%Y-%m')",
+                    };
+
                     return StudentInfo::query()
                         ->forSchool($schoolId)
                         ->whereNotNull('created_at')
-                        ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as ym, COUNT(*) as total')
+                        ->selectRaw($monthExpression . ' as ym, COUNT(*) as total')
                         ->groupBy('ym')
                         ->orderByDesc('ym')
                         ->take(12)

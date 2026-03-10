@@ -30,9 +30,7 @@ class StoreTeacher extends FormRequest
         $name_teacherar = $this->name_teacherar;
         $teacherId = $this->route('Teacher') ?? $this->route('teacher');
 
-        $passwordRules = $this->isMethod('post')
-            ? ['required', 'string', 'min:8', 'confirmed']
-            : ['nullable', 'string', 'min:8', 'confirmed'];
+        $passwordRules = ['nullable', 'string', 'min:8', 'confirmed'];
 
         return [
             'name_teacherfr' => 'required',

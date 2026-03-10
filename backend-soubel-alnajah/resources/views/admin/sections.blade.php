@@ -85,7 +85,7 @@
                <table class="table table-bordered text-center" style="width:100%">
                <thead>
                   <tr>
-                     <th>#</th>
+                     <th>ID</th>
                      <th>{{ trans('inscription.Anneescolaire') }}</th>                     
                      <th>{{ trans('inscription.section') }}</th>
                      <th>{{ trans('inscription.ecole') }}</th>
@@ -96,16 +96,14 @@
                </thead>
                <tbody>
 
-               <?php $i = 0; ?>
                @foreach ($grade->sections as $sc)
-                   <?php $i++; ?>
                    @php
                       $classroom = $sc->classroom;
                       $gradeModel = $classroom?->schoolgrade;
                       $schoolModel = $gradeModel?->school;
                    @endphp
                      <tr>
-                        <td>{{ $i }}</td>
+                        <td>{{ $sc->id }}</td>
                         <td>{{ $classroom->name_class ?? '-' }}</td>
                         <td>{{ $sc->name_section ?? '-' }}</td>
                         <td>{{ $schoolModel->name_school ?? '-' }}</td>

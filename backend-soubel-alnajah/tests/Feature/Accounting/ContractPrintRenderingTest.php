@@ -122,7 +122,7 @@ class ContractPrintRenderingTest extends TestCase
             'school_id' => $schoolId,
             'student_id' => $studentId,
             'external_contract_no' => '3002',
-            'academic_year' => '2026-2027',
+            'academic_year' => '2027-2028',
             'total_amount' => 130000,
             'plan_type' => 'monthly',
             'status' => 'active',
@@ -137,8 +137,8 @@ class ContractPrintRenderingTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('تقرير العقود حسب التاريخ');
-        $response->assertSee((string) $inRangeId);
-        $response->assertDontSee((string) $outRangeId);
+        $response->assertSee('2026-03-03');
+        $response->assertDontSee('2026-01-01');
     }
 
     private function bootstrapAccountantWithStudent(string $suffix = 'A'): array

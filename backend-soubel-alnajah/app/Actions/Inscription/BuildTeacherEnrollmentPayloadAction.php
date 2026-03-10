@@ -10,9 +10,13 @@ class BuildTeacherEnrollmentPayloadAction
 
     public function execute(array $input): array
     {
+        $nameFr = $input['name_teacherfr'] ?? null;
+        $nameAr = $input['name_teacherar'] ?? null;
+
         $name = $this->buildLocalizedNameAction->execute(
-            $input['name_teacherfr'] ?? null,
-            $input['name_teacherar'] ?? null
+            $nameFr,
+            $nameAr,
+            $nameFr
         );
 
         return [

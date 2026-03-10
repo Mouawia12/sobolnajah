@@ -72,7 +72,7 @@
                     </div>
                     <div class="col-12 mb-3">
                         <label class="form-label text-muted">{{ trans('student.certificate_notes') }}</label>
-                        <div class="p-10 bg-light rounded">{{ $requestData['notes'] ?: '—' }}</div>
+                        <div class="p-10 bg-light rounded">{{ ($requestData['notes'] ?? null) ?: '—' }}</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label text-muted">{{ __('تاريخ الطلب') }}</label>

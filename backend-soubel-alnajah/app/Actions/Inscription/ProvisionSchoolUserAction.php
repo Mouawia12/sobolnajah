@@ -13,7 +13,7 @@ class ProvisionSchoolUserAction
     {
     }
 
-    public function execute(array $name, ?string $email, int $schoolId, string $role, ?string $password = null): User
+    public function execute(array $name, ?string $email, ?int $schoolId, string $role, ?string $password = null): User
     {
         $hasManualPassword = is_string($password) && $password !== '';
 
