@@ -13,15 +13,18 @@ use App\Imports\StudentsImport;
 use App\Models\Inscription\StudentInfo;
 use App\Models\School\School;
 use App\Models\School\Section;
+use App\Services\StudentImportProgressService;
 use App\Services\StudentEnrollmentService;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Str;
 use Throwable;
 
 class StudentController extends Controller
 {
     public function __construct(
         private StudentEnrollmentService $enrollmentService,
+        private StudentImportProgressService $studentImportProgressService,
         private BuildStudentEnrollmentPayloadAction $buildStudentEnrollmentPayloadAction,
         private UpdateStudentEnrollmentAction $updateStudentEnrollmentAction,
         private DeleteStudentEnrollmentAction $deleteStudentEnrollmentAction
@@ -194,26 +197,101 @@ class StudentController extends Controller
         $request->validated();
 
         $schoolId = $this->currentSchoolId();
-        $import = new StudentsImport($this->enrollmentService, $schoolId);
+        $importToken = trim((string) $request->input('import_token', ''));
+        if ($importToken === '') {
+            $importToken = Str::lower((string) Str::uuid());
+        }
+        $this->studentImportProgressService->initialize($importToken);
+
+        $import = new StudentsImport(
+            $this->enrollmentService,
+            $schoolId,
+            $this->studentImportProgressService,
+            $importToken
+        );
 
         try {
             Excel::import($import, $request->file('file'));
         } catch (ValidationException $exception) {
+            $this->studentImportProgressService->fail($importToken, 'Validation error while importing students.', [
+                'issues_preview' => [$exception->getMessage()],
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'token' => $importToken,
+                    'message' => 'Validation error while importing students.',
+                    'errors' => $exception->errors(),
+                    'progress' => $this->studentImportProgressService->get($importToken),
+                ], 422);
+            }
+
             return back()->withErrors($exception->errors());
         } catch (Throwable $exception) {
+            $this->studentImportProgressService->fail($importToken, $exception->getMessage());
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'token' => $importToken,
+                    'message' => $exception->getMessage(),
+                    'progress' => $this->studentImportProgressService->get($importToken),
+                ], 500);
+            }
+
             return back()->withErrors(['error' => $exception->getMessage()]);
+        }
+
+        $summary = [
+            'total_rows' => $import->getTotalRows(),
+            'processed_rows' => $import->getProcessedRows(),
+            'imported_rows' => $import->getImportedRows(),
+            'section_updated_rows' => $import->getSectionUpdatedRows(),
+            'duplicate_rows' => $import->getDuplicateRows(),
+            'skipped_rows' => $import->getSkippedRows(),
+            'not_added_rows' => $import->getNotImportedRows(),
+            'auto_filled_fields' => $import->getAutoFilledFields(),
+        ];
+        $issues = $import->getIssues();
+
+        $this->studentImportProgressService->complete($importToken, [
+            'message' => 'Student import completed successfully.',
+            'total_rows' => $summary['total_rows'],
+            'processed_rows' => $summary['processed_rows'],
+            'imported_rows' => $summary['imported_rows'],
+            'section_updated_rows' => $summary['section_updated_rows'],
+            'duplicate_rows' => $summary['duplicate_rows'],
+            'skipped_rows' => $summary['skipped_rows'],
+            'not_added_rows' => $summary['not_added_rows'],
+            'auto_filled_fields' => $summary['auto_filled_fields'],
+            'issues_preview' => array_slice($issues, -5),
+            'latest_issue' => !empty($issues) ? end($issues) : null,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'token' => $importToken,
+                'message' => 'Student import completed successfully.',
+                'summary' => $summary,
+                'issues' => $issues,
+                'progress' => $this->studentImportProgressService->get($importToken),
+            ]);
         }
 
         toastr()->success(
             sprintf(
-                'تم الاستيراد بنجاح: %d صف ناجح، %d صف متخطي، %d قيمة تم تعويضها تلقائيًا.',
-                $import->getImportedRows(),
-                $import->getSkippedRows(),
-                $import->getAutoFilledFields()
+                'تم الاستيراد بنجاح: %d صف مضاف، %d صف تم تصحيح قسمه، %d صف مكرر، %d صف متجاهل، %d صف غير مضاف، %d قيمة تم تعويضها تلقائيًا.',
+                $summary['imported_rows'],
+                $summary['section_updated_rows'],
+                $summary['duplicate_rows'],
+                $summary['skipped_rows'],
+                $summary['not_added_rows'],
+                $summary['auto_filled_fields']
             )
         );
 
-        $issues = $import->getIssues();
         if (!empty($issues)) {
             $preview = implode(' | ', array_slice($issues, 0, 3));
             $remaining = count($issues) - 3;
@@ -222,5 +300,18 @@ class StudentController extends Controller
         }
 
         return redirect()->route('Students.index');
+    }
+
+    public function importStatus(string $token)
+    {
+        $status = $this->studentImportProgressService->get($token);
+        if (!$status) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Import token not found.',
+            ], 404);
+        }
+
+        return response()->json($status);
     }
 }

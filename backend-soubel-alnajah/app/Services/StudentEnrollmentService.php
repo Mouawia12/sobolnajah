@@ -14,6 +14,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class StudentEnrollmentService
 {
@@ -30,7 +31,7 @@ class StudentEnrollmentService
     {
         $schoolId = $section->school_id;
 
-        $this->assertStudentIsUnique($studentData, $section);
+        $this->assertStudentIsUnique($studentData, $guardianData, $section);
 
         return DB::transaction(function () use ($studentData, $guardianData, $section, $schoolId) {
             $guardian = $this->resolveGuardian($guardianData, $schoolId);
@@ -55,12 +56,50 @@ class StudentEnrollmentService
         });
     }
 
-    protected function assertStudentIsUnique(array $studentData, Section $section): void
+    public function importStudent(array $studentData, array $guardianData, Section $section): array
+    {
+        $dateOfBirth = $this->normalizeDate(Arr::get($studentData, 'birth_date'));
+        $studentPhone = $this->normalizeDigits(Arr::get($studentData, 'phone'));
+        $guardianPhone = $this->normalizeDigits(Arr::get($guardianData, 'phone'));
+
+        $matchedStudent = $this->findMatchingStudent(
+            $studentData,
+            $section->school_id,
+            $dateOfBirth,
+            $studentPhone,
+            $guardianPhone
+        );
+
+        if ($matchedStudent) {
+            if ((int) $matchedStudent->section_id !== (int) $section->id) {
+                $matchedStudent->update(['section_id' => $section->id]);
+
+                return [
+                    'status' => 'section_updated',
+                    'student' => $matchedStudent->fresh(['user', 'parent', 'section']),
+                ];
+            }
+
+            return [
+                'status' => 'duplicate',
+                'student' => $matchedStudent,
+            ];
+        }
+
+        return [
+            'status' => 'created',
+            'student' => $this->createStudent($studentData, $guardianData, $section),
+        ];
+    }
+
+    protected function assertStudentIsUnique(array $studentData, array $guardianData, Section $section): void
     {
         $firstName = Arr::get($studentData, 'first_name.fr');
         $lastName = Arr::get($studentData, 'last_name.fr');
-        $dateOfBirth = Arr::get($studentData, 'birth_date');
-        $email = Arr::get($studentData, 'email');
+        $dateOfBirth = $this->normalizeDate(Arr::get($studentData, 'birth_date'));
+        $studentPhone = $this->normalizeDigits(Arr::get($studentData, 'phone'));
+        $guardianPhone = $this->normalizeDigits(Arr::get($guardianData, 'phone'));
+        $email = Str::lower(trim((string) Arr::get($studentData, 'email')));
 
         if (!$firstName || !$lastName) {
             throw ValidationException::withMessages([
@@ -68,26 +107,121 @@ class StudentEnrollmentService
             ]);
         }
 
-        $duplicateQuery = StudentInfo::query()
-            ->forSchool($section->school_id)
-            ->where('prenom->fr', $firstName)
-            ->where('nom->fr', $lastName);
-
-        if ($dateOfBirth) {
-            $duplicateQuery->whereDate('datenaissance', $dateOfBirth);
-        }
-
-        if ($duplicateQuery->exists()) {
-            throw ValidationException::withMessages([
-                'student' => 'A student with the same name already exists for this school.',
-            ]);
-        }
-
-        if ($email && User::where('email', $email)->exists()) {
+        if ($email && User::query()->whereRaw('LOWER(email) = ?', [$email])->exists()) {
             throw ValidationException::withMessages([
                 'student_email' => 'A user with the provided student email already exists.',
             ]);
         }
+
+        if ($this->findMatchingStudent(
+            $studentData,
+            $section->school_id,
+            $dateOfBirth,
+            $studentPhone,
+            $guardianPhone
+        )) {
+            throw ValidationException::withMessages([
+                'student' => 'A student with similar identity data already exists for this school.',
+            ]);
+        }
+    }
+
+    protected function findMatchingStudent(
+        array $studentData,
+        int $schoolId,
+        ?string $dateOfBirth,
+        ?string $studentPhone,
+        ?string $guardianPhone
+    ): ?StudentInfo {
+        $firstNames = Arr::get($studentData, 'first_name', []);
+        $lastNames = Arr::get($studentData, 'last_name', []);
+        $sourceFingerprints = $this->buildNameFingerprints($firstNames, $lastNames);
+        $sourceNameTokens = $this->extractNameTokens($firstNames, $lastNames);
+
+        $duplicateQuery = StudentInfo::query()
+            ->forSchool($schoolId)
+            ->with(['parent:id,numtelephonewali', 'user:id,email'])
+            ->select(['id', 'user_id', 'parent_id', 'section_id', 'prenom', 'nom', 'datenaissance', 'numtelephone']);
+
+        $hasSignalFilter = false;
+
+        $duplicateQuery->where(function (Builder $query) use (
+            $dateOfBirth,
+            $studentPhone,
+            $guardianPhone,
+            $firstNames,
+            $lastNames,
+            &$hasSignalFilter
+        ) {
+            if ($dateOfBirth) {
+                $query->orWhereDate('datenaissance', $dateOfBirth);
+                $hasSignalFilter = true;
+            }
+
+            if ($studentPhone) {
+                $query->orWhere('numtelephone', $studentPhone);
+                $hasSignalFilter = true;
+            }
+
+            if ($guardianPhone) {
+                $query->orWhereHas('parent', function (Builder $parentQuery) use ($guardianPhone) {
+                    $parentQuery->where('numtelephonewali', $guardianPhone);
+                });
+                $hasSignalFilter = true;
+            }
+
+            foreach (['fr', 'ar', 'en'] as $lang) {
+                $firstName = trim((string) Arr::get($firstNames, $lang));
+                if ($firstName !== '') {
+                    $query->orWhere("prenom->{$lang}", $firstName);
+                    $hasSignalFilter = true;
+                }
+
+                $lastName = trim((string) Arr::get($lastNames, $lang));
+                if ($lastName !== '') {
+                    $query->orWhere("nom->{$lang}", $lastName);
+                    $hasSignalFilter = true;
+                }
+            }
+        });
+
+        if (!$hasSignalFilter) {
+            return null;
+        }
+
+        $candidates = $duplicateQuery->limit(250)->get();
+
+        foreach ($candidates as $candidate) {
+            $candidateFirstNames = method_exists($candidate, 'getTranslations')
+                ? $candidate->getTranslations('prenom')
+                : ['fr' => $candidate->prenom];
+            $candidateLastNames = method_exists($candidate, 'getTranslations')
+                ? $candidate->getTranslations('nom')
+                : ['fr' => $candidate->nom];
+
+            $candidateFingerprints = $this->buildNameFingerprints($candidateFirstNames, $candidateLastNames);
+            $candidateNameTokens = $this->extractNameTokens($candidateFirstNames, $candidateLastNames);
+
+            $sameFullName = !empty(array_intersect($sourceFingerprints, $candidateFingerprints));
+            $nameSimilarity = $sameFullName || $this->nameTokensMatch($sourceNameTokens, $candidateNameTokens);
+
+            $candidateBirthDate = $this->normalizeDate((string) $candidate->datenaissance);
+            $sameBirthDate = $dateOfBirth && $candidateBirthDate && $dateOfBirth === $candidateBirthDate;
+            $sameStudentPhone = $studentPhone
+                && $studentPhone === $this->normalizeDigits((string) $candidate->numtelephone);
+            $sameGuardianPhone = $guardianPhone
+                && $guardianPhone === $this->normalizeDigits((string) optional($candidate->parent)->numtelephonewali);
+
+            if (($nameSimilarity && $sameBirthDate)
+                || ($nameSimilarity && ($sameStudentPhone || $sameGuardianPhone))
+                || ($sameBirthDate && $sameStudentPhone)
+                || ($sameStudentPhone && $sameGuardianPhone && $sameBirthDate)
+            ) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     protected function resolveGuardian(array $guardianData, int $schoolId): MyParent
@@ -176,5 +310,114 @@ class StudentEnrollmentService
             Arr::get($name, 'en'),
             true
         );
+    }
+
+    protected function buildNameFingerprints(array $firstNames, array $lastNames): array
+    {
+        $fingerprints = [];
+
+        foreach (['fr', 'ar', 'en'] as $lang) {
+            $fullName = trim((string) Arr::get($firstNames, $lang) . ' ' . (string) Arr::get($lastNames, $lang));
+            $normalized = $this->normalizePersonName($fullName);
+            if ($normalized !== '') {
+                $fingerprints[] = $normalized;
+            }
+        }
+
+        return array_values(array_unique($fingerprints));
+    }
+
+    protected function extractNameTokens(array $firstNames, array $lastNames): array
+    {
+        $tokens = [];
+
+        foreach (['fr', 'ar', 'en'] as $lang) {
+            $first = $this->normalizePersonName((string) Arr::get($firstNames, $lang));
+            $last = $this->normalizePersonName((string) Arr::get($lastNames, $lang));
+            if ($first !== '' && $last !== '') {
+                $tokens[] = $first . ':' . $last;
+            }
+        }
+
+        return array_values(array_unique($tokens));
+    }
+
+    protected function nameTokensMatch(array $sourceTokens, array $candidateTokens): bool
+    {
+        if (empty($sourceTokens) || empty($candidateTokens)) {
+            return false;
+        }
+
+        foreach ($sourceTokens as $sourceToken) {
+            [$sourceFirst, $sourceLast] = array_pad(explode(':', $sourceToken, 2), 2, '');
+
+            foreach ($candidateTokens as $candidateToken) {
+                [$candidateFirst, $candidateLast] = array_pad(explode(':', $candidateToken, 2), 2, '');
+
+                if ($sourceFirst === $candidateFirst && $sourceLast === $candidateLast) {
+                    return true;
+                }
+
+                if ($this->textLooksSimilar($sourceFirst, $candidateFirst)
+                    && $this->textLooksSimilar($sourceLast, $candidateLast)
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    protected function textLooksSimilar(string $a, string $b): bool
+    {
+        if ($a === '' || $b === '') {
+            return false;
+        }
+
+        if ($a === $b) {
+            return true;
+        }
+
+        if (strlen($a) < 4 || strlen($b) < 4) {
+            return false;
+        }
+
+        return levenshtein($a, $b) <= 1;
+    }
+
+    protected function normalizeDigits(?string $value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        return $digits !== '' ? $digits : null;
+    }
+
+    protected function normalizeDate(?string $value): ?string
+    {
+        $date = trim((string) $value);
+        if ($date === '') {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($date)->format('Y-m-d');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    protected function normalizePersonName(string $value): string
+    {
+        $normalized = Str::lower(trim($value));
+        if ($normalized === '') {
+            return '';
+        }
+
+        // Remove Arabic diacritics/tatweel and punctuation to reduce spelling variance.
+        $normalized = preg_replace('/[\x{064B}-\x{065F}\x{0670}\x{0640}]/u', '', $normalized);
+        $normalized = preg_replace('/[^\p{L}\p{N}]+/u', '', $normalized);
+
+        return trim((string) $normalized);
     }
 }

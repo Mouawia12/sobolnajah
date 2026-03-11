@@ -38,15 +38,70 @@
             </div>
 
             <div class="box-body">
-                <form action="{{ route('students.import') }}" method="POST" enctype="multipart/form-data"
+                <form id="students-import-form" action="{{ route('students.import') }}" method="POST" enctype="multipart/form-data"
                     class="mb-3">
                     @csrf
+                    <input type="hidden" name="import_token" id="students-import-token" value="">
                     <div class="form-group">
                         <label>{{ trans('opt.uploadStudentsExcel') }}</label>
-                        <input type="file" name="file" class="form-control" required>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
                     </div>
-                    <button type="submit" class="btn btn-success mt-2">{{ trans('opt.importStudents') }}</button>
+                    <button type="submit" id="students-import-submit" class="btn btn-success mt-2">{{ trans('opt.importStudents') }}</button>
                 </form>
+
+                <div id="students-import-progress-card" class="alert alert-light border d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-10">
+                        <strong>حالة استيراد الطلبة</strong>
+                        <span id="students-import-progress-state" class="badge badge-info">قيد المعالجة...</span>
+                    </div>
+
+                    <div class="progress progress-lg mb-10">
+                        <div id="students-import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                             role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+
+                    <div class="row g-2 text-center mb-10">
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold" id="students-import-total">0</div>
+                            <small>الإجمالي</small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold text-primary" id="students-import-processed">0</div>
+                            <small>تمت المعالجة</small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold text-success" id="students-import-added">0</div>
+                            <small>مضاف</small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold text-info" id="students-import-section-updated">0</div>
+                            <small>تصحيح قسم</small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold text-warning" id="students-import-duplicates">0</div>
+                            <small>مكرر</small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold text-danger" id="students-import-skipped">0</div>
+                            <small>متجاهل</small>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="fw-bold text-dark" id="students-import-not-added">0</div>
+                            <small>غير مضاف</small>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-8">
+                        <div class="col-md-6"><strong>تعويض تلقائي للحقول:</strong> <span id="students-import-autofill">0</span></div>
+                        <div class="col-md-6"><strong>آخر تحديث:</strong> <span id="students-import-updated-at">-</span></div>
+                    </div>
+
+                    <div id="students-import-message" class="mb-6 text-muted"></div>
+                    <div id="students-import-issues-wrapper" class="d-none">
+                        <strong>ملاحظات مهمة:</strong>
+                        <ul id="students-import-issues" class="mb-0 mt-5"></ul>
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -324,6 +379,250 @@
 
 
 @section('jsa')
+<script>
+    (function() {
+        const form = document.getElementById('students-import-form');
+        if (!form || !window.fetch) {
+            return;
+        }
+
+        const submitBtn = document.getElementById('students-import-submit');
+        const tokenInput = document.getElementById('students-import-token');
+        const progressCard = document.getElementById('students-import-progress-card');
+        const progressBar = document.getElementById('students-import-progress-bar');
+        const progressState = document.getElementById('students-import-progress-state');
+        const progressMessage = document.getElementById('students-import-message');
+        const issuesWrapper = document.getElementById('students-import-issues-wrapper');
+        const issuesList = document.getElementById('students-import-issues');
+        const statusUrlTemplate = @json(route('students.import.status', ['token' => '__TOKEN__']));
+
+        let pollingTimer = null;
+        let activeToken = null;
+
+        const map = {
+            total: document.getElementById('students-import-total'),
+            processed: document.getElementById('students-import-processed'),
+            added: document.getElementById('students-import-added'),
+            sectionUpdated: document.getElementById('students-import-section-updated'),
+            duplicates: document.getElementById('students-import-duplicates'),
+            skipped: document.getElementById('students-import-skipped'),
+            notAdded: document.getElementById('students-import-not-added'),
+            autofill: document.getElementById('students-import-autofill'),
+            updatedAt: document.getElementById('students-import-updated-at'),
+        };
+
+        function generateToken() {
+            const randomPart = Math.random().toString(36).slice(2, 10);
+            return `stimport_${Date.now()}_${randomPart}`;
+        }
+
+        function setStateBadge(status, text) {
+            progressState.className = 'badge';
+            if (status === 'completed') {
+                progressState.classList.add('badge-success');
+            } else if (status === 'failed') {
+                progressState.classList.add('badge-danger');
+            } else {
+                progressState.classList.add('badge-info');
+            }
+            progressState.textContent = text;
+        }
+
+        function setProgressPercent(percent) {
+            const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+            progressBar.style.width = `${safePercent}%`;
+            progressBar.textContent = `${safePercent.toFixed(1)}%`;
+            progressBar.setAttribute('aria-valuenow', safePercent.toFixed(1));
+            if (safePercent >= 100) {
+                progressBar.classList.remove('progress-bar-animated');
+            }
+        }
+
+        function setIssues(issues) {
+            issuesList.innerHTML = '';
+            if (!Array.isArray(issues) || !issues.length) {
+                issuesWrapper.classList.add('d-none');
+                return;
+            }
+
+            issuesWrapper.classList.remove('d-none');
+            issues.slice(0, 5).forEach((issue) => {
+                const li = document.createElement('li');
+                li.textContent = issue;
+                issuesList.appendChild(li);
+            });
+        }
+
+        function renderProgress(payload) {
+            if (!payload) {
+                return;
+            }
+
+            map.total.textContent = payload.total_rows ?? 0;
+            map.processed.textContent = payload.processed_rows ?? 0;
+            map.added.textContent = payload.imported_rows ?? 0;
+            map.sectionUpdated.textContent = payload.section_updated_rows ?? 0;
+            map.duplicates.textContent = payload.duplicate_rows ?? 0;
+            map.skipped.textContent = payload.skipped_rows ?? 0;
+            map.notAdded.textContent = payload.not_added_rows ?? 0;
+            map.autofill.textContent = payload.auto_filled_fields ?? 0;
+            map.updatedAt.textContent = payload.updated_at ?? '-';
+
+            setProgressPercent(payload.progress_percent ?? 0);
+            setIssues(payload.issues_preview ?? []);
+
+            if (payload.message) {
+                progressMessage.textContent = payload.message;
+            } else if (payload.latest_issue) {
+                progressMessage.textContent = payload.latest_issue;
+            } else {
+                progressMessage.textContent = '';
+            }
+
+            if (payload.status === 'completed') {
+                setStateBadge('completed', 'مكتمل');
+            } else if (payload.status === 'failed') {
+                setStateBadge('failed', 'فشل');
+            } else if (payload.status === 'running') {
+                setStateBadge('running', 'قيد المعالجة...');
+            } else {
+                setStateBadge('pending', 'بانتظار البدء...');
+            }
+        }
+
+        async function pollStatusOnce() {
+            if (!activeToken) {
+                return;
+            }
+
+            try {
+                const url = statusUrlTemplate.replace('__TOKEN__', encodeURIComponent(activeToken));
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('#students-import-form input[name="_token"]').value,
+                    },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                renderProgress(payload);
+
+                if (payload.status === 'completed' || payload.status === 'failed') {
+                    stopPolling();
+                }
+            } catch (error) {
+                // Ignore transient polling errors while import is running.
+            }
+        }
+
+        function startPolling() {
+            stopPolling();
+            pollingTimer = setInterval(pollStatusOnce, 1000);
+        }
+
+        function stopPolling() {
+            if (pollingTimer) {
+                clearInterval(pollingTimer);
+                pollingTimer = null;
+            }
+        }
+
+        function lockForm(locked) {
+            if (submitBtn) {
+                submitBtn.disabled = locked;
+            }
+            const fileInput = form.querySelector('input[name="file"]');
+            if (fileInput) {
+                fileInput.disabled = locked;
+            }
+        }
+
+        function resetPanel() {
+            progressCard.classList.remove('d-none');
+            setStateBadge('running', 'قيد المعالجة...');
+            setProgressPercent(0);
+            progressBar.classList.add('progress-bar-animated');
+            progressMessage.textContent = '';
+            issuesWrapper.classList.add('d-none');
+            issuesList.innerHTML = '';
+            map.total.textContent = '0';
+            map.processed.textContent = '0';
+            map.added.textContent = '0';
+            map.sectionUpdated.textContent = '0';
+            map.duplicates.textContent = '0';
+            map.skipped.textContent = '0';
+            map.notAdded.textContent = '0';
+            map.autofill.textContent = '0';
+            map.updatedAt.textContent = '-';
+        }
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const fileInput = form.querySelector('input[name="file"]');
+            if (!fileInput || !fileInput.files || !fileInput.files.length) {
+                toastr.error('يرجى اختيار ملف Excel أولا.');
+                return;
+            }
+
+            activeToken = generateToken();
+            tokenInput.value = activeToken;
+            resetPanel();
+            lockForm(true);
+            startPolling();
+            await pollStatusOnce();
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': formData.get('_token'),
+                    },
+                    credentials: 'same-origin',
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (payload && payload.progress) {
+                    renderProgress(payload.progress);
+                } else {
+                    await pollStatusOnce();
+                }
+
+                if (!response.ok || !payload.ok) {
+                    setStateBadge('failed', 'فشل');
+                    progressMessage.textContent = payload.message || 'فشل أثناء استيراد الملف.';
+                    toastr.error(payload.message || 'فشل أثناء استيراد الملف.');
+                    return;
+                }
+
+                setStateBadge('completed', 'مكتمل');
+                progressMessage.textContent = 'تمت معالجة الملف بنجاح. يمكن مراجعة الإحصائيات أعلاه.';
+                if (payload.issues && payload.issues.length) {
+                    setIssues(payload.issues);
+                }
+                toastr.success('تم استيراد ملف الطلبة بنجاح.');
+            } catch (error) {
+                setStateBadge('failed', 'فشل');
+                progressMessage.textContent = 'حدث خطأ أثناء رفع الملف أو متابعة التقدم.';
+                toastr.error('تعذر إكمال الاستيراد حاليا.');
+            } finally {
+                stopPolling();
+                lockForm(false);
+            }
+        });
+    })();
+</script>
 <script>
     $(document).ready(function() {
         $('select[name="school_id"]').on('change', function() {

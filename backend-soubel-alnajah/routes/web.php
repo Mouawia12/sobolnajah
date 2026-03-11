@@ -176,6 +176,7 @@ Route::group(
             Route::post('/store/{id}',[FunctionController::class,'store']);
             Route::get('/admin/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('admin.password.change.page');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
+            Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');
             Route::get('/absences/today', [AbsenceController::class, 'getToday'])->name('absence.today');
             Route::post('/Inscriptions/{id}/approve', [InscriptionController::class, 'approve'])->name('Inscriptions.approve');
