@@ -69,6 +69,12 @@ class AccountingFlowTest extends TestCase
 
         $receiptResponse = $this->actingAs($accountant)->get(route('accounting.payments.receipt', ['payment' => $payment->id]));
         $this->assertTrue(in_array($receiptResponse->status(), [200, 302], true));
+        if ($receiptResponse->status() === 200) {
+            $receiptResponse->assertSeeText('اسم ولقب ولي التلميذ');
+            $receiptResponse->assertSeeText('رقم الوصل');
+            $receiptResponse->assertSeeText('مبلغ المدفوع');
+            $receiptResponse->assertSeeText('200.00');
+        }
     }
 
     public function test_accountant_cannot_create_contract_for_student_from_another_school(): void

@@ -54,8 +54,12 @@ class ContractController extends Controller
                 'created_at',
             ])
             ->with([
-                'student:id,user_id',
+                'student:id,user_id,section_id,parent_id,prenom,nom,datenaissance,numtelephone',
                 'student.user:id,name,email',
+                'student.parent:id,prenomwali,nomwali',
+                'student.section:id,classroom_id,name_section',
+                'student.section.classroom:id,grade_id,name_class',
+                'student.section.classroom.schoolgrade:id,name_grade',
             ])
             ->withSum('payments as paid_total', 'amount')
             ->when($status, fn ($query) => $query->where('status', $status))
@@ -193,8 +197,12 @@ class ContractController extends Controller
         $this->ensureAccountingRole();
 
         $contract->load([
-            'student:id,user_id',
+            'student:id,user_id,section_id,parent_id,prenom,nom,datenaissance,numtelephone',
             'student.user:id,name,email',
+            'student.parent:id,prenomwali,nomwali',
+            'student.section:id,classroom_id,name_section',
+            'student.section.classroom:id,grade_id,name_class',
+            'student.section.classroom.schoolgrade:id,name_grade',
             'plan:id,name',
             'installments:id,contract_id,installment_no,due_date,amount,paid_amount,status,label',
             'payments:id,contract_id,receipt_number,paid_on,amount,payment_method,notes',
@@ -216,8 +224,12 @@ class ContractController extends Controller
         $this->ensureAccountingRole();
 
         $contract->load([
-            'student:id,user_id',
+            'student:id,user_id,section_id,parent_id,prenom,nom,datenaissance,numtelephone',
             'student.user:id,name,email',
+            'student.parent:id,prenomwali,nomwali',
+            'student.section:id,classroom_id,name_section',
+            'student.section.classroom:id,grade_id,name_class',
+            'student.section.classroom.schoolgrade:id,name_grade',
             'plan:id,name',
             'installments:id,contract_id,installment_no,due_date,amount,paid_amount,status,label',
             'payments:id,contract_id,receipt_number,paid_on,amount,payment_method,notes',
@@ -424,8 +436,15 @@ class ContractController extends Controller
             return;
         }
 
-        $count = max(1, (int) ($contract->installments_count ?: 3));
         $baseDate = $contract->starts_on ? Carbon::parse($contract->starts_on) : now();
+        $count = max(1, (int) ($contract->installments_count ?: 3));
+
+        if ($contract->plan_type === 'monthly') {
+            [$baseDate, $count] = $this->resolveMonthlySchedule($contract);
+        } elseif ($contract->plan_type === 'installments') {
+            $count = max(1, (int) ($contract->installments_count ?: 3));
+        }
+
         $amount = round(((float) $contract->total_amount) / $count, 2);
 
         for ($i = 1; $i <= $count; $i++) {
@@ -436,9 +455,55 @@ class ContractController extends Controller
                 'amount' => $i === $count ? ((float) $contract->total_amount - ($amount * ($count - 1))) : $amount,
                 'paid_amount' => 0,
                 'status' => 'pending',
-                'label' => 'Installment ' . $i,
+                'label' => $contract->plan_type === 'monthly'
+                    ? 'Monthly Installment ' . $i
+                    : 'Installment ' . $i,
             ]);
         }
+    }
+
+    /**
+     * Resolve monthly schedule with sensible defaults:
+     * - If starts_on + ends_on exist => cover all months in the range.
+     * - If only starts_on exists => use installments_count (fallback 8).
+     * - Otherwise => default September to April using academic_year start.
+     *
+     * @return array{0:Carbon,1:int}
+     */
+    private function resolveMonthlySchedule(StudentContract $contract): array
+    {
+        if ($contract->starts_on && $contract->ends_on) {
+            $start = Carbon::parse($contract->starts_on)->startOfDay();
+            $end = Carbon::parse($contract->ends_on)->startOfDay();
+            if ($end->lt($start)) {
+                $end = $start->copy();
+            }
+
+            return [$start, max(1, $start->diffInMonths($end) + 1)];
+        }
+
+        if ($contract->starts_on) {
+            $start = Carbon::parse($contract->starts_on)->startOfDay();
+            return [$start, max(1, (int) ($contract->installments_count ?: 8))];
+        }
+
+        $academicStartYear = $this->extractAcademicStartYear((string) $contract->academic_year) ?? (int) now()->format('Y');
+        $start = Carbon::create($academicStartYear, 9, 1)->startOfDay();
+
+        return [$start, 8];
+    }
+
+    private function extractAcademicStartYear(string $academicYear): ?int
+    {
+        if (preg_match('/(\d{4})\s*[\/-]\s*\d{4}/', $academicYear, $matches)) {
+            return (int) $matches[1];
+        }
+
+        if (preg_match('/^\d{4}$/', $academicYear)) {
+            return (int) $academicYear;
+        }
+
+        return null;
     }
 
     private function ensureAccountingRole(): void

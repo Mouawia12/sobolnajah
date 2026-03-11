@@ -71,9 +71,9 @@
 <body>
     @php
         $planLabels = [
-            'yearly' => 'سنوي',
-            'monthly' => 'شهري',
-            'installments' => 'أقساط',
+            'yearly' => 'كاش (دفعة واحدة)',
+            'monthly' => 'شهري (سبتمبر-أفريل)',
+            'installments' => 'أقساط (3 دفعات)',
         ];
         $statusLabels = [
             'draft' => 'مسودة',
@@ -90,12 +90,26 @@
             'transfer' => 'تحويل',
             'check' => 'شيك',
         ];
+        $contractNumber = (string) ($contract->external_contract_no ?: $contract->id);
+        $studentFullName = trim((string) ($contract->student?->prenom ?? '') . ' ' . (string) ($contract->student?->nom ?? ''));
+        if ($studentFullName === '') {
+            $studentFullName = (string) ($contract->student?->user?->name ?? ('Student #' . $contract->student_id));
+        }
+        $guardianFullName = trim((string) ($contract->student?->parent?->prenomwali ?? '') . ' ' . (string) ($contract->student?->parent?->nomwali ?? ''));
+        $sectionParts = [
+            $contract->student?->section?->classroom?->schoolgrade?->name_grade,
+            $contract->student?->section?->classroom?->name_class,
+            $contract->student?->section?->name_section,
+        ];
+        $sectionLabel = implode(' / ', array_filter($sectionParts, fn ($value) => $value !== null && $value !== ''));
+        $birthDate = $contract->student?->datenaissance ? (string) $contract->student->datenaissance : '-';
+        $phone = $contract->student?->numtelephone ? ('0' . ltrim((string) $contract->student->numtelephone, '0')) : '-';
     @endphp
 
     <div class="header">
         <div class="header-right">
             <h2>عقد طالب</h2>
-            <div><strong>رقم العقد:</strong> {{ $contract->id }}</div>
+            <div><strong>رقم العقد:</strong> {{ $contractNumber }}</div>
         </div>
         <div class="header-left">
             <div><strong>تاريخ الطباعة:</strong> <span class="ltr">{{ now()->format('Y-m-d H:i') }}</span></div>
@@ -103,8 +117,12 @@
     </div>
 
     <div class="meta">
-        <div><strong>الطالب:</strong> {{ $contract->student->user->name ?? ('Student #' . $contract->student_id) }}</div>
+        <div><strong>اسم ولقب التلميذ:</strong> {{ $studentFullName }}</div>
+        <div><strong>اسم ولقب ولي الأمر:</strong> {{ $guardianFullName !== '' ? $guardianFullName : '-' }}</div>
+        <div><strong>الأفواج:</strong> {{ $sectionLabel ?: '-' }}</div>
         <div><strong>البريد:</strong> <span class="ltr">{{ $contract->student->user->email ?? '-' }}</span></div>
+        <div><strong>تاريخ الميلاد:</strong> <span class="ltr">{{ $birthDate }}</span></div>
+        <div><strong>رقم الهاتف:</strong> <span class="ltr">{{ $phone }}</span></div>
         <div><strong>السنة الدراسية:</strong> <span class="ltr">{{ $contract->academic_year }}</span></div>
         <div><strong>نوع الخطة:</strong> {{ $planLabels[$contract->plan_type] ?? $contract->plan_type }}</div>
         <div><strong>عدد الدفعات:</strong> <span class="ltr">{{ $contract->installments_count ?? '-' }}</span></div>

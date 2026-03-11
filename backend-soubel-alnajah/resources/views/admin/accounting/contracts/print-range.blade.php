@@ -27,7 +27,7 @@
 </head>
 <body>
     @php
-        $planLabels = ['yearly' => 'سنوي', 'monthly' => 'شهري', 'installments' => 'أقساط'];
+        $planLabels = ['yearly' => 'كاش (دفعة واحدة)', 'monthly' => 'شهري (سبتمبر-أفريل)', 'installments' => 'أقساط (3 دفعات)'];
         $statusLabels = ['draft' => 'مسودة', 'active' => 'نشط', 'partial' => 'جزئي', 'paid' => 'مدفوع', 'overdue' => 'متأخر', 'pending' => 'قيد الانتظار'];
     @endphp
 

@@ -552,14 +552,14 @@
                     <div class="col-md-2">
                         <label class="form-label">خطة الدفع</label>
                         <select name="plan_type" class="form-select" required>
-                            <option value="yearly">سنوي</option>
-                            <option value="monthly">شهري</option>
-                            <option value="installments">دفعات</option>
+                            <option value="yearly">كاش (دفعة واحدة)</option>
+                            <option value="installments">أقساط (غالبًا 3 دفعات)</option>
+                            <option value="monthly">شهري (سبتمبر إلى أفريل)</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">عدد الدفعات</label>
-                        <input type="number" min="1" max="24" class="form-control" name="installments_count" value="{{ old('installments_count', 3) }}">
+                        <input type="number" min="1" max="24" class="form-control" name="installments_count" value="{{ old('installments_count') }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">نموذج الخطة (اختياري)</label>
@@ -645,8 +645,12 @@
                         <tr>
                             <th>#</th>
                             <th>رقم العقد</th>
-                            <th>التلميذ</th>
-                            <th>السنة</th>
+                            <th>السنة الدراسية</th>
+                            <th>الأفواج</th>
+                            <th>اسم ولقب التلميذ</th>
+                            <th>اسم ولقب ولي الأمر</th>
+                            <th>تاريخ الميلاد</th>
+                            <th>رقم الهاتف</th>
                             <th>الخطة</th>
                             <th>الإجمالي</th>
                             <th>المدفوع</th>
@@ -661,19 +665,43 @@
                                 $paidTotal = (float) ($contract->paid_total ?? 0);
                                 $remaining = (float) $contract->total_amount - $paidTotal;
                                 $statusLabels = ['draft' => 'مسودة', 'active' => 'نشط', 'partial' => 'جزئي', 'paid' => 'مدفوع', 'overdue' => 'متأخر'];
-                                $planLabels = ['yearly' => 'سنوي', 'monthly' => 'شهري', 'installments' => 'أقساط'];
-                                $studentName = (string) ($contract->student->user->name ?? ('Student #' . $contract->student_id));
+                                $planLabels = [
+                                    'yearly' => 'كاش (دفعة واحدة)',
+                                    'monthly' => 'شهري (سبتمبر-أفريل)',
+                                    'installments' => 'أقساط (3 دفعات)',
+                                ];
+                                $contractNumber = (string) ($contract->external_contract_no ?: $contract->id);
+                                $studentFullName = trim((string) ($contract->student?->prenom ?? '') . ' ' . (string) ($contract->student?->nom ?? ''));
+                                if ($studentFullName === '') {
+                                    $studentFullName = (string) ($contract->student?->user?->name ?? ('Student #' . $contract->student_id));
+                                }
+                                $guardianFullName = trim((string) ($contract->student?->parent?->prenomwali ?? '') . ' ' . (string) ($contract->student?->parent?->nomwali ?? ''));
+                                if ($guardianFullName === '') {
+                                    $guardianFullName = '-';
+                                }
+                                $sectionParts = [
+                                    $contract->student?->section?->classroom?->schoolgrade?->name_grade,
+                                    $contract->student?->section?->classroom?->name_class,
+                                    $contract->student?->section?->name_section,
+                                ];
+                                $sectionLabel = implode(' / ', array_filter($sectionParts, fn ($value) => $value !== null && $value !== ''));
+                                $birthDate = $contract->student?->datenaissance ? (string) $contract->student->datenaissance : '-';
+                                $phone = $contract->student?->numtelephone ? ('0' . ltrim((string) $contract->student->numtelephone, '0')) : '-';
                             @endphp
                             <tr
                                 data-contract-id="{{ (string) $contract->id }}"
                                 data-external-contract="{{ (string) ($contract->external_contract_no ?? '') }}"
                                 data-status="{{ $contract->status }}"
-                                data-search="{{ strtolower(trim($studentName . ' ' . ($contract->student->user->email ?? '') . ' ' . $contract->id . ' ' . ($contract->external_contract_no ?? ''))) }}"
+                                data-search="{{ strtolower(trim($contractNumber . ' ' . $contract->academic_year . ' ' . $sectionLabel . ' ' . $studentFullName . ' ' . $guardianFullName . ' ' . $birthDate . ' ' . $phone . ' ' . ($contract->student?->user?->email ?? ''))) }}"
                             >
                                 <td>{{ $contracts->firstItem() + $i }}</td>
-                                <td>{{ $contract->id }}</td>
-                                <td>{{ $studentName }}</td>
+                                <td>{{ $contractNumber }}</td>
                                 <td>{{ $contract->academic_year }}</td>
+                                <td>{{ $sectionLabel ?: '-' }}</td>
+                                <td>{{ $studentFullName }}</td>
+                                <td>{{ $guardianFullName }}</td>
+                                <td><span class="ltr">{{ $birthDate }}</span></td>
+                                <td><span class="ltr">{{ $phone }}</span></td>
                                 <td>{{ $planLabels[$contract->plan_type] ?? $contract->plan_type }}</td>
                                 <td>{{ number_format((float) $contract->total_amount, 2) }}</td>
                                 <td>{{ number_format($paidTotal, 2) }}</td>
@@ -697,10 +725,10 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10"><div class="admin-empty-state">لا توجد عقود بعد.</div></td></tr>
+                            <tr><td colspan="14"><div class="admin-empty-state">لا توجد عقود بعد.</div></td></tr>
                         @endforelse
                         <tr id="contractsNoResultsRow" style="display:none;">
-                            <td colspan="10"><div class="admin-empty-state">لا توجد نتائج مطابقة للفلاتر الحالية.</div></td>
+                            <td colspan="14"><div class="admin-empty-state">لا توجد نتائج مطابقة للفلاتر الحالية.</div></td>
                         </tr>
                         </tbody>
                     </table>
@@ -729,7 +757,7 @@
                                             <div class="col-md-6">
                                                 <label class="form-label">الخطة</label>
                                                 <select name="plan_type" class="form-select" required>
-                                                    @foreach(['yearly' => 'سنوي', 'monthly' => 'شهري', 'installments' => 'أقساط'] as $planType => $planLabel)
+                                                    @foreach(['yearly' => 'كاش (دفعة واحدة)', 'installments' => 'أقساط (غالبًا 3 دفعات)', 'monthly' => 'شهري (سبتمبر إلى أفريل)'] as $planType => $planLabel)
                                                         <option value="{{ $planType }}" {{ $contract->plan_type === $planType ? 'selected' : '' }}>{{ $planLabel }}</option>
                                                     @endforeach
                                                 </select>
@@ -969,6 +997,72 @@
                         applyFilters();
                     });
                 }
+            })();
+        </script>
+        <script>
+            (function () {
+                function extractAcademicStartYear(value) {
+                    const normalized = (value || '').trim();
+                    const match = normalized.match(/(\d{4})\s*[\/\-]\s*\d{4}/);
+                    if (match) {
+                        return parseInt(match[1], 10);
+                    }
+                    const singleYear = normalized.match(/^(\d{4})$/);
+                    if (singleYear) {
+                        return parseInt(singleYear[1], 10);
+                    }
+
+                    return null;
+                }
+
+                function applyPlanDefaults(form, force) {
+                    const planSelect = form.querySelector('select[name="plan_type"]');
+                    const countInput = form.querySelector('input[name="installments_count"]');
+                    const startInput = form.querySelector('input[name="starts_on"]');
+                    const endInput = form.querySelector('input[name="ends_on"]');
+                    const yearInput = form.querySelector('input[name="academic_year"]');
+                    if (!planSelect || !countInput) {
+                        return;
+                    }
+
+                    const isEmptyCount = !countInput.value || countInput.value.trim() === '';
+                    const currentPlan = planSelect.value;
+                    if (currentPlan === 'yearly' && (force || isEmptyCount)) {
+                        countInput.value = '1';
+                    } else if (currentPlan === 'installments' && (force || isEmptyCount)) {
+                        countInput.value = '3';
+                    } else if (currentPlan === 'monthly' && (force || isEmptyCount)) {
+                        countInput.value = '8';
+                    }
+
+                    if (currentPlan === 'monthly' && startInput && endInput) {
+                        const hasStart = !!(startInput.value && startInput.value.trim() !== '');
+                        const hasEnd = !!(endInput.value && endInput.value.trim() !== '');
+                        if (force || (!hasStart && !hasEnd)) {
+                            const startYear = extractAcademicStartYear(yearInput ? yearInput.value : '');
+                            if (startYear) {
+                                startInput.value = startYear + '-09-01';
+                                endInput.value = (startYear + 1) + '-04-30';
+                            }
+                        }
+                    }
+                }
+
+                const forms = Array.from(document.querySelectorAll('form')).filter(function (form) {
+                    return !!form.querySelector('select[name="plan_type"]');
+                });
+
+                forms.forEach(function (form) {
+                    const planSelect = form.querySelector('select[name="plan_type"]');
+                    if (!planSelect) {
+                        return;
+                    }
+
+                    applyPlanDefaults(form, false);
+                    planSelect.addEventListener('change', function () {
+                        applyPlanDefaults(form, true);
+                    });
+                });
             })();
         </script>
 

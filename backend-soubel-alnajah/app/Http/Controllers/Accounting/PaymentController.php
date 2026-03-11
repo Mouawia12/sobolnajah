@@ -168,7 +168,11 @@ class PaymentController extends Controller
 
         $payment->load([
             'contract.student.user',
+            'contract.student.parent.user',
+            'contract.student.parent.students.user',
             'contract.student.section.classroom.schoolgrade',
+            'contract.student.section.school',
+            'contract.payments',
             'receipt',
         ]);
 
