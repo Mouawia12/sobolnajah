@@ -92,9 +92,6 @@
                                 <!-- /.col -->
                               </div>
                         </form>	
-                        <div class="text-center">
-                            <p class="mt-15 mb-0">{{ trans('login.dhaccount') }} <a href="{{ route('register') }}" class="text-warning ms-5">{{ trans('login.register') }}</a></p>
-                        </div>	
                     </div>
                 </div>								
 

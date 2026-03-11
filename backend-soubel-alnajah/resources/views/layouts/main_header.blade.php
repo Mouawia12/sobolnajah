@@ -41,7 +41,7 @@
 					 <li class="me-10 ps-10"><a href="{{ LaravelLocalization::localizeUrl('/login') }}"><i class="text-white mdi mdi-login"></i>{{ trans('main_header.signin') }}</a></li>
 
 					 @endif
-					 @if (Route::has('register'))
+					 @if (Route::has('public.inscriptions.index'))
 					 <li class="me-10 ps-10"><a href="{{ route('public.inscriptions.index') }}"><i class="text-white fa fa-user"></i>{{ trans('main_header.register') }}</a></li>
 					 @endif
 					 @endguest
@@ -211,7 +211,6 @@
 			</div>
 		</nav>
 	</header>
-
 
 
 
