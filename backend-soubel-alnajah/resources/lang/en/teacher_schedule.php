@@ -36,4 +36,6 @@ return [
     'remove_slot' => 'Remove Slot',
     'weekly_schedule' => 'My Weekly Schedule',
     'institution' => 'Institution',
+    'choose_institution' => 'Choose institution',
+    'school_required' => 'Select an institution before saving the teacher schedule.',
 ];

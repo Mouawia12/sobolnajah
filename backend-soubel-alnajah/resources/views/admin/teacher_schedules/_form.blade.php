@@ -1,5 +1,7 @@
 @php
     $editing = isset($schedule);
+    $canPickSchool = $canPickSchool ?? false;
+    $selectedSchoolId = (string) old('school_id', $editing ? $schedule->school_id : '');
     $slotsSource = old('slots', $editing ? $schedule->slots->map(fn($slot) => [
         'slot_index' => $slot->slot_index,
         'label' => $slot->label,
@@ -13,12 +15,44 @@
 @endphp
 
 <div class="row">
+    @if($canPickSchool)
+        <div class="col-md-3 mb-3">
+            <label class="form-label">{{ trans('teacher_schedule.institution') }}</label>
+            <select name="school_id" id="teacher-schedule-school" class="form-select" required>
+                <option value="">{{ trans('teacher_schedule.choose_institution') }}</option>
+                @foreach($schools as $school)
+                    <option value="{{ $school->id }}" @selected($selectedSchoolId === (string) $school->id)>
+                        {{ $school->name_school }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    @endif
     <div class="col-md-3 mb-3">
         <label class="form-label">{{ trans('teacher_schedule.teacher') }}</label>
-        <select name="teacher_id" class="form-select" required>
+        <select name="teacher_id" id="teacher-schedule-teacher" class="form-select" required>
             <option value="">--</option>
             @foreach($teachers as $teacher)
-                <option value="{{ $teacher->id }}" @selected((int) old('teacher_id', $editing ? $schedule->teacher_id : 0) === (int) $teacher->id)>
+                @php
+                    $teacherSchoolIds = collect();
+
+                    if ($teacher->relationLoaded('user') && $teacher->user?->school_id) {
+                        $teacherSchoolIds->push((int) $teacher->user->school_id);
+                    }
+
+                    if ($teacher->relationLoaded('sections')) {
+                        $teacherSchoolIds = $teacherSchoolIds->merge(
+                            $teacher->sections->pluck('school_id')->filter()->map(fn ($schoolId) => (int) $schoolId)
+                        );
+                    }
+
+                    $teacherSchoolIds = $teacherSchoolIds->unique()->values();
+                @endphp
+                <option
+                    value="{{ $teacher->id }}"
+                    data-school-ids="{{ $teacherSchoolIds->implode(',') }}"
+                    @selected((int) old('teacher_id', $editing ? $schedule->teacher_id : 0) === (int) $teacher->id)
+                >
                     {{ $teacher->name }}
                 </option>
             @endforeach
@@ -129,7 +163,35 @@
     const slotsTableBody = document.querySelector('#slots-table tbody');
     const matrixTable = document.getElementById('matrix-table');
     const addSlotBtn = document.getElementById('add-slot');
+    const schoolSelect = document.getElementById('teacher-schedule-school');
+    const teacherSelect = document.getElementById('teacher-schedule-teacher');
     const days = @json(array_keys($days));
+
+    function filterTeachersBySchool() {
+        if (!schoolSelect || !teacherSelect) {
+            return;
+        }
+
+        const selectedSchoolId = schoolSelect.value;
+
+        Array.from(teacherSelect.options).forEach((option) => {
+            if (!option.value) {
+                option.hidden = false;
+                option.disabled = false;
+                return;
+            }
+
+            const schoolIds = (option.dataset.schoolIds || '').split(',').filter(Boolean);
+            const matches = !selectedSchoolId || schoolIds.includes(selectedSchoolId);
+
+            option.hidden = !matches;
+            option.disabled = !matches;
+
+            if (!matches && option.selected) {
+                teacherSelect.value = '';
+            }
+        });
+    }
 
     function rebuildMatrixHeaders() {
         const headerRow = matrixTable.querySelector('thead tr');
@@ -217,6 +279,9 @@
     matrixTable.querySelectorAll('tbody tr').forEach((row, i) => {
         row.querySelector('th').dataset.day = days[i];
     });
+
+    schoolSelect?.addEventListener('change', filterTeachersBySchool);
+    filterTeachersBySchool();
 })();
 </script>
 @endsection

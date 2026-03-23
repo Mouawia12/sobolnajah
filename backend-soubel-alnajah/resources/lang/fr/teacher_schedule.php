@@ -36,4 +36,6 @@ return [
     'remove_slot' => 'Supprimer la plage',
     'weekly_schedule' => 'Mon emploi hebdomadaire',
     'institution' => 'Etablissement',
+    'choose_institution' => 'Choisir un etablissement',
+    'school_required' => 'Choisissez un etablissement avant d enregistrer l emploi enseignant.',
 ];

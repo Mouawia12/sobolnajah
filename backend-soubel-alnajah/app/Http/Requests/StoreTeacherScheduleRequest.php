@@ -15,6 +15,12 @@ class StoreTeacherScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'school_id' => [
+                Rule::requiredIf(fn () => !$this->user()?->school_id),
+                'nullable',
+                'integer',
+                'exists:schools,id',
+            ],
             'teacher_id' => ['required', 'integer', 'exists:teachers,id'],
             'academic_year' => ['required', 'string', 'max:20'],
             'title' => ['nullable', 'string', 'max:160'],
@@ -33,6 +39,20 @@ class StoreTeacherScheduleRequest extends FormRequest
             'entries.*.*.class_name' => ['nullable', 'string', 'max:100'],
             'entries.*.*.room_name' => ['nullable', 'string', 'max:80'],
             'entries.*.*.note' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'school_id.required' => trans('teacher_schedule.school_required'),
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'school_id' => trans('teacher_schedule.institution'),
         ];
     }
 }

@@ -7,9 +7,9 @@ use App\Http\Requests\DestroyTeacherScheduleRequest;
 use App\Http\Requests\StoreTeacherScheduleRequest;
 use App\Http\Requests\UpdateTeacherScheduleRequest;
 use App\Models\Inscription\Teacher;
+use App\Models\School\School;
 use App\Models\TeacherSchedule\TeacherSchedule;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Throwable;
 
 class TeacherScheduleController extends Controller
@@ -93,16 +93,13 @@ class TeacherScheduleController extends Controller
     public function create()
     {
         $this->authorize('create', TeacherSchedule::class);
-
-        $teachers = Teacher::query()
-            ->forSchool($this->currentSchoolId())
-            ->select(['id', 'name'])
-            ->orderByDesc('created_at')
-            ->get();
+        $schoolId = $this->currentSchoolId();
 
         return view('admin.teacher_schedules.create', [
             'notify' => $this->notifications(),
-            'teachers' => $teachers,
+            'teachers' => $this->teacherOptionsForForm($schoolId),
+            'canPickSchool' => !$schoolId,
+            'schools' => $this->schoolOptions($schoolId),
             'defaultSlots' => self::DEFAULT_SLOTS,
             'days' => self::DAYS,
             'breadcrumbs' => [
@@ -118,13 +115,17 @@ class TeacherScheduleController extends Controller
         $this->authorize('create', TeacherSchedule::class);
         $validated = $request->validated();
 
-        $schoolId = $this->currentSchoolId();
+        $schoolId = $this->resolveSchoolId($validated);
+        if (!$schoolId) {
+            return back()->withErrors(['school_id' => trans('teacher_schedule.school_required')])->withInput();
+        }
+
         $teacher = Teacher::query()->forSchool($schoolId)->findOrFail((int) $validated['teacher_id']);
 
         try {
-            DB::transaction(function () use ($validated, $teacher) {
+            DB::transaction(function () use ($validated, $teacher, $schoolId) {
                 $schedule = TeacherSchedule::query()->create([
-                    'school_id' => $teacher->user?->school_id ?: $this->currentSchoolId(),
+                    'school_id' => $schoolId,
                     'teacher_id' => $teacher->id,
                     'academic_year' => $validated['academic_year'],
                     'title' => $validated['title'] ?? null,
@@ -168,19 +169,16 @@ class TeacherScheduleController extends Controller
     public function edit(TeacherSchedule $teacherSchedule)
     {
         $this->authorize('update', $teacherSchedule);
-
-        $teachers = Teacher::query()
-            ->forSchool($this->currentSchoolId())
-            ->select(['id', 'name'])
-            ->orderByDesc('created_at')
-            ->get();
+        $schoolId = $this->currentSchoolId();
 
         $teacherSchedule->load(['school', 'slots', 'entries']);
 
         return view('admin.teacher_schedules.edit', [
             'notify' => $this->notifications(),
             'schedule' => $teacherSchedule,
-            'teachers' => $teachers,
+            'teachers' => $this->teacherOptionsForForm($schoolId),
+            'canPickSchool' => !$schoolId,
+            'schools' => $this->schoolOptions($schoolId),
             'days' => self::DAYS,
             'matrix' => $this->buildMatrix($teacherSchedule),
             'breadcrumbs' => [
@@ -196,12 +194,17 @@ class TeacherScheduleController extends Controller
         $this->authorize('update', $teacherSchedule);
         $validated = $request->validated();
 
-        $teacher = Teacher::query()->forSchool($this->currentSchoolId())->findOrFail((int) $validated['teacher_id']);
+        $schoolId = $this->resolveSchoolId($validated, $teacherSchedule);
+        if (!$schoolId) {
+            return back()->withErrors(['school_id' => trans('teacher_schedule.school_required')])->withInput();
+        }
+
+        $teacher = Teacher::query()->forSchool($schoolId)->findOrFail((int) $validated['teacher_id']);
 
         try {
-            DB::transaction(function () use ($validated, $teacherSchedule, $teacher) {
+            DB::transaction(function () use ($validated, $teacherSchedule, $teacher, $schoolId) {
                 $teacherSchedule->update([
-                    'school_id' => $teacher->user?->school_id ?: $this->currentSchoolId(),
+                    'school_id' => $schoolId,
                     'teacher_id' => $teacher->id,
                     'academic_year' => $validated['academic_year'],
                     'title' => $validated['title'] ?? null,
@@ -324,5 +327,35 @@ class TeacherScheduleController extends Controller
         }
 
         return $matrix;
+    }
+
+    private function resolveSchoolId(array $validated, ?TeacherSchedule $schedule = null): ?int
+    {
+        $schoolId = $this->currentSchoolId()
+            ?: (int) ($validated['school_id'] ?? $schedule?->school_id ?? 0);
+
+        return $schoolId > 0 ? $schoolId : null;
+    }
+
+    private function teacherOptionsForForm(?int $schoolId)
+    {
+        return Teacher::query()
+            ->when($schoolId, fn ($query) => $query->forSchool($schoolId))
+            ->select(['id', 'user_id', 'name'])
+            ->with(['user:id,school_id', 'sections:id,school_id'])
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    private function schoolOptions(?int $schoolId)
+    {
+        if ($schoolId) {
+            return collect();
+        }
+
+        return School::query()
+            ->select(['id', 'name_school'])
+            ->orderBy('name_school')
+            ->get();
     }
 }

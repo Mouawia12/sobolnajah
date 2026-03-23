@@ -36,4 +36,6 @@ return [
     'remove_slot' => 'حذف الحصة',
     'weekly_schedule' => 'جدولي الأسبوعي',
     'institution' => 'المؤسسة',
+    'choose_institution' => 'اختر المؤسسة',
+    'school_required' => 'يجب اختيار المؤسسة قبل حفظ جدول الأستاذ.',
 ];
