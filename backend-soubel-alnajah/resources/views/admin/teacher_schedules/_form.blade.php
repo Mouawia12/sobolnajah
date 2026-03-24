@@ -182,7 +182,7 @@
             }
 
             const schoolIds = (option.dataset.schoolIds || '').split(',').filter(Boolean);
-            const matches = !selectedSchoolId || schoolIds.includes(selectedSchoolId);
+            const matches = !selectedSchoolId || schoolIds.length === 0 || schoolIds.includes(selectedSchoolId);
 
             option.hidden = !matches;
             option.disabled = !matches;

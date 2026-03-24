@@ -77,6 +77,36 @@ class TeacherScheduleFlowTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_teacher_schedule_for_unassigned_legacy_teacher_when_school_is_selected(): void
+    {
+        $admin = $this->createAdminWithoutSchool();
+        [$schoolId, $teacherId] = $this->bootstrapTeacherForSchool(false, false);
+
+        $response = $this->actingAs($admin)->post(route('teacher-schedules.store'), [
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2026/2027',
+            'status' => 'draft',
+            'visibility' => 'authenticated',
+            'slots' => [
+                [
+                    'slot_index' => 1,
+                    'label' => '08:00-09:00',
+                    'starts_at' => '08:00',
+                    'ends_at' => '09:00',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('teacher_schedules', [
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2026/2027',
+        ]);
+    }
+
     public function test_admin_without_default_school_must_select_school_before_creating_teacher_schedule(): void
     {
         $admin = $this->createAdminWithoutSchool();
@@ -102,6 +132,19 @@ class TeacherScheduleFlowTest extends TestCase
         $this->assertDatabaseCount('teacher_schedules', 0);
     }
 
+    public function test_admin_without_default_school_create_form_lists_legacy_teacher_in_dropdown(): void
+    {
+        $admin = $this->createAdminWithoutSchool();
+        $schoolId = $this->createSchool();
+        [, $teacherId] = $this->bootstrapTeacherForSchool(false, false, $schoolId, 'Legacy Teacher');
+
+        $response = $this->actingAs($admin)->get(route('teacher-schedules.create'));
+
+        $response->assertOk();
+        $response->assertSee('Legacy Teacher');
+        $this->assertDatabaseHas('teachers', ['id' => $teacherId]);
+    }
+
     private function createAdminWithoutSchool(): User
     {
         $admin = User::factory()->create([
@@ -115,13 +158,22 @@ class TeacherScheduleFlowTest extends TestCase
         return $admin;
     }
 
-    private function bootstrapTeacherForSchool(bool $setTeacherUserSchool): array
+    private function createSchool(): int
     {
-        $schoolId = DB::table('schools')->insertGetId([
+        return DB::table('schools')->insertGetId([
             'name_school' => json_encode(['fr' => 'A', 'ar' => 'أ', 'en' => 'A']),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function bootstrapTeacherForSchool(
+        bool $setTeacherUserSchool,
+        bool $attachSection = true,
+        ?int $schoolId = null,
+        string $teacherName = 'Teacher One'
+    ): array {
+        $schoolId ??= $this->createSchool();
 
         $gradeId = DB::table('schoolgrades')->insertGetId([
             'school_id' => $schoolId,
@@ -163,7 +215,11 @@ class TeacherScheduleFlowTest extends TestCase
         $teacherId = DB::table('teachers')->insertGetId([
             'user_id' => $teacherUser->id,
             'specialization_id' => $specializationId,
-            'name' => 'Teacher One',
+            'name' => json_encode([
+                'fr' => $teacherName,
+                'ar' => $teacherName,
+                'en' => $teacherName,
+            ]),
             'gender' => 1,
             'joining_date' => now()->toDateString(),
             'address' => 'Address',
@@ -171,12 +227,14 @@ class TeacherScheduleFlowTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::table('teacher_section')->insert([
-            'teacher_id' => $teacherId,
-            'section_id' => $sectionId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        if ($attachSection) {
+            DB::table('teacher_section')->insert([
+                'teacher_id' => $teacherId,
+                'section_id' => $sectionId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return [$schoolId, $teacherId];
     }

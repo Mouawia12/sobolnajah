@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateTeacherScheduleRequest;
 use App\Models\Inscription\Teacher;
 use App\Models\School\School;
 use App\Models\TeacherSchedule\TeacherSchedule;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -120,7 +121,7 @@ class TeacherScheduleController extends Controller
             return back()->withErrors(['school_id' => trans('teacher_schedule.school_required')])->withInput();
         }
 
-        $teacher = Teacher::query()->forSchool($schoolId)->findOrFail((int) $validated['teacher_id']);
+        $teacher = $this->resolveTeacherForSchedule((int) $validated['teacher_id'], $schoolId);
 
         try {
             DB::transaction(function () use ($validated, $teacher, $schoolId) {
@@ -199,7 +200,7 @@ class TeacherScheduleController extends Controller
             return back()->withErrors(['school_id' => trans('teacher_schedule.school_required')])->withInput();
         }
 
-        $teacher = Teacher::query()->forSchool($schoolId)->findOrFail((int) $validated['teacher_id']);
+        $teacher = $this->resolveTeacherForSchedule((int) $validated['teacher_id'], $schoolId);
 
         try {
             DB::transaction(function () use ($validated, $teacherSchedule, $teacher, $schoolId) {
@@ -340,11 +341,53 @@ class TeacherScheduleController extends Controller
     private function teacherOptionsForForm(?int $schoolId)
     {
         return Teacher::query()
-            ->when($schoolId, fn ($query) => $query->forSchool($schoolId))
+            ->when($schoolId, function (Builder $query) use ($schoolId) {
+                $query->where(function (Builder $builder) use ($schoolId) {
+                    $builder->where(function (Builder $schoolBuilder) use ($schoolId) {
+                        $schoolBuilder->forSchool($schoolId);
+                    })->orWhere(function (Builder $legacyBuilder) {
+                        $legacyBuilder
+                            ->whereDoesntHave('sections')
+                            ->whereHas('user', fn (Builder $userQuery) => $userQuery->whereNull('school_id'));
+                    });
+                });
+            })
             ->select(['id', 'user_id', 'name'])
             ->with(['user:id,school_id', 'sections:id,school_id'])
             ->orderByDesc('created_at')
             ->get();
+    }
+
+    private function resolveTeacherForSchedule(int $teacherId, int $schoolId): Teacher
+    {
+        $teacher = Teacher::query()
+            ->with(['user:id,school_id', 'sections:id,school_id'])
+            ->findOrFail($teacherId);
+
+        $teacherSchoolIds = $this->teacherSchoolIds($teacher);
+
+        if ($teacherSchoolIds->isNotEmpty() && !$teacherSchoolIds->contains($schoolId)) {
+            abort(404);
+        }
+
+        return $teacher;
+    }
+
+    private function teacherSchoolIds(Teacher $teacher)
+    {
+        $schoolIds = collect();
+
+        if ($teacher->relationLoaded('user') && $teacher->user?->school_id) {
+            $schoolIds->push((int) $teacher->user->school_id);
+        }
+
+        if ($teacher->relationLoaded('sections')) {
+            $schoolIds = $schoolIds->merge(
+                $teacher->sections->pluck('school_id')->filter()->map(fn ($schoolId) => (int) $schoolId)
+            );
+        }
+
+        return $schoolIds->unique()->values();
     }
 
     private function schoolOptions(?int $schoolId)
