@@ -6,6 +6,8 @@
     <style>
         body { font-family: DejaVu Sans, Tahoma, sans-serif; margin: 18px; color:#1f2a37; }
         .header { text-align:center; margin-bottom:12px; }
+        .header .logo-wrap { margin-bottom:10px; }
+        .header .logo-wrap img { width:78px; height:78px; object-fit:contain; }
         .header .title { font-size:20px; font-weight:700; }
         .meta { margin-top:8px; font-size:13px; color:#475569; line-height:1.8; }
         table { width:100%; border-collapse:collapse; }
@@ -27,7 +29,16 @@
 <div class="header">
     @php
         $schoolName = $schedule->school ? $schedule->school->getTranslation('name_school', app()->getLocale()) : 'Sobol Najah';
+        $logoPath = public_path('images/logo.png');
+        $logoSrc = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
     @endphp
+    @if($logoSrc)
+        <div class="logo-wrap">
+            <img src="{{ $logoSrc }}" alt="School Logo">
+        </div>
+    @endif
     <div>{{ trans('teacher_schedule.institution') }}: {{ $schedule->branch_name ?: $schoolName }}</div>
     <div class="title">{{ $schedule->title ?: trans('teacher_schedule.title') }}</div>
     <div class="meta">

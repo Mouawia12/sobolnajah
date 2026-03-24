@@ -3,6 +3,7 @@
 namespace Tests\Feature\Timetable;
 
 use App\Models\Role;
+use App\Models\TeacherSchedule\TeacherSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -143,6 +144,29 @@ class TeacherScheduleFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('Legacy Teacher');
         $this->assertDatabaseHas('teachers', ['id' => $teacherId]);
+    }
+
+    public function test_teacher_schedule_print_page_displays_school_logo(): void
+    {
+        $admin = $this->createAdminWithoutSchool();
+        [$schoolId, $teacherId] = $this->bootstrapTeacherForSchool(true);
+
+        $schedule = TeacherSchedule::query()->create([
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2026/2027',
+            'title' => 'جدول الأستاذ',
+            'status' => 'published',
+            'visibility' => 'authenticated',
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('teacher-schedules.print', $schedule));
+
+        $response->assertOk();
+        $response->assertSee('data:image/png;base64,', false);
+        $response->assertSee('School Logo');
     }
 
     private function createAdminWithoutSchool(): User
