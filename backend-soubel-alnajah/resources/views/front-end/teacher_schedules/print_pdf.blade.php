@@ -1,1 +1,1 @@
-@include('components.teacher_schedules.print_sheet', ['schedule' => $schedule, 'days' => $days, 'matrix' => $matrix])
+@include('components.teacher_schedules.print_sheet', ['schedule' => $schedule, 'days' => $days, 'matrix' => $matrix, 'isPdf' => true])

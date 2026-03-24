@@ -86,11 +86,16 @@ class PublicTeacherScheduleController extends Controller
             return redirect()->route('public.teacher_schedules.print', $teacherSchedule);
         }
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('front-end.teacher_schedules.print_pdf', [
-            'schedule' => $teacherSchedule,
-            'days' => self::DAYS,
-            'matrix' => $this->buildMatrix($teacherSchedule),
-        ])->setPaper('a4', 'landscape');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+                'defaultFont' => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+            ])
+            ->loadView('front-end.teacher_schedules.print_pdf', [
+                'schedule' => $teacherSchedule,
+                'days' => self::DAYS,
+                'matrix' => $this->buildMatrix($teacherSchedule),
+            ])
+            ->setPaper('a4', 'landscape');
 
         return $pdf->download('teacher-schedule-' . $teacherSchedule->id . '.pdf');
     }

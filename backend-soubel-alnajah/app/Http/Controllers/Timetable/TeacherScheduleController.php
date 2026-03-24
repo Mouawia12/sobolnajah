@@ -257,11 +257,16 @@ class TeacherScheduleController extends Controller
             return redirect()->route('teacher-schedules.print', $teacherSchedule);
         }
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.teacher_schedules.print_pdf', [
-            'schedule' => $teacherSchedule,
-            'days' => self::DAYS,
-            'matrix' => $this->buildMatrix($teacherSchedule),
-        ])->setPaper('a4', 'landscape');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+                'defaultFont' => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+            ])
+            ->loadView('admin.teacher_schedules.print_pdf', [
+                'schedule' => $teacherSchedule,
+                'days' => self::DAYS,
+                'matrix' => $this->buildMatrix($teacherSchedule),
+            ])
+            ->setPaper('a4', 'landscape');
 
         return $pdf->download('teacher-schedule-' . $teacherSchedule->id . '.pdf');
     }

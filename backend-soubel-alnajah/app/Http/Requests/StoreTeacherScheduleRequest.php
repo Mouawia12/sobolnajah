@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,6 +11,26 @@ class StoreTeacherScheduleRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $slots = collect($this->input('slots', []))
+            ->map(function ($slot) {
+                if (!is_array($slot)) {
+                    return $slot;
+                }
+
+                $slot['starts_at'] = $this->normalizeTimeValue($slot['starts_at'] ?? null);
+                $slot['ends_at'] = $this->normalizeTimeValue($slot['ends_at'] ?? null);
+
+                return $slot;
+            })
+            ->all();
+
+        $this->merge([
+            'slots' => $slots,
+        ]);
     }
 
     public function rules(): array
@@ -54,5 +75,23 @@ class StoreTeacherScheduleRequest extends FormRequest
         return [
             'school_id' => trans('teacher_schedule.institution'),
         ];
+    }
+
+    private function normalizeTimeValue(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        foreach (['H:i', 'H:i:s', 'g:i A', 'g:i a', 'h:i A', 'h:i a'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->format('H:i');
+            } catch (\Throwable) {
+            }
+        }
+
+        return $value;
     }
 }

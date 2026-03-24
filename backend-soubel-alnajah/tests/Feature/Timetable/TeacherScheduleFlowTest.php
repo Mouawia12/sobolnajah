@@ -5,6 +5,7 @@ namespace Tests\Feature\Timetable;
 use App\Models\Role;
 use App\Models\TeacherSchedule\TeacherSchedule;
 use App\Models\User;
+use App\Support\PdfArabicText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Mcamara\LaravelLocalization\Middleware\LocaleSessionRedirect;
@@ -167,6 +168,140 @@ class TeacherScheduleFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('data:image/png;base64,', false);
         $response->assertSee('School Logo');
+    }
+
+    public function test_teacher_schedule_pdf_view_shapes_arabic_text(): void
+    {
+        app()->setLocale('ar');
+
+        $admin = $this->createAdminWithoutSchool();
+        [$schoolId, $teacherId] = $this->bootstrapTeacherForSchool(true);
+
+        $schedule = TeacherSchedule::query()->create([
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2025-2026',
+            'title' => 'التوقيت الأسبوعي للأساتذة',
+            'status' => 'published',
+            'visibility' => 'authenticated',
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+        ]);
+
+        $schedule->slots()->create([
+            'slot_index' => 1,
+            'label' => '08:00-09:00',
+            'starts_at' => '08:00',
+            'ends_at' => '09:00',
+        ]);
+
+        $schedule->load(['school', 'teacher.user', 'slots', 'entries', 'teacher.specialization']);
+
+        $response = $this->view('admin.teacher_schedules.print_pdf', [
+            'schedule' => $schedule,
+            'days' => [1 => 'السبت'],
+            'matrix' => [
+                1 => [
+                    1 => [
+                        'subject_name' => 'رياضيات',
+                        'class_name' => 'السنة الأولى',
+                        'room_name' => 'A1',
+                        'note' => 'تقييم مستمر',
+                    ],
+                ],
+            ],
+        ]);
+
+        $shaper = app(PdfArabicText::class, ['enabled' => true]);
+
+        $response->assertSee($shaper->shape('التوقيت الأسبوعي للأساتذة'), false);
+        $response->assertSee($shaper->shape('السبت'), false);
+        $response->assertSee($shaper->shape('رياضيات'), false);
+        $response->assertSee($shaper->shape('تقييم مستمر'), false);
+    }
+
+    public function test_teacher_schedule_pdf_download_returns_pdf_response(): void
+    {
+        app()->setLocale('ar');
+
+        $admin = $this->createAdminWithoutSchool();
+        [$schoolId, $teacherId] = $this->bootstrapTeacherForSchool(true);
+
+        $schedule = TeacherSchedule::query()->create([
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2025-2026',
+            'title' => 'التوقيت الأسبوعي للأساتذة',
+            'status' => 'published',
+            'visibility' => 'authenticated',
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+        ]);
+
+        $schedule->slots()->create([
+            'slot_index' => 1,
+            'label' => '08:00-09:00',
+            'starts_at' => '08:00',
+            'ends_at' => '09:00',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('teacher-schedules.pdf', $schedule));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF-', (string) $response->getContent());
+    }
+
+    public function test_admin_can_update_teacher_schedule_when_browser_submits_am_pm_times(): void
+    {
+        $admin = $this->createAdminWithoutSchool();
+        [$schoolId, $teacherId] = $this->bootstrapTeacherForSchool(true);
+
+        $schedule = TeacherSchedule::query()->create([
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2025-2026',
+            'title' => 'التوقيت الأسبوعي للأساتذة',
+            'status' => 'published',
+            'visibility' => 'authenticated',
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+        ]);
+
+        $schedule->slots()->create([
+            'slot_index' => 1,
+            'label' => '08:00-09:00',
+            'starts_at' => '08:00',
+            'ends_at' => '09:00',
+        ]);
+
+        $response = $this->actingAs($admin)->put(route('teacher-schedules.update', $schedule), [
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2025-2026',
+            'title' => 'التوقيت الأسبوعي للأساتذة',
+            'branch_name' => 'الوادي',
+            'status' => 'published',
+            'visibility' => 'public',
+            'approved_at' => '2026-03-10',
+            'slots' => [
+                [
+                    'slot_index' => 1,
+                    'label' => '08:00-09:00',
+                    'starts_at' => '08:00 AM',
+                    'ends_at' => '09:00 AM',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('teacher_schedule_slots', [
+            'teacher_schedule_id' => $schedule->id,
+            'slot_index' => 1,
+            'starts_at' => '08:00',
+            'ends_at' => '09:00',
+        ]);
     }
 
     private function createAdminWithoutSchool(): User
