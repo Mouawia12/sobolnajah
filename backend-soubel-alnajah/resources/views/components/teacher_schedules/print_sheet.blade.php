@@ -4,29 +4,42 @@
     <meta charset="utf-8">
     <title>{{ trans('teacher_schedule.title') }}</title>
     <style>
-        body { font-family: DejaVu Sans, Tahoma, sans-serif; margin: 18px; color:#1f2a37; }
-        .header { margin-bottom:14px; padding:14px 18px; border:1px solid #d8e0ea; border-radius:14px; background:#f8fbff; }
+        @page { size: A4 landscape; margin: 6mm; }
+        body { font-family: DejaVu Sans, Tahoma, sans-serif; margin: 0; color:#1f2a37; font-size:10.5px; line-height:1.15; }
+        .sheet-frame { width:100%; max-width:100%; }
+        .header { margin-bottom:8px; padding:8px 12px; border:1px solid #d8e0ea; border-radius:10px; background:#f8fbff; }
         .header-layout { width:100%; border-collapse:collapse; table-layout:fixed; }
         .header-layout td { border:none; padding:0; vertical-align:middle; }
-        .header-logo { width:110px; text-align:center; }
+        .header-logo { width:82px; text-align:center; }
         .header-logo .logo-wrap { margin:0; }
-        .header-logo img { width:74px; height:74px; object-fit:contain; }
-        .header-center { width:280px; text-align:center; padding:0 18px; }
-        .header-title { font-size:24px; font-weight:700; line-height:1.3; }
+        .header-logo img { width:54px; height:54px; object-fit:contain; }
+        .header-center { width:235px; text-align:center; padding:0 10px; }
+        .header-title { font-size:17px; font-weight:700; line-height:1.15; }
         .header-meta { width:auto; }
-        .header-meta-table { width:100%; border-collapse:separate; border-spacing:0 10px; }
-        .header-meta-table td { border:none; padding:0 0 0 10px; vertical-align:top; }
+        .header-meta-table { width:100%; border-collapse:separate; border-spacing:0 6px; }
+        .header-meta-table td { border:none; padding:0 0 0 6px; vertical-align:top; }
         .header-meta-table td:last-child { padding-left:0; }
-        .meta-card { padding:9px 12px; background:#fff; border:1px solid #dbe5f0; border-radius:10px; }
-        .meta-label { display:block; margin-bottom:3px; font-size:11px; font-weight:700; color:#64748b; }
-        .meta-value { display:block; font-size:13px; font-weight:600; color:#1f2a37; }
-        .schedule-table { width:100%; border-collapse:collapse; }
-        .schedule-table th, .schedule-table td { border:1px solid #d8e0ea; padding:6px; font-size:12px; vertical-align:top; }
+        .meta-card { padding:6px 8px; background:#fff; border:1px solid #dbe5f0; border-radius:8px; }
+        .meta-label { display:block; margin-bottom:2px; font-size:9px; font-weight:700; color:#64748b; }
+        .meta-value { display:block; font-size:10.5px; font-weight:600; color:#1f2a37; white-space:nowrap; }
+        .schedule-table { width:100%; border-collapse:collapse; table-layout:fixed; page-break-inside:avoid; }
+        .schedule-table th, .schedule-table td { border:1px solid #d8e0ea; padding:3px 4px; font-size:9.5px; vertical-align:top; }
         .schedule-table th { background:#eef4fb; }
-        .cell-subject { font-weight:700; }
-        .print-actions { margin-bottom:12px; }
+        .schedule-table thead th { font-size:9px; line-height:1.05; }
+        .schedule-table tbody th { width:64px; font-size:10px; }
+        .schedule-table small { display:block; margin-top:1px; font-size:8px; line-height:1; }
+        .schedule-table tbody td { line-height:1.05; word-wrap:break-word; overflow-wrap:anywhere; }
+        .schedule-table tbody td > div { margin-bottom:1px; }
+        .schedule-table tbody td > div:last-child { margin-bottom:0; }
+        .cell-subject { font-weight:700; font-size:10px; }
+        .print-actions { margin-bottom:8px; }
         .print-actions a, .print-actions button { padding:8px 12px; border:1px solid #1f6fbe; background:#1f6fbe; color:#fff; text-decoration:none; border-radius:8px; }
-        @media print { .print-actions { display:none; } body{ margin:8mm; } }
+        .sheet-footer { margin-top:8px; font-size:10px; display:flex; justify-content:space-between; }
+        @media print {
+            .print-actions { display:none; }
+            body { margin: 0; }
+            .sheet-frame { page-break-inside: avoid; }
+        }
     </style>
 </head>
 <body>
@@ -36,6 +49,7 @@
     </div>
 @endisset
 
+<div class="sheet-frame">
 <div class="header">
     @php
         $isPdf = $isPdf ?? false;
@@ -100,7 +114,7 @@
 <table class="schedule-table">
     <thead>
         <tr>
-            <th style="width:95px">{{ $shape(trans('teacher_schedule.slot')) }}</th>
+            <th style="width:64px">{{ $shape(trans('teacher_schedule.slot')) }}</th>
             @foreach($schedule->slots as $slot)
                 <th>
                     <div>{{ $shape($slot->label ?: ('#' . $slot->slot_index)) }}</div>
@@ -133,9 +147,10 @@
     </tbody>
 </table>
 
-<div style="margin-top:16px; font-size:13px; display:flex; justify-content:space-between;">
+<div class="sheet-footer">
     <div>{{ $shape(now()->format('Y-m-d')) }}</div>
     <div>{{ $shape($schedule->signature_text ?: trans('teacher_schedule.signature_text')) }}</div>
+</div>
 </div>
 </body>
 </html>
