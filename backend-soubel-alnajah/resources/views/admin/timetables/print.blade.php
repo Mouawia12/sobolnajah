@@ -10,14 +10,18 @@
             --muted: #5a6575;
             --head: #eef4fb;
             --surface: #ffffff;
+            --sheet: #f8fbff;
         }
+        @page { size: A4 landscape; margin: 6mm; }
         body {
-            font-family: Tahoma, sans-serif;
-            margin: 24px;
-            background: #f6f9ff;
+            font-family: "DejaVu Sans", Tahoma, sans-serif;
+            margin: 0;
+            background: #fff;
             color: var(--text);
+            font-size: 10.5px;
+            line-height: 1.15;
         }
-        .print-actions { margin-bottom: 12px; }
+        .print-actions { margin-bottom: 8px; }
         .print-actions button {
             border: 1px solid #1f6fbe;
             background: #1f6fbe;
@@ -30,47 +34,112 @@
         .sheet {
             background: var(--surface);
             border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 10px;
+            padding: 10px 12px;
         }
         .header {
-            text-align: center;
-            margin-bottom: 14px;
-            border-bottom: 1px solid var(--line);
-            padding-bottom: 10px;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--sheet);
         }
-        .school-name {
-            font-size: 14px;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-        .title { font-size: 22px; font-weight: 700; }
-        .meta {
-            margin-top: 8px;
-            color: var(--muted);
-            line-height: 1.8;
-            font-size: 13px;
-        }
-        table {
+        .header-layout {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 16px;
-            border: 1px solid var(--line);
+            table-layout: fixed;
         }
-        th,
-        td {
-            border: 1px solid var(--line);
-            padding: 9px 8px;
+        .header-layout td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .header-logo {
+            width: 82px;
             text-align: center;
-            font-size: 13px;
         }
-        th {
+        .header-logo img {
+            width: 54px;
+            height: 54px;
+            object-fit: contain;
+        }
+        .header-center {
+            width: 235px;
+            padding: 0 10px;
+            text-align: center;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 1.15;
+        }
+        .header-subtitle {
+            margin-top: 3px;
+            font-size: 9px;
+            color: var(--muted);
+        }
+        .header-meta-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 6px;
+        }
+        .header-meta-table td {
+            border: none;
+            padding: 0 0 0 6px;
+            vertical-align: top;
+        }
+        .header-meta-table td:last-child {
+            padding-left: 0;
+        }
+        .meta-card {
+            padding: 6px 8px;
+            background: #fff;
+            border: 1px solid #dbe5f0;
+            border-radius: 8px;
+        }
+        .meta-label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+        .meta-value {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+        }
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            page-break-inside: avoid;
+        }
+        .schedule-table th,
+        .schedule-table td {
+            border: 1px solid var(--line);
+            padding: 3px 4px;
+            text-align: center;
+            font-size: 9.5px;
+            vertical-align: middle;
+        }
+        .schedule-table th {
             background: var(--head);
             font-weight: 700;
         }
+        .schedule-table thead th {
+            font-size: 9px;
+            line-height: 1.05;
+        }
+        .schedule-table td {
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+        }
         @media print {
             .print-actions { display: none; }
-            body { margin: 8mm; background: #fff; }
+            body { margin: 0; background: #fff; }
             .sheet {
                 border: none;
                 border-radius: 0;
@@ -80,21 +149,68 @@
     </style>
 </head>
 <body>
+@php
+    $schoolName = $timetable->section->school->name_school ?? 'Sobol Najah';
+    $gradeName = $timetable->section->classroom->schoolgrade->name_grade ?? '—';
+    $className = $timetable->section->classroom->name_class ?? '—';
+    $sectionName = $timetable->section->name_section ?? '—';
+    $logoPath = public_path('images/logo.png');
+    $logoSrc = file_exists($logoPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+        : null;
+@endphp
 <div class="print-actions">
     <button onclick="window.print()">{{ trans('timetable.print') }}</button>
 </div>
 <div class="sheet">
     <div class="header">
-        <div class="school-name">{{ $timetable->section->school->name_school ?? 'Sobol Najah' }}</div>
-        <div class="title">{{ $timetable->title ?: trans('timetable.default_print_title') }}</div>
-        <div class="meta">
-            {{ $timetable->section->classroom->schoolgrade->name_grade ?? '' }} /
-            {{ $timetable->section->classroom->name_class ?? '' }} /
-            {{ $timetable->section->name_section ?? '' }}<br>
-            {{ trans('timetable.school_year') }}: {{ $timetable->academic_year }}
-        </div>
+        <table class="header-layout">
+            <tr>
+                <td>
+                    <table class="header-meta-table">
+                        <tr>
+                            <td>
+                                <div class="meta-card">
+                                    <span class="meta-label">المؤسسة</span>
+                                    <span class="meta-value">{{ $schoolName }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="meta-card">
+                                    <span class="meta-label">{{ trans('timetable.school_year') }}</span>
+                                    <span class="meta-value">{{ $timetable->academic_year }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="meta-card">
+                                    <span class="meta-label">المستوى / القسم</span>
+                                    <span class="meta-value">{{ $gradeName }} / {{ $className }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="meta-card">
+                                    <span class="meta-label">الفوج</span>
+                                    <span class="meta-value">{{ $sectionName }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="header-center">
+                    <div class="header-title">{{ $timetable->title ?: trans('timetable.default_print_title') }}</div>
+                    <div class="header-subtitle">{{ trans('timetable.print') }}</div>
+                </td>
+                <td class="header-logo">
+                    @if($logoSrc)
+                        <img src="{{ $logoSrc }}" alt="School Logo">
+                    @endif
+                </td>
+            </tr>
+        </table>
     </div>
-    <table>
+    <table class="schedule-table">
         <thead>
         <tr>
             <th>{{ trans('timetable.day') }}</th>

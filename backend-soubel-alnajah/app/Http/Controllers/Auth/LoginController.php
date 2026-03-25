@@ -93,7 +93,7 @@ class LoginController extends Controller
 
         $credentials = $request->only($this->username(), 'password');
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (!Auth::attempt($credentials, true)) {
             throw ValidationException::withMessages([
                 $this->username() => [trans('auth.failed')],
             ]);
@@ -168,6 +168,14 @@ class LoginController extends Controller
         $this->incrementLoginAttempts($request);
 
         return $this->sendFailedLoginResponse($request);
+    }
+
+    protected function attemptLogin(Request $request): bool
+    {
+        return $this->guard()->attempt(
+            $this->credentials($request),
+            true
+        );
     }
 
     private function ensureLocalAdminAccount(): void

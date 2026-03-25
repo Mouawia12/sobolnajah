@@ -136,7 +136,9 @@ class TimetableFlowTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)->get(route('timetables.print', $timetable));
-        $this->assertTrue(in_array($response->status(), [200, 302], true));
+        $response->assertOk();
+        $response->assertSee('data:image/png;base64,', false);
+        $response->assertSee('School Logo');
     }
 
     public function test_public_timetables_index_lists_only_sections_with_published_timetables(): void
