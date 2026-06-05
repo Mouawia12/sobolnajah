@@ -56,6 +56,46 @@ class StudentEnrollmentService
         });
     }
 
+    /**
+     * إنشاء طالب قادم من ملف الوزارة (Eleve.xls).
+     *
+     * يتجاوز فحص التطابق التقريبي assertStudentIsUnique لأن رقم التعريف الوطني
+     * هو المرجع (مع فهرس فريد في قاعدة البيانات كشبكة أمان)، ولا يُرسل روابط
+     * تهيئة كلمة المرور لأن الحسابات المُنشأة ببريد توليفي مؤقت.
+     */
+    public function createStudentFromImport(array $studentData, array $guardianData, Section $section, array $ministryFields): StudentInfo
+    {
+        $schoolId = $section->school_id;
+
+        return DB::transaction(function () use ($studentData, $guardianData, $section, $schoolId, $ministryFields) {
+            $guardian = $this->resolveGuardian($guardianData, $schoolId, false);
+            $studentUser = $this->createStudentUser($studentData, $schoolId, false);
+
+            return StudentInfo::create(array_filter([
+                'user_id' => $studentUser->id,
+                'section_id' => $section->id,
+                'parent_id' => $guardian->id,
+                'prenom' => $this->normalizeName($studentData['first_name'] ?? []),
+                'nom' => $this->normalizeName($studentData['last_name'] ?? []),
+                'gender' => $studentData['gender'] ?? null,
+                'numtelephone' => $studentData['phone'] ?? null,
+                'datenaissance' => $studentData['birth_date'] ?? null,
+                'lieunaissance' => $studentData['birth_place'] ?? null,
+                'wilaya' => $studentData['wilaya'] ?? null,
+                'dayra' => $studentData['dayra'] ?? null,
+                'baladia' => $studentData['baladia'] ?? null,
+                'national_id' => $ministryFields['national_id'] ?? null,
+                'registration_number' => $ministryFields['registration_number'] ?? null,
+                'enrolled_at' => $ministryFields['enrolled_at'] ?? null,
+                'schooling_system' => $ministryFields['schooling_system'] ?? null,
+                'birth_certificate_type' => $ministryFields['birth_certificate_type'] ?? null,
+                'birth_record_year' => $ministryFields['birth_record_year'] ?? null,
+                'birth_certificate_number' => $ministryFields['birth_certificate_number'] ?? null,
+                'born_by_judgment' => $ministryFields['born_by_judgment'] ?? false,
+            ], fn ($value) => !is_null($value)));
+        });
+    }
+
     public function importStudent(array $studentData, array $guardianData, Section $section): array
     {
         $dateOfBirth = $this->normalizeDate(Arr::get($studentData, 'birth_date'));
@@ -224,7 +264,7 @@ class StudentEnrollmentService
         return null;
     }
 
-    protected function resolveGuardian(array $guardianData, int $schoolId): MyParent
+    protected function resolveGuardian(array $guardianData, int $schoolId, bool $dispatchOnboarding = true): MyParent
     {
         $phone = Arr::get($guardianData, 'phone');
         $email = Arr::get($guardianData, 'email');
@@ -261,7 +301,8 @@ class StudentEnrollmentService
             $this->normalizeName($guardianData['first_name'] ?? []),
             $email,
             $schoolId,
-            'guardian'
+            'guardian',
+            $dispatchOnboarding
         );
 
         return MyParent::create(
@@ -271,7 +312,7 @@ class StudentEnrollmentService
         );
     }
 
-    protected function createStudentUser(array $studentData, int $schoolId): User
+    protected function createStudentUser(array $studentData, int $schoolId, bool $dispatchOnboarding = true): User
     {
         $email = Arr::get($studentData, 'email');
 
@@ -287,11 +328,12 @@ class StudentEnrollmentService
             $name,
             $email,
             $schoolId,
-            'student'
+            'student',
+            $dispatchOnboarding
         );
     }
 
-    protected function createUser(array $name, ?string $email, int $schoolId, string $role): User
+    protected function createUser(array $name, ?string $email, int $schoolId, string $role, bool $dispatchOnboarding = true): User
     {
         if (!$email) {
             throw ValidationException::withMessages([
@@ -299,7 +341,7 @@ class StudentEnrollmentService
             ]);
         }
 
-        return $this->provisionSchoolUserAction->execute($name, $email, $schoolId, $role);
+        return $this->provisionSchoolUserAction->execute($name, $email, $schoolId, $role, null, $dispatchOnboarding);
     }
 
     protected function normalizeName(array $name): array

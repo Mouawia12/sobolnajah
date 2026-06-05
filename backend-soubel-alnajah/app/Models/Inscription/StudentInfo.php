@@ -28,6 +28,11 @@ class StudentInfo extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'enrolled_at' => 'date',
+        'born_by_judgment' => 'boolean',
+    ];
+
     protected $table = 'studentinfos';
     public $timestamps = true;
 

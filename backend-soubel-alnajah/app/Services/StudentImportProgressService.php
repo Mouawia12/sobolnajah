@@ -15,14 +15,23 @@ class StudentImportProgressService
             'token' => $token,
             'status' => 'pending',
             'message' => null,
+            'school_name' => null,
             'total_rows' => 0,
             'processed_rows' => 0,
-            'imported_rows' => 0,
-            'section_updated_rows' => 0,
-            'duplicate_rows' => 0,
-            'skipped_rows' => 0,
-            'not_added_rows' => 0,
-            'auto_filled_fields' => 0,
+            'created_rows' => 0,
+            'updated_rows' => 0,
+            'moved_rows' => 0,
+            'unchanged_rows' => 0,
+            'failed_rows' => 0,
+            'structure_created' => [
+                'schools' => 0,
+                'grades' => 0,
+                'classrooms' => 0,
+                'sections' => 0,
+            ],
+            'absent_count' => 0,
+            'absent_preview' => [],
+            'legacy_count' => 0,
             'issues_preview' => [],
             'latest_issue' => null,
             'started_at' => now()->toIso8601String(),
@@ -43,7 +52,6 @@ class StudentImportProgressService
             'status' => 'running',
             'updated_at' => now()->toIso8601String(),
         ]);
-        $payload['not_added_rows'] = (int) ($payload['duplicate_rows'] ?? 0) + (int) ($payload['skipped_rows'] ?? 0);
         $payload['progress_percent'] = $this->calculatePercent(
             (int) ($payload['processed_rows'] ?? 0),
             (int) ($payload['total_rows'] ?? 0)
@@ -63,7 +71,6 @@ class StudentImportProgressService
             'updated_at' => now()->toIso8601String(),
             'completed_at' => now()->toIso8601String(),
         ]);
-        $payload['not_added_rows'] = (int) ($payload['duplicate_rows'] ?? 0) + (int) ($payload['skipped_rows'] ?? 0);
         $payload['progress_percent'] = 100;
 
         $this->put($token, $payload);
@@ -80,7 +87,6 @@ class StudentImportProgressService
             'updated_at' => now()->toIso8601String(),
             'completed_at' => now()->toIso8601String(),
         ]);
-        $payload['not_added_rows'] = (int) ($payload['duplicate_rows'] ?? 0) + (int) ($payload['skipped_rows'] ?? 0);
         $payload['progress_percent'] = $this->calculatePercent(
             (int) ($payload['processed_rows'] ?? 0),
             (int) ($payload['total_rows'] ?? 0)

@@ -9,14 +9,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DestroyStudentRequest;
 use App\Http\Requests\ImportStudentsRequest;
 use App\Http\Requests\StoreStudent;
-use App\Imports\StudentsImport;
 use App\Models\Inscription\StudentInfo;
 use App\Models\School\School;
 use App\Models\School\Section;
+use App\Services\MinistryStudentImportService;
 use App\Services\StudentImportProgressService;
 use App\Services\StudentEnrollmentService;
 use Illuminate\Validation\ValidationException;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -192,26 +191,21 @@ class StudentController extends Controller
         return redirect()->route('Students.index');
     }
 
-    public function importExcel(ImportStudentsRequest $request)
+    public function importExcel(ImportStudentsRequest $request, MinistryStudentImportService $ministryImportService)
     {
         $request->validated();
 
-        $schoolId = $this->currentSchoolId();
         $importToken = trim((string) $request->input('import_token', ''));
         if ($importToken === '') {
             $importToken = Str::lower((string) Str::uuid());
         }
         $this->studentImportProgressService->initialize($importToken);
 
-        $import = new StudentsImport(
-            $this->enrollmentService,
-            $schoolId,
-            $this->studentImportProgressService,
-            $importToken
-        );
-
         try {
-            Excel::import($import, $request->file('file'));
+            $summary = $ministryImportService->import(
+                $request->file('file')->getRealPath(),
+                $importToken
+            );
         } catch (ValidationException $exception) {
             $this->studentImportProgressService->fail($importToken, 'Validation error while importing students.', [
                 'issues_preview' => [$exception->getMessage()],
@@ -243,28 +237,22 @@ class StudentController extends Controller
             return back()->withErrors(['error' => $exception->getMessage()]);
         }
 
-        $summary = [
-            'total_rows' => $import->getTotalRows(),
-            'processed_rows' => $import->getProcessedRows(),
-            'imported_rows' => $import->getImportedRows(),
-            'section_updated_rows' => $import->getSectionUpdatedRows(),
-            'duplicate_rows' => $import->getDuplicateRows(),
-            'skipped_rows' => $import->getSkippedRows(),
-            'not_added_rows' => $import->getNotImportedRows(),
-            'auto_filled_fields' => $import->getAutoFilledFields(),
-        ];
-        $issues = $import->getIssues();
+        $issues = $summary['issues'] ?? [];
 
         $this->studentImportProgressService->complete($importToken, [
-            'message' => 'Student import completed successfully.',
+            'message' => 'تمت مزامنة ملف التلاميذ بنجاح.',
+            'school_name' => $summary['school_name'],
             'total_rows' => $summary['total_rows'],
             'processed_rows' => $summary['processed_rows'],
-            'imported_rows' => $summary['imported_rows'],
-            'section_updated_rows' => $summary['section_updated_rows'],
-            'duplicate_rows' => $summary['duplicate_rows'],
-            'skipped_rows' => $summary['skipped_rows'],
-            'not_added_rows' => $summary['not_added_rows'],
-            'auto_filled_fields' => $summary['auto_filled_fields'],
+            'created_rows' => $summary['created_rows'],
+            'updated_rows' => $summary['updated_rows'],
+            'moved_rows' => $summary['moved_rows'],
+            'unchanged_rows' => $summary['unchanged_rows'],
+            'failed_rows' => $summary['failed_rows'],
+            'structure_created' => $summary['structure_created'],
+            'absent_count' => $summary['absent_count'],
+            'absent_preview' => $summary['absent_preview'],
+            'legacy_count' => $summary['legacy_count'],
             'issues_preview' => array_slice($issues, -5),
             'latest_issue' => !empty($issues) ? end($issues) : null,
         ]);
@@ -273,7 +261,7 @@ class StudentController extends Controller
             return response()->json([
                 'ok' => true,
                 'token' => $importToken,
-                'message' => 'Student import completed successfully.',
+                'message' => 'تمت مزامنة ملف التلاميذ بنجاح.',
                 'summary' => $summary,
                 'issues' => $issues,
                 'progress' => $this->studentImportProgressService->get($importToken),
@@ -282,13 +270,14 @@ class StudentController extends Controller
 
         toastr()->success(
             sprintf(
-                'تم الاستيراد بنجاح: %d صف مضاف، %d صف تم تصحيح قسمه، %d صف مكرر، %d صف متجاهل، %d صف غير مضاف، %d قيمة تم تعويضها تلقائيًا.',
-                $summary['imported_rows'],
-                $summary['section_updated_rows'],
-                $summary['duplicate_rows'],
-                $summary['skipped_rows'],
-                $summary['not_added_rows'],
-                $summary['auto_filled_fields']
+                'تمت مزامنة "%s": %d مضاف، %d محدّث، %d نُقل قسمه، %d دون تغيير، %d فشل، %d غائب عن الملف.',
+                $summary['school_name'],
+                $summary['created_rows'],
+                $summary['updated_rows'],
+                $summary['moved_rows'],
+                $summary['unchanged_rows'],
+                $summary['failed_rows'],
+                $summary['absent_count']
             )
         );
 

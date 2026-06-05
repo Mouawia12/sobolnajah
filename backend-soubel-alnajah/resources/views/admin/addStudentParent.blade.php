@@ -43,16 +43,24 @@
                     @csrf
                     <input type="hidden" name="import_token" id="students-import-token" value="">
                     <div class="form-group">
-                        <label>{{ trans('opt.uploadStudentsExcel') }}</label>
-                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                        <label>رفع ملف التلاميذ من منظومة الوزارة (Eleve.xls)</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.html,.htm" required>
+                        <small class="text-muted d-block mt-1">
+                            يتم تلقائياً إنشاء/تحديث المدرسة والسنوات والشعب والأقسام من محتوى الملف، وإضافة أو تحديث التلاميذ حسب رقم التعريف.
+                        </small>
                     </div>
                     <button type="submit" id="students-import-submit" class="btn btn-success mt-2">{{ trans('opt.importStudents') }}</button>
                 </form>
 
                 <div id="students-import-progress-card" class="alert alert-light border d-none">
                     <div class="d-flex justify-content-between align-items-center mb-10">
-                        <strong>حالة استيراد الطلبة</strong>
+                        <strong>حالة مزامنة التلاميذ</strong>
                         <span id="students-import-progress-state" class="badge badge-info">قيد المعالجة...</span>
+                    </div>
+
+                    <div class="mb-10">
+                        <strong>المؤسسة:</strong>
+                        <span id="students-import-school-name" class="text-primary">-</span>
                     </div>
 
                     <div class="progress progress-lg mb-10">
@@ -70,33 +78,44 @@
                             <small>تمت المعالجة</small>
                         </div>
                         <div class="col-6 col-md-2">
-                            <div class="fw-bold text-success" id="students-import-added">0</div>
+                            <div class="fw-bold text-success" id="students-import-created">0</div>
                             <small>مضاف</small>
                         </div>
                         <div class="col-6 col-md-2">
-                            <div class="fw-bold text-info" id="students-import-section-updated">0</div>
-                            <small>تصحيح قسم</small>
+                            <div class="fw-bold text-info" id="students-import-updated">0</div>
+                            <small>محدّث</small>
                         </div>
                         <div class="col-6 col-md-2">
-                            <div class="fw-bold text-warning" id="students-import-duplicates">0</div>
-                            <small>مكرر</small>
+                            <div class="fw-bold text-warning" id="students-import-moved">0</div>
+                            <small>نُقل قسمه</small>
                         </div>
-                        <div class="col-6 col-md-2">
-                            <div class="fw-bold text-danger" id="students-import-skipped">0</div>
-                            <small>متجاهل</small>
+                        <div class="col-6 col-md-1">
+                            <div class="fw-bold text-muted" id="students-import-unchanged">0</div>
+                            <small>دون تغيير</small>
                         </div>
-                        <div class="col-6 col-md-2">
-                            <div class="fw-bold text-dark" id="students-import-not-added">0</div>
-                            <small>غير مضاف</small>
+                        <div class="col-6 col-md-1">
+                            <div class="fw-bold text-danger" id="students-import-failed">0</div>
+                            <small>فشل</small>
                         </div>
                     </div>
 
                     <div class="row g-2 mb-8">
-                        <div class="col-md-6"><strong>تعويض تلقائي للحقول:</strong> <span id="students-import-autofill">0</span></div>
+                        <div class="col-md-6"><strong>هيكل جديد:</strong> <span id="students-import-structure">-</span></div>
                         <div class="col-md-6"><strong>آخر تحديث:</strong> <span id="students-import-updated-at">-</span></div>
                     </div>
 
                     <div id="students-import-message" class="mb-6 text-muted"></div>
+
+                    <div id="students-import-absent-wrapper" class="d-none mt-10">
+                        <div class="alert alert-warning mb-5">
+                            <strong>تلاميذ مسجلون في النظام وغير موجودين في الملف:</strong>
+                            <span id="students-import-absent-count">0</span>
+                            <small class="d-block">لم يُحذف أي تلميذ — راجع القائمة وقرر يدوياً (قد يكونون غادروا المؤسسة).</small>
+                        </div>
+                        <ul id="students-import-absent" class="mb-5"></ul>
+                        <div class="text-muted"><small>تلاميذ قدامى بدون رقم تعريف: <span id="students-import-legacy-count">0</span></small></div>
+                    </div>
+
                     <div id="students-import-issues-wrapper" class="d-none">
                         <strong>ملاحظات مهمة:</strong>
                         <ul id="students-import-issues" class="mb-0 mt-5"></ul>
@@ -402,13 +421,18 @@
         const map = {
             total: document.getElementById('students-import-total'),
             processed: document.getElementById('students-import-processed'),
-            added: document.getElementById('students-import-added'),
-            sectionUpdated: document.getElementById('students-import-section-updated'),
-            duplicates: document.getElementById('students-import-duplicates'),
-            skipped: document.getElementById('students-import-skipped'),
-            notAdded: document.getElementById('students-import-not-added'),
-            autofill: document.getElementById('students-import-autofill'),
+            created: document.getElementById('students-import-created'),
+            updated: document.getElementById('students-import-updated'),
+            moved: document.getElementById('students-import-moved'),
+            unchanged: document.getElementById('students-import-unchanged'),
+            failed: document.getElementById('students-import-failed'),
+            schoolName: document.getElementById('students-import-school-name'),
+            structure: document.getElementById('students-import-structure'),
             updatedAt: document.getElementById('students-import-updated-at'),
+            absentWrapper: document.getElementById('students-import-absent-wrapper'),
+            absentCount: document.getElementById('students-import-absent-count'),
+            absentList: document.getElementById('students-import-absent'),
+            legacyCount: document.getElementById('students-import-legacy-count'),
         };
 
         function generateToken() {
@@ -453,6 +477,38 @@
             });
         }
 
+        function renderStructure(structure) {
+            if (!structure) {
+                map.structure.textContent = '-';
+                return;
+            }
+
+            map.structure.textContent =
+                `مدارس: ${structure.schools ?? 0} | سنوات: ${structure.grades ?? 0} | شعب: ${structure.classrooms ?? 0} | أقسام: ${structure.sections ?? 0}`;
+        }
+
+        function renderAbsent(payload) {
+            const count = Number(payload.absent_count ?? 0);
+            const legacy = Number(payload.legacy_count ?? 0);
+            const preview = Array.isArray(payload.absent_preview) ? payload.absent_preview : [];
+
+            if (!count && !legacy) {
+                map.absentWrapper.classList.add('d-none');
+                return;
+            }
+
+            map.absentWrapper.classList.remove('d-none');
+            map.absentCount.textContent = count;
+            map.legacyCount.textContent = legacy;
+            map.absentList.innerHTML = '';
+            preview.forEach((student) => {
+                const li = document.createElement('li');
+                const section = student.section ? ` — القسم: ${student.section}` : '';
+                li.textContent = `${student.national_id} | ${student.name}${section}`;
+                map.absentList.appendChild(li);
+            });
+        }
+
         function renderProgress(payload) {
             if (!payload) {
                 return;
@@ -460,13 +516,15 @@
 
             map.total.textContent = payload.total_rows ?? 0;
             map.processed.textContent = payload.processed_rows ?? 0;
-            map.added.textContent = payload.imported_rows ?? 0;
-            map.sectionUpdated.textContent = payload.section_updated_rows ?? 0;
-            map.duplicates.textContent = payload.duplicate_rows ?? 0;
-            map.skipped.textContent = payload.skipped_rows ?? 0;
-            map.notAdded.textContent = payload.not_added_rows ?? 0;
-            map.autofill.textContent = payload.auto_filled_fields ?? 0;
+            map.created.textContent = payload.created_rows ?? 0;
+            map.updated.textContent = payload.updated_rows ?? 0;
+            map.moved.textContent = payload.moved_rows ?? 0;
+            map.unchanged.textContent = payload.unchanged_rows ?? 0;
+            map.failed.textContent = payload.failed_rows ?? 0;
+            map.schoolName.textContent = payload.school_name ?? '-';
             map.updatedAt.textContent = payload.updated_at ?? '-';
+            renderStructure(payload.structure_created);
+            renderAbsent(payload);
 
             setProgressPercent(payload.progress_percent ?? 0);
             setIssues(payload.issues_preview ?? []);
@@ -554,13 +612,18 @@
             issuesList.innerHTML = '';
             map.total.textContent = '0';
             map.processed.textContent = '0';
-            map.added.textContent = '0';
-            map.sectionUpdated.textContent = '0';
-            map.duplicates.textContent = '0';
-            map.skipped.textContent = '0';
-            map.notAdded.textContent = '0';
-            map.autofill.textContent = '0';
+            map.created.textContent = '0';
+            map.updated.textContent = '0';
+            map.moved.textContent = '0';
+            map.unchanged.textContent = '0';
+            map.failed.textContent = '0';
+            map.schoolName.textContent = '-';
+            map.structure.textContent = '-';
             map.updatedAt.textContent = '-';
+            map.absentWrapper.classList.add('d-none');
+            map.absentList.innerHTML = '';
+            map.absentCount.textContent = '0';
+            map.legacyCount.textContent = '0';
         }
 
         form.addEventListener('submit', async function(event) {
@@ -568,7 +631,7 @@
 
             const fileInput = form.querySelector('input[name="file"]');
             if (!fileInput || !fileInput.files || !fileInput.files.length) {
-                toastr.error('يرجى اختيار ملف Excel أولا.');
+                toastr.error('يرجى اختيار ملف التلاميذ (Eleve.xls) أولا.');
                 return;
             }
 

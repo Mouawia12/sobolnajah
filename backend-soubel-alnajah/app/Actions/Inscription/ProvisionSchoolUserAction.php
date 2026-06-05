@@ -13,7 +13,7 @@ class ProvisionSchoolUserAction
     {
     }
 
-    public function execute(array $name, ?string $email, ?int $schoolId, string $role, ?string $password = null): User
+    public function execute(array $name, ?string $email, ?int $schoolId, string $role, ?string $password = null, bool $dispatchOnboarding = true): User
     {
         $hasManualPassword = is_string($password) && $password !== '';
 
@@ -29,7 +29,7 @@ class ProvisionSchoolUserAction
             $user->attachRole($role);
         }
 
-        if (!$hasManualPassword) {
+        if (!$hasManualPassword && $dispatchOnboarding) {
             $this->onboardingService->dispatchPasswordSetupLink($user);
         }
 
