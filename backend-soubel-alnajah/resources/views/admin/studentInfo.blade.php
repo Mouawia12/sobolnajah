@@ -258,6 +258,25 @@
                                         </div>
                                         <div class="modal-body">
 
+                                            <ul class="nav nav-tabs" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <a class="nav-link active" data-bs-toggle="tab"
+                                                        href="#tab-student{{ $ins->id }}" role="tab">
+                                                        <i class="fa fa-graduation-cap me-5"></i>بيانات التلميذ
+                                                    </a>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <a class="nav-link" data-bs-toggle="tab"
+                                                        href="#tab-guardian{{ $ins->id }}" role="tab">
+                                                        <i class="fa fa-user-circle-o me-5"></i>ولي الأمر
+                                                    </a>
+                                                </li>
+                                            </ul>
+
+                                            <div class="tab-content pt-3">
+                                                <div class="tab-pane fade show active" id="tab-student{{ $ins->id }}"
+                                                    role="tabpanel">
+
                                             <h4 class="box-title text-info mb-0"><i class="ti-home me-15"></i>معلومات
                                                 التمدرس</h4>
                                             <hr class="my-15">
@@ -353,6 +372,96 @@
                                                     </div>
                                                 </div>
                                             @endif
+
+                                                </div>
+
+                                                {{-- تبويب ولي الأمر --}}
+                                                <div class="tab-pane fade" id="tab-guardian{{ $ins->id }}"
+                                                    role="tabpanel">
+                                                    @php
+                                                        $guardian = $ins->parent;
+                                                        $guardianEmail = (string) optional(optional($guardian)->user)->email;
+                                                        $guardianSynthetic = \Illuminate\Support\Str::endsWith($guardianEmail, '@import.local');
+                                                        $guardianHiddenEmail = $guardianSynthetic || \Illuminate\Support\Str::endsWith($guardianEmail, '@manual.local');
+                                                        $siblings = $guardian ? $guardian->students->where('id', '!=', $ins->id) : collect();
+                                                    @endphp
+
+                                                    @if (!$guardian)
+                                                        <div class="alert alert-warning mb-0">
+                                                            <i class="fa fa-exclamation-triangle me-5"></i>لا يوجد ولي
+                                                            أمر مرتبط بهذا التلميذ.
+                                                        </div>
+                                                    @else
+                                                        @if ($guardianSynthetic)
+                                                            <div class="alert alert-warning">
+                                                                <i class="fa fa-exclamation-triangle me-5"></i>
+                                                                حساب مؤقت أُنشئ تلقائياً أثناء الاستيراد — أكمل بياناته
+                                                                الحقيقية من صفحة أولياء الأمور.
+                                                            </div>
+                                                        @endif
+
+                                                        <h4 class="box-title text-info mb-0"><i
+                                                                class="ti-user me-15"></i>بيانات الولي</h4>
+                                                        <hr class="my-15">
+                                                        <div class="row">
+                                                            <div class="col-md-4 mb-15">
+                                                                <span class="text-fade d-block fs-12">الاسم واللقب</span>
+                                                                <span class="fw-600">{{ $guardian->prenomwali }}
+                                                                    {{ $guardian->nomwali }}</span>
+                                                            </div>
+                                                            <div class="col-md-4 mb-15">
+                                                                <span class="text-fade d-block fs-12">صلة القرابة</span>
+                                                                <span class="fw-600">{{ $guardian->relationetudiant ?: '—' }}</span>
+                                                            </div>
+                                                            <div class="col-md-4 mb-15">
+                                                                <span class="text-fade d-block fs-12">رقم الهاتف</span>
+                                                                <span class="fw-600"
+                                                                    style="direction: ltr; unicode-bidi: embed;">0{{ $guardian->numtelephonewali }}</span>
+                                                            </div>
+                                                            @unless ($guardianHiddenEmail)
+                                                                <div class="col-md-4 mb-15">
+                                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.email') }}</span>
+                                                                    <span class="fw-600">{{ $guardianEmail ?: '—' }}</span>
+                                                                </div>
+                                                            @endunless
+                                                            <div class="col-md-8 mb-15">
+                                                                <span class="text-fade d-block fs-12">العنوان</span>
+                                                                <span class="fw-600">{{ $guardian->adressewali ?: '—' }}</span>
+                                                            </div>
+                                                            <div class="col-md-4 mb-15">
+                                                                <span class="text-fade d-block fs-12">{{ trans('inscription.wilaya') }} / {{ trans('inscription.dayra') }} / {{ trans('inscription.baladia') }}</span>
+                                                                <span class="fw-600">{{ $guardian->wilayawali ?: '—' }} / {{ $guardian->dayrawali ?: '—' }} / {{ $guardian->baladiawali ?: '—' }}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <h4 class="box-title text-info mb-0"><i
+                                                                class="ti-id-badge me-15"></i>أبناؤه في المدرسة
+                                                            <span class="badge badge-info-light">{{ $guardian->students->count() }}</span>
+                                                        </h4>
+                                                        <hr class="my-15">
+                                                        @if ($siblings->isEmpty())
+                                                            <span class="text-fade">لا إخوة آخرون — هذا التلميذ
+                                                                وحده مرتبط بهذا الولي.</span>
+                                                        @else
+                                                            <div class="d-flex flex-wrap gap-1">
+                                                                @foreach ($siblings as $sibling)
+                                                                    <span class="badge badge-primary-light fs-13 p-2">
+                                                                        {{ $sibling->prenom }} {{ $sibling->nom }}
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                        @endif
+
+                                                        <div class="mt-3">
+                                                            <a href="{{ route('Parents.index', ['q' => $guardian->numtelephonewali]) }}"
+                                                                class="btn btn-primary-light">
+                                                                <i class="fa fa-external-link me-5"></i>فتح في إدارة
+                                                                أولياء الأمور
+                                                            </a>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
 
                                         </div>
                                         <div class="modal-footer modal-footer-uniform">

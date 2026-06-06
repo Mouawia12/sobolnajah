@@ -51,6 +51,9 @@ class StudentController extends Controller
             ->forSchool($schoolId)
             ->with([
                 'user:id,email',
+                'parent:id,prenomwali,nomwali,relationetudiant,adressewali,wilayawali,dayrawali,baladiawali,numtelephonewali,user_id',
+                'parent.user:id,email',
+                'parent.students:id,parent_id,prenom,nom',
                 'section:id,classroom_id,name_section',
                 'section.classroom:id,school_id,grade_id,name_class',
                 'section.classroom.schoolgrade:id,school_id,name_grade',
