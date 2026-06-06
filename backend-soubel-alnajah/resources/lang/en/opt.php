@@ -50,6 +50,22 @@ return [
     'addStudentbyExcel' => 'Add students using an Excel file',
     'uploadStudentsExcel' => 'Upload students file (Excel)',
     'importStudents'      => 'Import students',
+
+    // New attendance recording page
+    'attendance_record_title' => 'Attendance Recording',
+    'present'                 => 'Present',
+    'late'                    => 'Late',
+    'absent'                  => 'Absent',
+    'all_present'             => 'All Present',
+    'all_late'                => 'All Late',
+    'all_absent'              => 'All Absent',
+    'choose_section'          => 'Choose a section',
+    'select_section_first'    => 'Select a section to show students',
+    'no_students_in_section'  => 'No students in this section',
+    'attendance_search'       => 'Search by name or ID...',
+    'recorded_of_total'       => 'students of',
+    'confirm_bulk'            => 'Apply ":status" to all students of this section for this hour?',
+    'bulk_done'               => 'All students updated ✅',
     
 
 

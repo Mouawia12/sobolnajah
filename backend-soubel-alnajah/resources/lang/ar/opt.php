@@ -55,6 +55,22 @@ return [
     'uploadStudentsExcel' => 'رفع ملف التلاميذ (Excel)',
     'importStudents'      => 'استيراد التلاميذ',
 
+    // صفحة تسجيل الحضور الجديدة
+    'attendance_record_title' => 'تسجيل الحضور',
+    'present'                 => 'حاضر',
+    'late'                    => 'متأخر',
+    'absent'                  => 'غائب',
+    'all_present'             => 'الجميع حاضر',
+    'all_late'                => 'الجميع متأخر',
+    'all_absent'              => 'الجميع غائب',
+    'choose_section'          => 'اختر القسم',
+    'select_section_first'    => 'اختر القسم لعرض التلاميذ',
+    'no_students_in_section'  => 'لا يوجد تلاميذ في هذا القسم',
+    'attendance_search'       => 'بحث بالاسم أو رقم التعريف...',
+    'recorded_of_total'       => 'تلميذ من',
+    'confirm_bulk'            => 'هل تريد تطبيق ":status" على جميع تلاميذ القسم لهذه الساعة؟',
+    'bulk_done'               => 'تم تحديث الجميع بنجاح ✅',
+
 
 
 

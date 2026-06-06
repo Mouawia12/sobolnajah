@@ -184,6 +184,9 @@ Route::group(
             Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');
             Route::get('/absences/today', [AbsenceController::class, 'getToday'])->name('absence.today');
+            Route::get('/attendance', [AbsenceController::class, 'recordPage'])->name('attendance.record');
+            Route::get('/attendance/data', [AbsenceController::class, 'recordData'])->name('attendance.data');
+            Route::post('/attendance/bulk', [AbsenceController::class, 'bulkUpdate'])->name('attendance.bulk');
             Route::post('/Inscriptions/{id}/approve', [InscriptionController::class, 'approve'])->name('Inscriptions.approve');
             Route::post('/Inscriptions/{id}/status', [InscriptionController::class, 'updateStatus'])->name('Inscriptions.status');
             Route::post('/Sections/{id}/status', [SectionController::class, 'updateStatus'])->name('Sections.status');

@@ -36,6 +36,7 @@
                 <div class="col-md-2 d-flex gap-1">
                     <button class="btn btn-primary" type="submit">تصفية</button>
                     <a href="{{ route('Absences.index') }}" class="btn btn-outline-secondary">إعادة</a>
+                    <a href="{{ route('attendance.record') }}" class="btn btn-success text-nowrap">{{ trans('opt.attendance_record_title') }}</a>
                 </div>
             </form>
             <div class="table-responsive">
@@ -79,10 +80,12 @@
                                 @for ($h = 1; $h <= 9; $h++)
                                     @php $hourKey = "hour_$h"; @endphp
                                     <td>
-                                        @if ($absence->$hourKey)
-                                            <span style="color: green; font-size:18px;">&#10004;</span>
+                                        @if ((int) $absence->$hourKey === \App\Models\AgendaScolaire\Absence::LATE)
+                                            <span style="color: #f0ad2e; font-size:18px;" title="{{ trans('opt.late') }}">&#128337;</span>
+                                        @elseif ((int) $absence->$hourKey === \App\Models\AgendaScolaire\Absence::PRESENT)
+                                            <span style="color: green; font-size:18px;" title="{{ trans('opt.present') }}">&#10004;</span>
                                         @else
-                                            <span style="color: red; font-size:18px;">&#10006;</span>
+                                            <span style="color: red; font-size:18px;" title="{{ trans('opt.absent') }}">&#10006;</span>
                                         @endif
                                     </td>
                                 @endfor

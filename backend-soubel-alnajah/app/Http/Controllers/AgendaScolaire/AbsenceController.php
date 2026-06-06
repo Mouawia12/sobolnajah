@@ -10,6 +10,7 @@ use App\Models\Inscription\StudentInfo;
 
 use App\Models\AgendaScolaire\Absence;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 
 class AbsenceController extends Controller
@@ -105,11 +106,14 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
         ->forSchool($schoolId)
         ->findOrFail((int) $request->student_id);
 
+    // التاريخ اختياري — الصفحة الجديدة ترسل تاريخاً محدداً، المودال القديم يستعمل اليوم
+    $date = $request->input('date') ?: now()->toDateString();
+
     $absence = Absence::firstOrCreate(
-        ['student_id' => $student->id, 'date' => now()->toDateString()],
-        ['hour_1' => true, 'hour_2' => true, 'hour_3' => true, 'hour_4' => true,
-         'hour_5' => true, 'hour_6' => true, 'hour_7' => true, 'hour_8' => true, 
-         'hour_9' => true]
+        ['student_id' => $student->id, 'date' => $date],
+        ['hour_1' => Absence::PRESENT, 'hour_2' => Absence::PRESENT, 'hour_3' => Absence::PRESENT,
+         'hour_4' => Absence::PRESENT, 'hour_5' => Absence::PRESENT, 'hour_6' => Absence::PRESENT,
+         'hour_7' => Absence::PRESENT, 'hour_8' => Absence::PRESENT, 'hour_9' => Absence::PRESENT]
     );
 
     $this->authorize('update', $absence);
@@ -144,14 +148,156 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
                 return response()->json([]);
             }
 
-            // طوّع الاستجابة لتكون خريطة hour_1..hour_10 => boolean
+            // طوّع الاستجابة لتكون خريطة hour_1..hour_9 => 0|1|2 (غائب|حاضر|متأخر)
             $data = [];
-            for ($i = 1; $i <= 10; $i++) {
+            for ($i = 1; $i <= 9; $i++) {
                 $key = "hour_{$i}";
-                $data[$key] = (bool) ($absence->{$key} ?? false);
+                $data[$key] = (int) ($absence->{$key} ?? Absence::PRESENT);
             }
 
             return response()->json($data);
         }
+
+
+    /**
+     * صفحة تسجيل الحضور الجديدة (تصميم الموبايل).
+     */
+    public function recordPage()
+    {
+        $this->authorize('viewAny', Absence::class);
+        $schoolId = $this->currentSchoolId();
+
+        $data['Sections'] = Section::query()
+            ->forSchool($schoolId)
+            ->select(['id', 'classroom_id', 'name_section'])
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
+            ->orderBy('id')
+            ->get();
+
+        // خريطة الساعات: 8:00 => hour_1 ... 16:00 => hour_9
+        $hours = [];
+        foreach (range(8, 16) as $h) {
+            $hours["hour_" . ($h - 7)] = sprintf('%d:00', $h);
+        }
+        $data['hours'] = $hours;
+
+        // الساعة الافتراضية = الساعة الحالية إن كانت ضمن الدوام، وإلا الأولى
+        $nowHour = (int) now()->format('G');
+        $data['defaultHourKey'] = ($nowHour >= 8 && $nowHour <= 16) ? 'hour_' . ($nowHour - 7) : 'hour_1';
+
+        $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('opt.attendance_record_title')],
+        ];
+
+        return view('admin.attendance_record', $data);
+    }
+
+    /**
+     * بيانات تلاميذ القسم وحالات الحضور لتاريخ معيّن (JSON).
+     */
+    public function recordData(Request $request)
+    {
+        $this->authorize('viewAny', Absence::class);
+        $schoolId = $this->currentSchoolId();
+
+        $validated = $request->validate([
+            'section_id' => ['required', 'integer'],
+            'date' => ['required', 'date'],
+        ]);
+
+        // نطاق المدرسة: القسم يجب أن يتبع مدرسة المشرف
+        $section = Section::query()->forSchool($schoolId)->findOrFail((int) $validated['section_id']);
+
+        $students = StudentInfo::query()
+            ->forSchool($schoolId)
+            ->where('section_id', $section->id)
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->get(['id', 'prenom', 'nom', 'national_id', 'numtelephone']);
+
+        $absences = Absence::query()
+            ->whereIn('student_id', $students->pluck('id'))
+            ->whereDate('date', $validated['date'])
+            ->get()
+            ->keyBy('student_id');
+
+        $defaultHours = array_fill_keys(
+            array_map(fn ($i) => "hour_{$i}", range(1, 9)),
+            Absence::PRESENT
+        );
+
+        $payload = $students->map(function ($student) use ($absences, $defaultHours) {
+            $absence = $absences->get($student->id);
+            $hours = $defaultHours;
+            if ($absence) {
+                foreach (array_keys($hours) as $key) {
+                    $hours[$key] = (int) $absence->{$key};
+                }
+            }
+
+            return [
+                'id' => $student->id,
+                'name' => trim($student->prenom . ' ' . $student->nom),
+                'subtitle' => $student->national_id ?: ($student->numtelephone ? '0' . $student->numtelephone : ''),
+                'hours' => $hours,
+                'has_record' => (bool) $absence,
+            ];
+        })->values();
+
+        return response()->json([
+            'students' => $payload,
+            'total' => $students->count(),
+            'recorded' => $absences->count(),
+        ]);
+    }
+
+    /**
+     * تسجيل جماعي: ضبط حالة ساعة واحدة لكل تلاميذ القسم في تاريخ معيّن.
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $this->authorize('create', Absence::class);
+        $schoolId = $this->currentSchoolId();
+
+        $validated = $request->validate([
+            'section_id' => ['required', 'integer'],
+            'date' => ['required', 'date'],
+            'hour' => ['required', 'in:hour_1,hour_2,hour_3,hour_4,hour_5,hour_6,hour_7,hour_8,hour_9'],
+            'status' => ['required', 'integer', 'in:0,1,2'],
+        ]);
+
+        $section = Section::query()->forSchool($schoolId)->findOrFail((int) $validated['section_id']);
+
+        $studentIds = StudentInfo::query()
+            ->forSchool($schoolId)
+            ->where('section_id', $section->id)
+            ->pluck('id');
+
+        $updated = 0;
+        DB::transaction(function () use ($studentIds, $validated, &$updated) {
+            foreach ($studentIds as $studentId) {
+                $absence = Absence::firstOrCreate(
+                    ['student_id' => $studentId, 'date' => $validated['date']],
+                    ['hour_1' => Absence::PRESENT, 'hour_2' => Absence::PRESENT, 'hour_3' => Absence::PRESENT,
+                     'hour_4' => Absence::PRESENT, 'hour_5' => Absence::PRESENT, 'hour_6' => Absence::PRESENT,
+                     'hour_7' => Absence::PRESENT, 'hour_8' => Absence::PRESENT, 'hour_9' => Absence::PRESENT]
+                );
+                $absence->{$validated['hour']} = (int) $validated['status'];
+                $absence->save();
+                $updated++;
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'updated' => $updated,
+            'recorded' => $studentIds->count(),
+        ]);
+    }
 
 }

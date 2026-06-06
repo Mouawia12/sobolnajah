@@ -16,7 +16,9 @@ class StoreAbsenceStatusRequest extends FormRequest
         return [
             'student_id' => ['required', 'integer', 'exists:studentinfos,id'],
             'hour' => ['required', 'in:hour_1,hour_2,hour_3,hour_4,hour_5,hour_6,hour_7,hour_8,hour_9'],
-            'status' => ['required', 'boolean'],
+            // 0 = غائب، 1 = حاضر، 2 = متأخر
+            'status' => ['required', 'integer', 'in:0,1,2'],
+            'date' => ['nullable', 'date'],
         ];
     }
 }

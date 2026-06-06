@@ -789,8 +789,9 @@
                         } else {
                             checkboxes.forEach(chk => {
                                 const key = chk.dataset.hour;
-                                chk.checked = data.hasOwnProperty(key) ? !!data[
-                                    key] : false;
+                                // 0 = غائب، 1 = حاضر، 2 = متأخر => الحاضر والمتأخر يظهران محددين
+                                chk.checked = data.hasOwnProperty(key) ? data[
+                                    key] != 0 : false;
                             });
                         }
                     })

@@ -24,6 +24,7 @@ return [
     'promotion'=>'ترقية الطلاب',
     'graduated'=>'قائمة الطلاب المتخرجين',
     'Absences'=>'قائمة الغيابات',
+    'attendance_record' => 'تسجيل الحضور',
     'recruitment_management' => 'إدارة التوظيف',
     'recruitment_posts' => 'إعلانات التوظيف',
     'recruitment_applications' => 'طلبات التوظيف',

@@ -24,6 +24,7 @@ return [
     'promotion' => 'Student Promotion',
     'graduated' => 'Graduated Students',
     'Absences'=>'Absences List',
+    'attendance_record' => 'Attendance Recording',
     'recruitment_management' => 'Recruitment Management',
     'recruitment_posts' => 'Job Posts',
     'recruitment_applications' => 'Job Applications',

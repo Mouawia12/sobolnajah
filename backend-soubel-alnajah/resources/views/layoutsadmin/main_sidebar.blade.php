@@ -127,6 +127,7 @@
                                 <li><a href="{{ route('Promotions.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.promotion') }}</a></li>
                                 <li><a href="{{ route('graduated.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.graduated') }}</a></li>
                                 <li><a href="{{ route('Absences.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.Absences') }}</a></li>
+                                <li><a href="{{ route('attendance.record') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.attendance_record') }}</a></li>
                             </ul>
                         </li>
 
