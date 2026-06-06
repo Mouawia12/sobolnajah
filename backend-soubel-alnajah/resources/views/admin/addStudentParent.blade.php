@@ -574,6 +574,7 @@
 
                 if (payload.status === 'completed' || payload.status === 'failed') {
                     stopPolling();
+                    lockForm(false);
                 }
             } catch (error) {
                 // Ignore transient polling errors while import is running.
@@ -582,7 +583,16 @@
 
         function startPolling() {
             stopPolling();
-            pollingTimer = setInterval(pollStatusOnce, 1000);
+            let attempts = 0;
+            pollingTimer = setInterval(function() {
+                attempts++;
+                if (attempts > 900) { // حد أقصى 15 دقيقة
+                    stopPolling();
+                    lockForm(false);
+                    return;
+                }
+                pollStatusOnce();
+            }, 1000);
         }
 
         function stopPolling() {
@@ -631,7 +641,7 @@
 
             const fileInput = form.querySelector('input[name="file"]');
             if (!fileInput || !fileInput.files || !fileInput.files.length) {
-                toastr.error('يرجى اختيار ملف التلاميذ (Eleve.xls) أولا.');
+                notify('error', 'يرجى اختيار ملف التلاميذ (Eleve.xls) أولا.');
                 return;
             }
 
@@ -663,27 +673,39 @@
                 }
 
                 if (!response.ok || !payload.ok) {
+                    const detail = payload.message
+                        || (payload.errors ? Object.values(payload.errors).flat().join(' | ') : '')
+                        || `فشل أثناء استيراد الملف (HTTP ${response.status}).`;
+                    stopPolling();
+                    lockForm(false);
                     setStateBadge('failed', 'فشل');
-                    progressMessage.textContent = payload.message || 'فشل أثناء استيراد الملف.';
-                    toastr.error(payload.message || 'فشل أثناء استيراد الملف.');
+                    progressMessage.textContent = detail;
+                    notify('error', detail);
                     return;
                 }
 
+                stopPolling();
+                lockForm(false);
                 setStateBadge('completed', 'مكتمل');
                 progressMessage.textContent = 'تمت معالجة الملف بنجاح. يمكن مراجعة الإحصائيات أعلاه.';
                 if (payload.issues && payload.issues.length) {
                     setIssues(payload.issues);
                 }
-                toastr.success('تم استيراد ملف الطلبة بنجاح.');
+                notify('success', 'تمت مزامنة ملف التلاميذ بنجاح.');
             } catch (error) {
-                setStateBadge('failed', 'فشل');
-                progressMessage.textContent = 'حدث خطأ أثناء رفع الملف أو متابعة التقدم.';
-                toastr.error('تعذر إكمال الاستيراد حاليا.');
-            } finally {
-                stopPolling();
-                lockForm(false);
+                // انقطع الاتصال (غالباً مهلة الخادم) — المعالجة تستمر في الخلفية على الخادم،
+                // لذلك نُبقي الـ polling شغالاً ليعرض النتيجة النهائية عند اكتمالها.
+                setStateBadge('running', 'تستمر المعالجة...');
+                progressMessage.textContent = 'انقطع الاتصال أثناء الرفع (' + (error && error.message ? error.message : 'network error') + ') — تستمر المعالجة في الخلفية ويُحدَّث التقدم تلقائياً.';
+                notify('warning', 'انقطع الاتصال — تتم متابعة التقدم تلقائياً.');
             }
         });
+
+        function notify(type, message) {
+            if (window.toastr && typeof window.toastr[type] === 'function') {
+                window.toastr[type](message);
+            }
+        }
     })();
 </script>
 <script>

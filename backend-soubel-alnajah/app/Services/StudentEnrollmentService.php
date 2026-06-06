@@ -12,12 +12,16 @@ use App\Models\School\Section;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class StudentEnrollmentService
 {
+    /** تجزئة كلمة مرور واحدة تعاد لكل حسابات الاستيراد المؤقتة (تفادي تكلفة bcrypt لكل صف). */
+    private ?string $importPasswordHash = null;
+
     public function __construct(
         private ProvisionSchoolUserAction $provisionSchoolUserAction,
         private BuildLocalizedNameAction $buildLocalizedNameAction,
@@ -67,9 +71,14 @@ class StudentEnrollmentService
     {
         $schoolId = $section->school_id;
 
+        // تجزئة واحدة لكل عملية استيراد بدل تجزئة لكل حساب — كلمات المرور عشوائية
+        // وغير قابلة للاستخدام (must_change_password)، وتكرار bcrypt لمئات الحسابات
+        // كان يسبب تجاوز مهلة التنفيذ على الخادم.
+        $this->importPasswordHash ??= Hash::make(Str::random(40));
+
         return DB::transaction(function () use ($studentData, $guardianData, $section, $schoolId, $ministryFields) {
-            $guardian = $this->resolveGuardian($guardianData, $schoolId, false);
-            $studentUser = $this->createStudentUser($studentData, $schoolId, false);
+            $guardian = $this->resolveGuardian($guardianData, $schoolId, false, $this->importPasswordHash);
+            $studentUser = $this->createStudentUser($studentData, $schoolId, false, $this->importPasswordHash);
 
             return StudentInfo::create(array_filter([
                 'user_id' => $studentUser->id,
@@ -264,7 +273,7 @@ class StudentEnrollmentService
         return null;
     }
 
-    protected function resolveGuardian(array $guardianData, int $schoolId, bool $dispatchOnboarding = true): MyParent
+    protected function resolveGuardian(array $guardianData, int $schoolId, bool $dispatchOnboarding = true, ?string $presetPasswordHash = null): MyParent
     {
         $phone = Arr::get($guardianData, 'phone');
         $email = Arr::get($guardianData, 'email');
@@ -302,7 +311,8 @@ class StudentEnrollmentService
             $email,
             $schoolId,
             'guardian',
-            $dispatchOnboarding
+            $dispatchOnboarding,
+            $presetPasswordHash
         );
 
         return MyParent::create(
@@ -312,7 +322,7 @@ class StudentEnrollmentService
         );
     }
 
-    protected function createStudentUser(array $studentData, int $schoolId, bool $dispatchOnboarding = true): User
+    protected function createStudentUser(array $studentData, int $schoolId, bool $dispatchOnboarding = true, ?string $presetPasswordHash = null): User
     {
         $email = Arr::get($studentData, 'email');
 
@@ -329,11 +339,12 @@ class StudentEnrollmentService
             $email,
             $schoolId,
             'student',
-            $dispatchOnboarding
+            $dispatchOnboarding,
+            $presetPasswordHash
         );
     }
 
-    protected function createUser(array $name, ?string $email, int $schoolId, string $role, bool $dispatchOnboarding = true): User
+    protected function createUser(array $name, ?string $email, int $schoolId, string $role, bool $dispatchOnboarding = true, ?string $presetPasswordHash = null): User
     {
         if (!$email) {
             throw ValidationException::withMessages([
@@ -341,7 +352,7 @@ class StudentEnrollmentService
             ]);
         }
 
-        return $this->provisionSchoolUserAction->execute($name, $email, $schoolId, $role, null, $dispatchOnboarding);
+        return $this->provisionSchoolUserAction->execute($name, $email, $schoolId, $role, null, $dispatchOnboarding, $presetPasswordHash);
     }
 
     protected function normalizeName(array $name): array

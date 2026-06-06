@@ -13,14 +13,20 @@ class ProvisionSchoolUserAction
     {
     }
 
-    public function execute(array $name, ?string $email, ?int $schoolId, string $role, ?string $password = null, bool $dispatchOnboarding = true): User
+    public function execute(array $name, ?string $email, ?int $schoolId, string $role, ?string $password = null, bool $dispatchOnboarding = true, ?string $presetPasswordHash = null): User
     {
         $hasManualPassword = is_string($password) && $password !== '';
+
+        // presetPasswordHash: تجزئة محسوبة مسبقاً للحسابات المؤقتة (الاستيراد الجماعي)
+        // لتفادي تكلفة bcrypt لكل حساب — كلمة المرور عشوائية وغير قابلة للاستخدام على أي حال.
+        $passwordHash = $hasManualPassword
+            ? Hash::make($password)
+            : ($presetPasswordHash ?? Hash::make(Str::random(40)));
 
         $user = User::create([
             'name' => $name,
             'email' => $email,
-            'password' => Hash::make($hasManualPassword ? $password : Str::random(40)),
+            'password' => $passwordHash,
             'must_change_password' => !$hasManualPassword,
             'school_id' => $schoolId,
         ]);

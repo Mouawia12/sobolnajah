@@ -47,6 +47,13 @@ class MinistryStudentImportService
      */
     public function import(string $absolutePath, string $token): array
     {
+        // الاستيراد قد يستغرق دقائق لملفات كبيرة — نرفع مهلة التنفيذ ونكمل المعالجة
+        // حتى لو أغلق المتصفح الاتصال (التقدم يُتابع عبر الـ polling).
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(600);
+        }
+        @ignore_user_abort(true);
+
         $parsed = $this->parser->parse($absolutePath);
         $school = $this->structureSync->resolveSchool($parsed['school_name']);
 

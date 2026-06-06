@@ -366,6 +366,37 @@ class MinistryStudentImportFlowTest extends TestCase
         $this->assertSame(0, School::count());
     }
 
+    public function test_import_created_accounts_share_one_password_hash_to_avoid_timeouts(): void
+    {
+        $admin = $this->bootstrapAdmin();
+
+        $response = $this->importRequest($admin, $this->ministryFile(self::SCHOOL_NAME, self::HIGH_SCHOOL_HEADERS, [
+            ['1000000000000001', 'درويش', 'رائد', 'ذكر', '2009-08-06', 'لا', 'عادي', '2009', '04413', 'الوادي', 'أولى', 'جدع مشترك آداب', '1', 'خارجي', '443', '2024-09-30'],
+            ['1000000000000002', 'مسعودي', 'محمد', 'ذكر', '2010-08-30', 'لا', 'عادي', '2010', '05243', 'الوادي', 'أولى', 'جدع مشترك آداب', '1', 'خارجي', '700', '2026-01-05'],
+        ]), 'mn_token_hash');
+
+        $response->assertOk();
+
+        // حسابات الاستيراد (طالبان + وليان) تشترك في تجزئة واحدة محسوبة مرة
+        // واحدة لكل عملية استيراد — بدلها كانت bcrypt تُحسب لكل حساب وتسبب
+        // تجاوز مهلة التنفيذ على الخادم مع الملفات الكبيرة.
+        $importHashes = User::where('email', 'like', '%@import.local')
+            ->pluck('password')
+            ->unique();
+
+        $this->assertSame(4, User::where('email', 'like', '%@import.local')->count());
+        $this->assertCount(1, $importHashes);
+
+        // كلها must_change_password ولا يمكن تسجيل الدخول بها
+        $this->assertSame(
+            4,
+            User::where('email', 'like', '%@import.local')->where('must_change_password', true)->count()
+        );
+
+        // حساب الأدمن اليدوي لا يتأثر بالتجزئة المشتركة
+        $this->assertNotContains($admin->password, $importHashes->all());
+    }
+
     public function test_non_ministry_file_is_rejected(): void
     {
         $admin = $this->bootstrapAdmin();
