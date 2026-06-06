@@ -639,6 +639,14 @@
                     </div>
                 @endif
 
+                {{-- مفتاح ألوان حالة الدفع --}}
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                    <span class="text-fade fs-12">مفتاح الألوان:</span>
+                    <span class="admin-status admin-pay-paid">مدفوع كلياً</span>
+                    <span class="admin-status admin-pay-partial">مدفوع جزئياً</span>
+                    <span class="admin-status admin-pay-unpaid">غير مدفوع</span>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-bordered text-center">
                         <thead>
@@ -665,6 +673,11 @@
                                 $paidTotal = (float) ($contract->paid_total ?? 0);
                                 $remaining = (float) $contract->total_amount - $paidTotal;
                                 $statusLabels = ['draft' => 'مسودة', 'active' => 'نشط', 'partial' => 'جزئي', 'paid' => 'مدفوع', 'overdue' => 'متأخر'];
+                                // حالة الدفع محسوبة من المبالغ الفعلية (لا من حقل الحالة اليدوي)
+                                $paymentState = $paidTotal <= 0
+                                    ? 'unpaid'
+                                    : ($remaining <= 0.009 ? 'paid' : 'partial');
+                                $paymentLabels = ['paid' => 'مدفوع كلياً', 'partial' => 'مدفوع جزئياً', 'unpaid' => 'غير مدفوع'];
                                 $planLabels = [
                                     'yearly' => 'كاش (دفعة واحدة)',
                                     'monthly' => 'شهري (سبتمبر-أفريل)',
@@ -689,6 +702,7 @@
                                 $phone = $contract->student?->numtelephone ? ('0' . ltrim((string) $contract->student->numtelephone, '0')) : '-';
                             @endphp
                             <tr
+                                class="contract-row-{{ $paymentState }}"
                                 data-contract-id="{{ (string) $contract->id }}"
                                 data-external-contract="{{ (string) ($contract->external_contract_no ?? '') }}"
                                 data-status="{{ $contract->status }}"
@@ -704,9 +718,14 @@
                                 <td><span class="ltr">{{ $phone }}</span></td>
                                 <td>{{ $planLabels[$contract->plan_type] ?? $contract->plan_type }}</td>
                                 <td>{{ number_format((float) $contract->total_amount, 2) }}</td>
-                                <td>{{ number_format($paidTotal, 2) }}</td>
-                                <td>{{ number_format(max($remaining, 0), 2) }}</td>
-                                <td><span class="admin-status admin-status-{{ $contract->status }}">{{ $statusLabels[$contract->status] ?? $contract->status }}</span></td>
+                                <td class="{{ $paidTotal > 0 ? 'pay-amount-paid' : '' }}">{{ number_format($paidTotal, 2) }}</td>
+                                <td class="{{ $remaining > 0.009 ? 'pay-amount-remaining' : 'pay-amount-paid' }}">{{ number_format(max($remaining, 0), 2) }}</td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1 align-items-center">
+                                        <span class="admin-status admin-status-{{ $contract->status }}">{{ $statusLabels[$contract->status] ?? $contract->status }}</span>
+                                        <span class="admin-status admin-pay-{{ $paymentState }}">{{ $paymentLabels[$paymentState] }}</span>
+                                    </div>
+                                </td>
                                 <td style="min-width:280px;">
                                     <button type="button" class="btn btn-sm btn-info mb-1" data-bs-toggle="modal" data-bs-target="#contract-edit-modal-{{ $contract->id }}">
                                         تعديل

@@ -198,12 +198,17 @@
 }
 
 .admin-status-active,
-.admin-status-partial,
 .admin-status-in_review,
 .admin-status-new {
   background: #edf4ff;
   color: #215eaa;
   border-color: #c7daf7;
+}
+
+.admin-status-partial {
+  background: #fff3e0;
+  color: #b26a00;
+  border-color: #ffd699;
 }
 
 .admin-status-overdue,
@@ -212,6 +217,59 @@
   background: #fdeeee;
   color: #a53737;
   border-color: #f3c9c9;
+}
+
+/* تمييز العقود حسب حالة الدفع: أخضر مدفوع، برتقالي جزئي، أحمر غير مدفوع */
+.contract-row-paid > td {
+  background: #f0faf4 !important;
+}
+
+.contract-row-partial > td {
+  background: #fff8ec !important;
+}
+
+.contract-row-unpaid > td {
+  background: #fdf1f1 !important;
+}
+
+.contract-row-paid > td:first-child {
+  border-right: 4px solid #27ae60;
+}
+
+.contract-row-partial > td:first-child {
+  border-right: 4px solid #f39c12;
+}
+
+.contract-row-unpaid > td:first-child {
+  border-right: 4px solid #e74c3c;
+}
+
+.admin-pay-paid {
+  background: #eaf8f1;
+  color: #1d7d54;
+  border-color: #bfe6d2;
+}
+
+.admin-pay-partial {
+  background: #fff3e0;
+  color: #b26a00;
+  border-color: #ffd699;
+}
+
+.admin-pay-unpaid {
+  background: #fdeeee;
+  color: #a53737;
+  border-color: #f3c9c9;
+}
+
+.pay-amount-paid {
+  color: #1d7d54;
+  font-weight: 700;
+}
+
+.pay-amount-remaining {
+  color: #a53737;
+  font-weight: 700;
 }
 
 .pagination {
