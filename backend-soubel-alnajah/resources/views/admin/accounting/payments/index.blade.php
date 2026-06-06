@@ -58,9 +58,35 @@
         flex-wrap: wrap;
         transition: border-color .15s, background .15s;
     }
+    .fam-child-row { cursor: pointer; user-select: none; }
+    .fam-child-row:not(.no-contract):hover { border-color: #2e9e5b99; }
     .fam-child-row.checked { border-color: #2e9e5b; background: #f4fbf7; }
-    .fam-child-row.no-contract { opacity: .6; background: #fafafa; }
+    .fam-child-row.no-contract { opacity: .6; background: #fafafa; cursor: not-allowed; }
     .fam-child-row.is-target { box-shadow: 0 0 0 2px #2e9e5b40; }
+
+    /* مؤشر تحديد واضح بدل checkbox المخفي */
+    .fam-toggle {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        border: 2px solid #c9c4b8;
+        background: #fff;
+        color: transparent;
+        font-weight: 900;
+        font-size: 16px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        transition: all .15s ease;
+    }
+    .fam-child-row.checked .fam-toggle {
+        background: #2e9e5b;
+        border-color: #2e9e5b;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(46, 158, 91, .4);
+    }
     .fam-child-info { flex: 1 1 220px; min-width: 0; }
     .fam-child-name { font-weight: 700; }
     .fam-child-sub { font-size: 12px; color: #888; }
@@ -121,6 +147,7 @@
                 <form method="POST" action="{{ route('accounting.payments.family.store') }}" id="famForm" style="display:none">
                     @csrf
                     <div id="famParentBanner"></div>
+                    <div class="text-muted fs-12 mb-2">{{ trans('accounting.family_payment.toggle_hint') }}</div>
                     <div id="famChildren"></div>
 
                     <div class="row g-2 mt-2">
@@ -434,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const amount = hasContract ? child.contract.remaining : 0;
 
             let html = '<div class="fam-child-row' + (checked ? ' checked' : '') + (hasContract ? '' : ' no-contract') + (child.is_target ? ' is-target' : '') + '">';
-            html += '<input type="checkbox" class="fam-check form-check-input m-0"' + (checked ? ' checked' : '') + (hasContract ? '' : ' disabled') + '>';
+            html += '<span class="fam-toggle">&#10004;</span>';
             html += '<div class="fam-child-info">' +
                 '<div class="fam-child-name">' + escapeHtml(child.name) +
                     (child.is_target ? ' <span class="fam-target-badge">' + TRANS.target + '</span>' : '') +
@@ -465,16 +492,24 @@ document.addEventListener('DOMContentLoaded', function () {
         famForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // ====== تفعيل/تعطيل الصفوف وحساب المجموع ======
+    // ====== تفعيل/تعطيل الصفوف بالنقر على البطاقة كاملة ======
     function bindRows() {
         childrenBox.querySelectorAll('.fam-child-row').forEach(function (row) {
-            const check = row.querySelector('.fam-check');
+            if (row.classList.contains('no-contract')) return;
             const inputs = row.querySelectorAll('input[name^="items["]');
-            if (!check || check.disabled) return;
 
-            check.addEventListener('change', function () {
-                row.classList.toggle('checked', this.checked);
-                inputs.forEach(function (inp) { inp.disabled = !check.checked; });
+            row.addEventListener('click', function (e) {
+                // النقر داخل خانة المبلغ لا يغيّر التحديد
+                if (e.target.closest('.fam-amount-input')) return;
+
+                const willCheck = !row.classList.contains('checked');
+                row.classList.toggle('checked', willCheck);
+                inputs.forEach(function (inp) { inp.disabled = !willCheck; });
+
+                if (willCheck) {
+                    const amountInput = row.querySelector('.fam-amount-input');
+                    if (amountInput) { amountInput.focus(); amountInput.select(); }
+                }
                 recalcTotal();
             });
         });
