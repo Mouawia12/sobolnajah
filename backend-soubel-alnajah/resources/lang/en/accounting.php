@@ -75,6 +75,7 @@ return [
         'submit' => 'Record family payment',
         'receipt_hint' => 'Automatic — never duplicated; sibling receipts get a suffix (/2 /3...)',
         'receipt_auto' => 'Automatic',
+        'toggle_hint' => '💡 Click a child card to select or deselect it, and type each child\'s own amount in their field.',
         'created' => 'Family payment recorded successfully',
         'invalid_contracts' => 'Some selected contracts are invalid or do not belong to your school.',
         'receipt_used' => 'Receipt number already used — choose another one.',

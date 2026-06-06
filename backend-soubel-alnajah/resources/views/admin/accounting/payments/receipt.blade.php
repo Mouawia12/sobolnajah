@@ -109,18 +109,21 @@
 
         $amount = (float) $linePayment->amount;
         $old = $computeOldBalance($linePayment);
+        $contractTotal = (float) ($linePayment->contract?->total_amount ?? 0);
 
         return [
             'name' => $studentName,
             'amount' => $amount,
             'old' => $old,
             'remaining' => max($old - $amount, 0),
+            'previous_paid' => max($contractTotal - $old, 0), // المدفوعات السابقة قبل هذا الوصل
         ];
     });
 
     $currentPaidAmount = $lines->sum('amount');
     $oldBalance = $lines->sum('old');
     $remainingBalance = $lines->sum('remaining');
+    $previousPaidTotal = $lines->sum('previous_paid');
 
     // الحد الأدنى 4 أسطر للحفاظ على شكل الوصل الورقي
     $minRows = 4;
@@ -194,6 +197,10 @@
                     <td class="col-desc" colspan="2">المجموع الكلي</td>
                     <td class="col-amount"><span class="ltr">{{ $money($currentPaidAmount) }}</span></td>
                     <td class="col-amount"><span class="ltr">{{ $money($remainingBalance) }}</span></td>
+                </tr>
+                <tr>
+                    <td class="col-desc" colspan="2">إجمالي المدفوعات السابقة</td>
+                    <td class="col-amount" colspan="2"><span class="ltr">{{ $money($previousPaidTotal) }}</span></td>
                 </tr>
                 <tr>
                     <td class="col-desc" colspan="2">الرصيد القديم (قبل هذه الدفعة)</td>
