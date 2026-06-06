@@ -122,7 +122,7 @@
             <form method="GET" class="row mb-3">
                 <div class="col-md-3">
                     <input type="text" name="q" class="form-control" value="{{ request('q') }}"
-                        placeholder="بحث: الاسم / البريد / الهاتف">
+                        placeholder="بحث: الاسم / رقم التعريف / البريد / الهاتف">
                 </div>
                 <div class="col-md-3">
                     <select name="section_id" class="form-select">
@@ -183,10 +183,24 @@
 
                                 <td>{{ $StudentInfo->firstItem() + $index }}</td>
                                 <td class="col-md-2">
+                                    @php
+                                        $studentEmail = optional($ins->user)->email;
+                                        $isImportEmail = $studentEmail && \Illuminate\Support\Str::endsWith($studentEmail, '@import.local');
+                                    @endphp
                                     <a href="#" class="text-dark fw-600 hover-primary fs-16">{{ $ins->prenom }}
-                                        {{ $ins->nom }}</a><span
-                                        class="text-fade d-block">{{ optional($ins->user)->email }}</span>
-                                    <span class="text-fade d-block">0{{ $ins->numtelephone }}</span>
+                                        {{ $ins->nom }}</a>
+                                    @if ($ins->national_id)
+                                        <span class="badge badge-info-light d-block mt-5 fs-14"
+                                            style="direction: ltr; unicode-bidi: embed; letter-spacing: 1px; width: fit-content; margin-inline: auto;">
+                                            {{ $ins->national_id }}
+                                        </span>
+                                    @endif
+                                    @if ($studentEmail && !$isImportEmail)
+                                        <span class="text-fade d-block">{{ $studentEmail }}</span>
+                                    @endif
+                                    @if (!$ins->national_id)
+                                        <span class="text-fade d-block">0{{ $ins->numtelephone }}</span>
+                                    @endif
                                 </td>
 
 
@@ -198,6 +212,11 @@
                                 <td> {{ $ins->section->name_section }} </td>
 
                                 <td class="col-md-3">
+                                    <a data-bs-target="#modal-show{{ $ins->id }}" data-bs-toggle="modal"
+                                        title="عرض البيانات"
+                                        class="waves-effect waves-light btn btn-info-light btn-circle mx-2"><i
+                                            class="fa fa-eye"></i></a>
+
                                     <a data-bs-target=".modal-update{{ $ins->id }}" data-bs-toggle="modal"
                                         class="waves-effect waves-light btn btn-primary-light btn-circle mx-2"><span
                                             class="icon-Write"><span class="path1"></span><span
@@ -218,6 +237,131 @@
 
                                 </td>
                             </tr>
+
+                            <!-- View student details -->
+                            <div class="modal fade" id="modal-show{{ $ins->id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-info">
+                                            <h5 class="modal-title text-white">
+                                                <i class="fa fa-user me-10"></i>
+                                                {{ $ins->prenom }} {{ $ins->nom }}
+                                                @if ($ins->national_id)
+                                                    <span class="badge bg-white text-info ms-10 fs-14"
+                                                        style="direction: ltr; unicode-bidi: embed; letter-spacing: 1px;">
+                                                        {{ $ins->national_id }}
+                                                    </span>
+                                                @endif
+                                            </h5>
+                                            <button type="button" class="btn-close btn-close-white"
+                                                data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+
+                                            <h4 class="box-title text-info mb-0"><i class="ti-home me-15"></i>معلومات
+                                                التمدرس</h4>
+                                            <hr class="my-15">
+                                            <div class="row">
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.ecole') }}</span>
+                                                    <span class="fw-600">{{ $ins->section->classroom->schoolgrade->school->name_school ?? '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.niveau') }}</span>
+                                                    <span class="fw-600">{{ $ins->section->classroom->schoolgrade->name_grade ?? '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.Anneescolaire') }}</span>
+                                                    <span class="fw-600">{{ $ins->section->classroom->name_class ?? '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.section') }}</span>
+                                                    <span class="fw-600">{{ $ins->section->name_section ?? '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">نظام التمدرس</span>
+                                                    <span class="fw-600">{{ $ins->schooling_system ?: '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">رقم القيد</span>
+                                                    <span class="fw-600" style="direction: ltr; unicode-bidi: embed;">{{ $ins->registration_number ?: '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">تاريخ التسجيل</span>
+                                                    <span class="fw-600">{{ optional($ins->enrolled_at)->format('Y-m-d') ?: '—' }}</span>
+                                                </div>
+                                            </div>
+
+                                            <h4 class="box-title text-info mb-0"><i class="ti-id-badge me-15"></i>المعلومات
+                                                الشخصية</h4>
+                                            <hr class="my-15">
+                                            <div class="row">
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">رقم التعريف المدرسي</span>
+                                                    <span class="fw-600" style="direction: ltr; unicode-bidi: embed; letter-spacing: 1px;">{{ $ins->national_id ?: '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.gender') }}</span>
+                                                    <span class="fw-600">{{ $ins->gender == 1 ? trans('inscription.male') : trans('inscription.female') }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.datenaissance') }}</span>
+                                                    <span class="fw-600">{{ $ins->datenaissance ?: '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.lieunaissance') }}</span>
+                                                    <span class="fw-600">{{ $ins->lieunaissance ?: '—' }}</span>
+                                                </div>
+                                                <div class="col-md-4 mb-15">
+                                                    <span class="text-fade d-block fs-12">{{ trans('inscription.wilaya') }} / {{ trans('inscription.dayra') }} / {{ trans('inscription.baladia') }}</span>
+                                                    <span class="fw-600">{{ $ins->wilaya ?: '—' }} / {{ $ins->dayra ?: '—' }} / {{ $ins->baladia ?: '—' }}</span>
+                                                </div>
+                                                @unless ($isImportEmail)
+                                                    <div class="col-md-4 mb-15">
+                                                        <span class="text-fade d-block fs-12">{{ trans('inscription.email') }}</span>
+                                                        <span class="fw-600">{{ $studentEmail ?: '—' }}</span>
+                                                    </div>
+                                                @endunless
+                                                @if ((string) $ins->numtelephone !== (string) $ins->national_id)
+                                                    <div class="col-md-4 mb-15">
+                                                        <span class="text-fade d-block fs-12">{{ trans('inscription.numtelephone') }}</span>
+                                                        <span class="fw-600" style="direction: ltr; unicode-bidi: embed;">0{{ $ins->numtelephone }}</span>
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            @if ($ins->birth_certificate_type || $ins->birth_certificate_number || $ins->birth_record_year)
+                                                <h4 class="box-title text-info mb-0"><i class="ti-files me-15"></i>الحالة
+                                                    المدنية</h4>
+                                                <hr class="my-15">
+                                                <div class="row">
+                                                    <div class="col-md-4 mb-15">
+                                                        <span class="text-fade d-block fs-12">عقد الميلاد</span>
+                                                        <span class="fw-600">{{ $ins->birth_certificate_type ?: '—' }}</span>
+                                                    </div>
+                                                    <div class="col-md-4 mb-15">
+                                                        <span class="text-fade d-block fs-12">رقم عقد الميلاد</span>
+                                                        <span class="fw-600">{{ $ins->birth_certificate_number ?: '—' }}</span>
+                                                    </div>
+                                                    <div class="col-md-4 mb-15">
+                                                        <span class="text-fade d-block fs-12">سنة التسجيل في سجل الولادات</span>
+                                                        <span class="fw-600">{{ $ins->birth_record_year ?: '—' }}</span>
+                                                    </div>
+                                                    <div class="col-md-4 mb-15">
+                                                        <span class="text-fade d-block fs-12">مولود بحكم</span>
+                                                        <span class="fw-600">{{ $ins->born_by_judgment ? 'نعم' : 'لا' }}</span>
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                        </div>
+                                        <div class="modal-footer modal-footer-uniform">
+                                            <a type="button" class="btn btn-danger"
+                                                data-bs-dismiss="modal">{{ trans('opt.close') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Delete -->
                             <div class="modal center-modal fade" id="modal-delete{{ $ins->id }}"
@@ -333,6 +477,27 @@
                                                     <hr class="my-15">
 
                                                     <div class="row">
+                                                        @if ($ins->national_id)
+                                                            <div class="col-md-4">
+                                                                <div class="form-group">
+                                                                    <label class="form-label">رقم التعريف
+                                                                        المدرسي</label>
+                                                                    <input type="text" class="form-control bg-lightest"
+                                                                        value="{{ $ins->national_id }}" readonly
+                                                                        style="direction: ltr; letter-spacing: 1px;">
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                        @if ($ins->registration_number)
+                                                            <div class="col-md-4">
+                                                                <div class="form-group">
+                                                                    <label class="form-label">رقم القيد</label>
+                                                                    <input type="text" class="form-control bg-lightest"
+                                                                        value="{{ $ins->registration_number }}" readonly
+                                                                        style="direction: ltr;">
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                         <div class="col-md-4">
                                                             <div class="form-group">
                                                                 <label

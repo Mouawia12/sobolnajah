@@ -71,6 +71,8 @@ class StudentController extends Controller
                         ->orWhere('nom->fr', 'like', '%' . $search . '%')
                         ->orWhere('nom->ar', 'like', '%' . $search . '%')
                         ->orWhere('numtelephone', 'like', '%' . $search . '%')
+                        ->orWhere('national_id', 'like', '%' . $search . '%')
+                        ->orWhere('registration_number', 'like', '%' . $search . '%')
                         ->orWhereHas('user', function ($userQuery) use ($search) {
                             $userQuery->where('email', 'like', '%' . $search . '%');
                         });
