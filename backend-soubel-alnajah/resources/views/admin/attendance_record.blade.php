@@ -301,6 +301,113 @@
         .att-status-btn { width: 42px; height: 42px; }
         .att-avatar { flex-basis: 42px; width: 42px; height: 42px; font-size: 14px; }
     }
+
+    /* ====== iPad والحاسوب: استغلال كامل للمساحة ====== */
+    @media (min-width: 768px) {
+        .att-page {
+            max-width: none;
+            padding: 22px 26px;
+        }
+
+        /* شريط أدوات موحّد أبيض لاصق بالأعلى */
+        .att-topbar {
+            position: sticky;
+            top: 76px;
+            z-index: 20;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 3px 14px rgba(0, 0, 0, .08);
+            padding: 16px 20px 8px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 18px;
+        }
+
+        .att-topbar .att-filters {
+            flex: 1 1 46%;
+            margin-bottom: 0;
+            min-width: 300px;
+        }
+
+        .att-topbar .att-filters .form-select,
+        .att-topbar .att-filters .form-control {
+            box-shadow: none;
+            background-color: #faf8f5;
+        }
+
+        .att-topbar .att-meta-row {
+            flex: 1 1 42%;
+            margin-bottom: 0;
+            min-width: 280px;
+        }
+
+        .att-topbar .att-search {
+            box-shadow: none;
+            background-color: #faf8f5;
+        }
+
+        .att-topbar .att-hours {
+            flex: 1 1 56%;
+            margin-bottom: 0;
+            padding-bottom: 0;
+            min-width: 320px;
+            order: 3;
+        }
+
+        .att-topbar .att-bulk {
+            flex: 1 1 36%;
+            margin-bottom: 0;
+            justify-content: flex-end;
+            order: 4;
+        }
+
+        .att-topbar .att-bulk-chip {
+            flex: 0 0 auto;
+            box-shadow: none;
+        }
+
+        /* دليل الألوان: سطر رفيع أسفل الشريط */
+        .att-topbar .att-legend {
+            order: 5;
+            flex: 1 1 100%;
+            background: transparent;
+            border-radius: 0;
+            border-top: 1px dashed #e8e4dc;
+            padding: 10px 4px 4px;
+            margin-bottom: 0;
+            justify-content: flex-start;
+            gap: 28px;
+        }
+
+        .att-topbar .att-legend-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+        }
+
+        .att-topbar .att-legend-icon svg { width: 14px; height: 14px; }
+
+        /* شبكة كروت بعمودين */
+        #attList {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        #attList .att-card { margin-bottom: 0; }
+        #attList .att-loading { grid-column: 1 / -1; }
+
+        .att-empty { padding: 80px 20px; }
+    }
+
+    /* شاشات واسعة: 3 أعمدة */
+    @media (min-width: 1200px) {
+        #attList {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
 </style>
 
 {{-- قوالب SVG للأيقونات (تُستنسخ بالـ JS) --}}
@@ -323,6 +430,8 @@
 </svg>
 
 <div class="att-page">
+
+    <div class="att-topbar">
 
     {{-- شريط الفلاتر: القسم + التاريخ --}}
     <div class="att-filters">
@@ -386,6 +495,8 @@
             {{ trans('opt.absent') }}
         </span>
     </div>
+
+    </div>{{-- /att-topbar --}}
 
     {{-- قائمة التلاميذ --}}
     <div id="attList"></div>
