@@ -64,31 +64,66 @@
         $guardianName = '-';
     }
 
-    $receiptNumber = (string) ($payment->receipt_number ?: ($payment->receipt?->receipt_code ?: $payment->id));
+    // دفعات العائلة (دفعة شاملة للإخوة) أو الدفعة المنفردة
+    $familyPayments = ($familyPayments ?? collect([$payment]))->values();
+
+    // رقم الوصل المعروض = الرقم الأساسي (أول دفعة في المجموعة، بدون لاحقة /2 /3)
+    $basePayment = $familyPayments->first() ?: $payment;
+    $receiptNumber = (string) ($basePayment->receipt_number ?: ($payment->receipt?->receipt_code ?: $payment->id));
     $receiptDate = optional($payment->paid_on)->format('d/m/Y') ?: optional($payment->created_at)->format('d/m/Y');
 
-    $contractTotal = (float) ($contract?->total_amount ?? 0);
-    $currentPaidAmount = (float) $payment->amount;
-    $paymentDateKey = optional($payment->paid_on)->format('Y-m-d') ?: optional($payment->created_at)->format('Y-m-d');
+    // حساب الرصيد القديم لعقد معيّن قبل دفعة معيّنة (ترتيب زمني)
+    $computeOldBalance = static function ($linePayment): float {
+        $lineContract = $linePayment->contract;
+        $contractTotal = (float) ($lineContract?->total_amount ?? 0);
+        $paymentDateKey = optional($linePayment->paid_on)->format('Y-m-d') ?: optional($linePayment->created_at)->format('Y-m-d');
 
-    $paidBeforeCurrent = collect($contract?->payments ?? [])->filter(
-        static function ($contractPayment) use ($payment, $paymentDateKey): bool {
-            if ((int) $contractPayment->id === (int) $payment->id) {
-                return false;
+        $paidBefore = collect($lineContract?->payments ?? [])->filter(
+            static function ($contractPayment) use ($linePayment, $paymentDateKey): bool {
+                if ((int) $contractPayment->id === (int) $linePayment->id) {
+                    return false;
+                }
+
+                $candidateDateKey = optional($contractPayment->paid_on)->format('Y-m-d') ?: optional($contractPayment->created_at)->format('Y-m-d');
+
+                if ($candidateDateKey < $paymentDateKey) {
+                    return true;
+                }
+
+                return $candidateDateKey === $paymentDateKey && (int) $contractPayment->id < (int) $linePayment->id;
             }
+        )->sum(static fn ($contractPayment): float => (float) $contractPayment->amount);
 
-            $candidateDateKey = optional($contractPayment->paid_on)->format('Y-m-d') ?: optional($contractPayment->created_at)->format('Y-m-d');
+        return max($contractTotal - $paidBefore, 0);
+    };
 
-            if ($candidateDateKey < $paymentDateKey) {
-                return true;
-            }
-
-            return $candidateDateKey === $paymentDateKey && (int) $contractPayment->id < (int) $payment->id;
+    // سطر لكل ابن: الاسم + المبلغ + الرصيد القديم + الباقي
+    $lines = $familyPayments->map(static function ($linePayment) use ($pickTranslation, $computeOldBalance): array {
+        $lineStudent = $linePayment->contract?->student;
+        $studentName = trim(
+            $pickTranslation($lineStudent?->prenom ?? '') . ' ' . $pickTranslation($lineStudent?->nom ?? '')
+        );
+        if ($studentName === '') {
+            $studentName = $pickTranslation($lineStudent?->user?->name ?? '') ?: ('تلميذ #' . ($linePayment->contract?->student_id ?? ''));
         }
-    )->sum(static fn ($contractPayment): float => (float) $contractPayment->amount);
 
-    $oldBalance = max($contractTotal - (float) $paidBeforeCurrent, 0);
-    $remainingBalance = max($oldBalance - $currentPaidAmount, 0);
+        $amount = (float) $linePayment->amount;
+        $old = $computeOldBalance($linePayment);
+
+        return [
+            'name' => $studentName,
+            'amount' => $amount,
+            'old' => $old,
+            'remaining' => max($old - $amount, 0),
+        ];
+    });
+
+    $currentPaidAmount = $lines->sum('amount');
+    $oldBalance = $lines->sum('old');
+    $remainingBalance = $lines->sum('remaining');
+
+    // الحد الأدنى 4 أسطر للحفاظ على شكل الوصل الورقي
+    $minRows = 4;
 
     $schoolName = $pickTranslation($school?->name_school ?? '') ?: 'مدرسة سبل النجاح الخاصة';
     $schoolAddress = 'حي الرمال ولاية الوادي';
@@ -131,26 +166,20 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td class="col-no">1</td>
-                    <td class="col-desc">تلميذ الاول</td>
-                    <td class="col-amount">&nbsp;</td>
-                </tr>
-                <tr>
-                    <td class="col-no">2</td>
-                    <td class="col-desc">اخوه 2 ان وجد</td>
-                    <td class="col-amount">&nbsp;</td>
-                </tr>
-                <tr>
-                    <td class="col-no">3</td>
-                    <td class="col-desc">اخوه 3 ان وجد</td>
-                    <td class="col-amount">&nbsp;</td>
-                </tr>
-                <tr>
-                    <td class="col-no">4</td>
-                    <td class="col-desc">اخوه 4 ان وجد</td>
-                    <td class="col-amount">&nbsp;</td>
-                </tr>
+                @foreach ($lines as $index => $line)
+                    <tr>
+                        <td class="col-no">{{ $index + 1 }}</td>
+                        <td class="col-desc">{{ $line['name'] }}</td>
+                        <td class="col-amount ltr">{{ number_format($line['amount'], 2) }}</td>
+                    </tr>
+                @endforeach
+                @for ($i = $lines->count(); $i < $minRows; $i++)
+                    <tr>
+                        <td class="col-no">{{ $i + 1 }}</td>
+                        <td class="col-desc">&nbsp;</td>
+                        <td class="col-amount">&nbsp;</td>
+                    </tr>
+                @endfor
                 <tr>
                     <td class="col-no">&nbsp;</td>
                     <td class="col-desc">مبلغ المدفوع</td>

@@ -253,6 +253,9 @@ Route::group(
 
             Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
             Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
+            Route::get('/accounting/payments/family-search', [PaymentController::class, 'familySearch'])->name('accounting.payments.family.search');
+            Route::get('/accounting/payments/family-data', [PaymentController::class, 'familyData'])->name('accounting.payments.family.data');
+            Route::post('/accounting/payments/family', [PaymentController::class, 'storeFamily'])->name('accounting.payments.family.store');
             Route::get('/accounting/payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('accounting.payments.receipt');
         });
     });
