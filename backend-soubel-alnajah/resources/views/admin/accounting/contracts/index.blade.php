@@ -525,8 +525,24 @@
                         <select name="student_id" id="studentSelect" class="d-none">
                             <option value="">اختر التلميذ</option>
                             @foreach($students as $student)
+                                @php
+                                    $studentLabel = trim(($student->prenom ?? '') . ' ' . ($student->nom ?? ''));
+                                    if ($studentLabel === '') {
+                                        $studentLabel = $student->user->name ?? ('Student #' . $student->id);
+                                    }
+                                    $sectionLabel = trim(
+                                        ($student->section->classroom->schoolgrade->name_grade ?? '') . ' / ' .
+                                        ($student->section->name_section ?? ''), ' /'
+                                    );
+                                    if ($sectionLabel !== '') {
+                                        $studentLabel .= ' — ' . $sectionLabel;
+                                    }
+                                    if (!empty($student->national_id)) {
+                                        $studentLabel .= ' — ' . $student->national_id;
+                                    }
+                                @endphp
                                 <option value="{{ $student->id }}" {{ (string) old('student_id') === (string) $student->id ? 'selected' : '' }}>
-                                    {{ $student->user->name ?? ('Student #' . $student->id) }}
+                                    {{ $studentLabel }}
                                 </option>
                             @endforeach
                         </select>
@@ -536,7 +552,7 @@
                                 <span>▾</span>
                             </button>
                             <div class="student-search-menu" id="studentSearchMenu">
-                                <input type="text" id="studentSearchInput" class="form-control" placeholder="ابحث بالاسم...">
+                                <input type="text" id="studentSearchInput" class="form-control" placeholder="ابحث بالاسم أو رقم التعريف أو القسم...">
                                 <div class="student-search-list" id="studentSearchList"></div>
                             </div>
                         </div>
@@ -903,10 +919,27 @@
                     searchInput.select();
                 }
 
+                // تطبيع عربي: أ/إ/آ → ا، ة → ه، ى → ي، حذف التشكيل — حتى يجد البحث الاسم بأي كتابة
+                function normalizeArabic(str) {
+                    return (str || '')
+                        .toLowerCase()
+                        .replace(/[ً-ٰٟ]/g, '')
+                        .replace(/[أإآٱ]/g, 'ا')
+                        .replace(/ة/g, 'ه')
+                        .replace(/ى/g, 'ي')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
+
                 function renderList(term) {
-                    const normalized = (term || '').trim().toLowerCase();
+                    const normalized = normalizeArabic(term);
+                    // دعم البحث بعدة كلمات بأي ترتيب: "خزان محمد" يجد "محمد لمين خزان"
+                    const words = normalized.split(' ').filter(Boolean);
                     const filtered = studentOptions.filter(function (item) {
-                        return item.text.toLowerCase().indexOf(normalized) !== -1;
+                        const haystack = normalizeArabic(item.text);
+                        return words.every(function (word) {
+                            return haystack.indexOf(word) !== -1;
+                        });
                     });
 
                     list.innerHTML = '';
