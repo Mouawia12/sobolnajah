@@ -647,13 +647,17 @@
 
             activeToken = generateToken();
             tokenInput.value = activeToken;
+
+            // مهم: بناء FormData قبل تعطيل الحقول — الحقول المعطّلة تُستبعد
+            // من بيانات النموذج فلا يصل الملف للخادم ("الحقل file مطلوب").
+            const formData = new FormData(form);
+
             resetPanel();
             lockForm(true);
             startPolling();
             await pollStatusOnce();
 
             try {
-                const formData = new FormData(form);
                 const response = await fetch(form.action, {
                     method: 'POST',
                     body: formData,
