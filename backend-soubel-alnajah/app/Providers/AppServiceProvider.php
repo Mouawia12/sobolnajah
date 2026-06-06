@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Inscription\StudentInfo;
 use App\Services\HomeDashboardCacheService;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
 
@@ -26,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // الثيم الإداري مبني على Bootstrap — قالب الترقيم الافتراضي (Tailwind)
+        // يعرض أسهم SVG عملاقة بدون تنسيق.
+        Paginator::useBootstrapFive();
+
         // Compatibility for older Blade compilers that don't provide @selected.
         Blade::directive('selected', function ($expression) {
             return "<?php echo ($expression) ? 'selected' : ''; ?>";
