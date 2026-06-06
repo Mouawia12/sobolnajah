@@ -17,7 +17,8 @@ class StorePaymentRequest extends FormRequest
         return [
             'contract_id' => ['required', 'integer', 'exists:student_contracts,id'],
             'installment_id' => ['nullable', 'integer', 'exists:contract_installments,id'],
-            'receipt_number' => ['required', 'string', 'max:80'],
+            // اختياري — يُولَّد تلقائياً إن تُرك فارغاً
+            'receipt_number' => ['nullable', 'string', 'max:80'],
             'paid_on' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method' => ['nullable', Rule::in(['cash', 'transfer', 'card', 'other'])],

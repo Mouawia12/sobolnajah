@@ -15,7 +15,8 @@ class StoreFamilyPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'receipt_number' => ['required', 'string', 'max:70'],
+            // اختياري — يُولَّد تلقائياً إن تُرك فارغاً
+            'receipt_number' => ['nullable', 'string', 'max:70'],
             'paid_on' => ['required', 'date'],
             'payment_method' => ['nullable', Rule::in(['cash', 'transfer', 'card', 'other'])],
             'notes' => ['nullable', 'string'],

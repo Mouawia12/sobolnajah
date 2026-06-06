@@ -126,7 +126,8 @@
                     <div class="row g-2 mt-2">
                         <div class="col-md-3">
                             <label class="form-label">{{ trans('accounting.payments_page.receipt_number') }}</label>
-                            <input type="text" class="form-control" name="receipt_number" id="famReceiptNumber" required>
+                            <input type="text" class="form-control" name="receipt_number" id="famReceiptNumber"
+                                value="{{ $nextReceiptNumber }}" placeholder="{{ trans('accounting.family_payment.receipt_auto') }}">
                             <small class="text-muted">{{ trans('accounting.family_payment.receipt_hint') }}</small>
                         </div>
                         <div class="col-md-3">
@@ -178,7 +179,9 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">{{ trans('accounting.payments_page.receipt_number') }}</label>
-                        <input type="text" class="form-control" name="receipt_number" value="{{ old('receipt_number') }}" required>
+                        <input type="text" class="form-control" name="receipt_number"
+                            value="{{ old('receipt_number', $nextReceiptNumber) }}"
+                            placeholder="{{ trans('accounting.family_payment.receipt_auto') }}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">{{ trans('accounting.payments_page.date') }}</label>
