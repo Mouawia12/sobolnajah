@@ -128,7 +128,10 @@
     $schoolName = $pickTranslation($school?->name_school ?? '') ?: 'مدرسة سبل النجاح الخاصة';
     $schoolAddress = 'حي الرمال ولاية الوادي';
     $schoolPhones = '0542454226/0663154663';
-    $formattedPaid = number_format($currentPaidAmount, 2);
+
+    // تنسيق مدمج: بدون كسور إن كان المبلغ صحيحاً (يوفّر مساحة في الجدول)
+    $money = static fn (float $value): string => number_format($value, fmod($value, 1.0) > 0.004 ? 2 : 0);
+    $formattedPaid = $money($currentPaidAmount);
 @endphp
 
 <div class="receipt-toolbar admin-print-hide">
@@ -152,6 +155,10 @@
 
         <div class="receipt-line"><strong>اسم ولقب والي التلميذ:</strong> {{ $guardianName }}</div>
 
+        @if ($lines->count() > 1)
+            <div class="receipt-line receipt-family-note">وصل شامل يضم <strong>{{ $lines->count() }}</strong> أبناء</div>
+        @endif
+
         <div class="receipt-meta">
             <div><strong>رقم الوصل :</strong> <span class="ltr">{{ $receiptNumber }}</span></div>
             <div><strong>تاريخ :</strong> <span class="ltr">{{ $receiptDate ?: '-' }}</span></div>
@@ -161,8 +168,9 @@
             <thead>
                 <tr>
                     <th class="col-no">رقم</th>
-                    <th class="col-desc">تعيين</th>
-                    <th class="col-amount">مبلغ</th>
+                    <th class="col-desc">اسم التلميذ</th>
+                    <th class="col-amount">المدفوع</th>
+                    <th class="col-amount">المتبقي</th>
                 </tr>
             </thead>
             <tbody>
@@ -170,7 +178,8 @@
                     <tr>
                         <td class="col-no">{{ $index + 1 }}</td>
                         <td class="col-desc">{{ $line['name'] }}</td>
-                        <td class="col-amount ltr">{{ number_format($line['amount'], 2) }}</td>
+                        <td class="col-amount"><span class="ltr">{{ $money($line['amount']) }}</span></td>
+                        <td class="col-amount"><span class="ltr">{{ $money($line['remaining']) }}</span></td>
                     </tr>
                 @endforeach
                 @for ($i = $lines->count(); $i < $minRows; $i++)
@@ -178,22 +187,17 @@
                         <td class="col-no">{{ $i + 1 }}</td>
                         <td class="col-desc">&nbsp;</td>
                         <td class="col-amount">&nbsp;</td>
+                        <td class="col-amount">&nbsp;</td>
                     </tr>
                 @endfor
-                <tr>
-                    <td class="col-no">&nbsp;</td>
-                    <td class="col-desc">مبلغ المدفوع</td>
-                    <td class="col-amount ltr">{{ number_format($currentPaidAmount, 2) }}</td>
+                <tr class="receipt-total-row">
+                    <td class="col-desc" colspan="2">المجموع الكلي</td>
+                    <td class="col-amount"><span class="ltr">{{ $money($currentPaidAmount) }}</span></td>
+                    <td class="col-amount"><span class="ltr">{{ $money($remainingBalance) }}</span></td>
                 </tr>
                 <tr>
-                    <td class="col-no">&nbsp;</td>
-                    <td class="col-desc">رصيد قديم</td>
-                    <td class="col-amount ltr">{{ number_format($oldBalance, 2) }}</td>
-                </tr>
-                <tr>
-                    <td class="col-no">&nbsp;</td>
-                    <td class="col-desc">باقي الرصيد</td>
-                    <td class="col-amount ltr">{{ number_format($remainingBalance, 2) }}</td>
+                    <td class="col-desc" colspan="2">الرصيد القديم (قبل هذه الدفعة)</td>
+                    <td class="col-amount" colspan="2"><span class="ltr">{{ $money($oldBalance) }}</span></td>
                 </tr>
             </tbody>
         </table>
@@ -298,34 +302,54 @@
 .receipt-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 5.6mm;
+    table-layout: fixed; /* يمنع تمدد الأعمدة وخروج المبالغ عن الهامش */
+    font-size: 5mm;
 }
 
 .receipt-table th,
 .receipt-table td {
     border: 1px solid #8e8e8e;
-    padding: 1.6mm 1.9mm;
+    padding: 1.4mm 1.5mm;
     height: 8.5mm;
     line-height: 1.2;
+    overflow: hidden;
 }
 
 .receipt-table th {
     font-weight: 700;
+    text-align: center;
+    font-size: 4.8mm;
 }
 
 .col-no {
-    width: 9.5%;
+    width: 8%;
     text-align: center;
 }
 
 .col-desc {
-    width: 57%;
+    width: 48%;
     text-align: right;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .col-amount {
-    width: 33.5%;
+    width: 22%;
     text-align: center;
+    white-space: nowrap;
+    font-size: 4.6mm;
+}
+
+.receipt-total-row td {
+    font-weight: 700;
+    background: #f2f2f2;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.receipt-family-note {
+    font-size: 4.8mm;
+    color: #333;
 }
 
 .receipt-final-line {

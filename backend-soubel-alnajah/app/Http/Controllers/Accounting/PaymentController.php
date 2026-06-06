@@ -96,6 +96,7 @@ class PaymentController extends Controller
             'contracts' => $contracts,
             'overdue' => $overdue,
             'sections' => $sections,
+            'nextReceiptNumber' => $schoolId ? $this->nextReceiptNumber((int) $schoolId) : '001',
             'breadcrumbs' => [
                 ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => $this->dashboardUrl()],
                 ['label' => trans('accounting.breadcrumbs.payments')],
@@ -113,13 +114,16 @@ class PaymentController extends Controller
             ->forSchool($this->currentSchoolId())
             ->findOrFail($validated['contract_id']);
 
+        // رقم وصل تلقائي غير مكرر (يُرفع للتالي إن تعارض)
+        $receiptNumber = $this->resolveReceiptNumber($validated['receipt_number'] ?? null, (int) $contract->school_id);
+
         try {
-            DB::transaction(function () use ($validated, $contract) {
+            DB::transaction(function () use ($validated, $contract, $receiptNumber) {
                 $payment = Payment::query()->create([
                     'school_id' => $contract->school_id,
                     'contract_id' => $contract->id,
                     'installment_id' => $validated['installment_id'] ?? null,
-                    'receipt_number' => $validated['receipt_number'],
+                    'receipt_number' => $receiptNumber,
                     'paid_on' => $validated['paid_on'],
                     'amount' => $validated['amount'],
                     'payment_method' => $validated['payment_method'] ?? 'cash',
@@ -392,18 +396,32 @@ class PaymentController extends Controller
         }
 
         // أرقام الوصولات: الأساسي للأول ثم لاحقة /2 /3 ... للإخوة (قيد uniqueness)
+        // الرقم تلقائي إن تُرك فارغاً، ويُرفع للتالي إن تعارضت المجموعة مع أرقام موجودة
         $items = array_values($validated['items']);
-        $baseNumber = trim($validated['receipt_number']);
-        $receiptNumbers = [];
-        foreach ($items as $index => $item) {
-            $receiptNumbers[$index] = $index === 0 ? $baseNumber : $baseNumber . '/' . ($index + 1);
+        $contractSchoolId = (int) $contracts->first()->school_id;
+        $baseNumber = trim((string) ($validated['receipt_number'] ?? ''));
+        if ($baseNumber === '') {
+            $baseNumber = $this->nextReceiptNumber($contractSchoolId);
         }
 
-        $alreadyUsed = Payment::query()
-            ->where('school_id', $contracts->first()->school_id)
-            ->whereIn('receipt_number', $receiptNumbers)
-            ->exists();
-        if ($alreadyUsed) {
+        $attempts = 0;
+        do {
+            $receiptNumbers = [];
+            foreach ($items as $index => $item) {
+                $receiptNumbers[$index] = $index === 0 ? $baseNumber : $baseNumber . '/' . ($index + 1);
+            }
+
+            $conflict = Payment::query()
+                ->where('school_id', $contractSchoolId)
+                ->whereIn('receipt_number', $receiptNumbers)
+                ->exists();
+
+            if ($conflict) {
+                $baseNumber = $this->bumpReceiptNumber($baseNumber);
+            }
+        } while ($conflict && ++$attempts < 100);
+
+        if ($conflict) {
             return back()->withErrors(['error' => trans('accounting.family_payment.receipt_used')])->withInput();
         }
 
@@ -457,6 +475,59 @@ class PaymentController extends Controller
 
         // فتح الوصل العائلي مباشرة للطباعة
         return redirect()->route('accounting.payments.receipt', $firstPayment);
+    }
+
+    /**
+     * الرقم التالي للوصل في المدرسة: أكبر رقم عددي موجود + 1 (بحد أدنى 3 خانات).
+     */
+    private function nextReceiptNumber(int $schoolId): string
+    {
+        $max = (int) Payment::query()
+            ->where('school_id', $schoolId)
+            ->whereRaw("receipt_number REGEXP '^[0-9]+$'")
+            ->selectRaw('MAX(CAST(receipt_number AS UNSIGNED)) as max_number')
+            ->value('max_number');
+
+        return str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * رفع الرقم للتالي عند التعارض: الأرقام تُزاد، والنصوص تأخذ لاحقة -2 -3...
+     */
+    private function bumpReceiptNumber(string $number): string
+    {
+        if (ctype_digit($number)) {
+            $length = strlen($number);
+            return str_pad((string) ((int) $number + 1), $length, '0', STR_PAD_LEFT);
+        }
+
+        if (preg_match('/^(.*)-(\d+)$/', $number, $matches)) {
+            return $matches[1] . '-' . ((int) $matches[2] + 1);
+        }
+
+        return $number . '-2';
+    }
+
+    /**
+     * يضمن رقم وصل حر (غير مكرر) لهذه المدرسة انطلاقاً من رقم مقترح أو تلقائياً.
+     */
+    private function resolveReceiptNumber(?string $requested, int $schoolId): string
+    {
+        $number = trim((string) $requested);
+        if ($number === '') {
+            $number = $this->nextReceiptNumber($schoolId);
+        }
+
+        $attempts = 0;
+        while (
+            $attempts < 100 &&
+            Payment::query()->where('school_id', $schoolId)->where('receipt_number', $number)->exists()
+        ) {
+            $number = $this->bumpReceiptNumber($number);
+            $attempts++;
+        }
+
+        return $number;
     }
 
     private function refreshContractStatus(StudentContract $contract): void
