@@ -9,6 +9,7 @@ use App\Http\Controllers\School\ClassroomController;
 use App\Http\Controllers\School\SectionController;
 use App\Http\Controllers\Inscription\InscriptionController;
 use App\Http\Controllers\Inscription\StudentController;
+use App\Http\Controllers\Inscription\ParentController;
 use App\Http\Controllers\Inscription\TeacherController;
 use App\Http\Controllers\AgendaScolaire\AgendaController;
 use App\Http\Controllers\AgendaScolaire\GradeController;
@@ -175,6 +176,10 @@ Route::group(
             Route::post('/delete_all',[ClassroomController::class,'delete_all'])->name('delete_all');
             Route::post('/store/{id}',[FunctionController::class,'store']);
             Route::get('/admin/change-password', [FunctionController::class, 'showChangePasswordPage'])->name('admin.password.change.page');
+            Route::get('/Parents/students-search', [ParentController::class, 'searchStudents'])->name('Parents.students.search');
+            Route::post('/Parents/merge', [ParentController::class, 'merge'])->name('Parents.merge');
+            Route::post('/Parents/{parent}/link-student', [ParentController::class, 'linkStudent'])->name('Parents.link');
+            Route::resource('Parents', ParentController::class)->only(['index', 'store', 'update', 'destroy']);
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
             Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');

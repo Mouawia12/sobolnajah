@@ -123,6 +123,7 @@
                                 <li><a href="{{ route('Inscriptions.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('inscription.studentinscription') }}</a></li>
                                 <li><a href="{{ route('Students.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.studentlist') }}</a></li>
                                 <li><a href="{{ route('Students.create') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.addstudent') }}</a></li>
+                                <li><a href="{{ route('Parents.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>أولياء الأمور</a></li>
                                 <li><a href="{{ route('Promotions.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.promotion') }}</a></li>
                                 <li><a href="{{ route('graduated.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.graduated') }}</a></li>
                                 <li><a href="{{ route('Absences.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.Absences') }}</a></li>

@@ -44,4 +44,23 @@ class MyParent extends Model
             $sectionQuery->where('school_id', $schoolId);
         });
     }
+
+    /**
+     * نطاق أوسع من forSchool: يشمل أيضاً الأولياء بلا أبناء المنتمين
+     * للمدرسة عبر حساب المستخدم (users.school_id).
+     */
+    public function scopeBelongingToSchool(Builder $query, ?int $schoolId): Builder
+    {
+        if (!$schoolId) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $scopedQuery) use ($schoolId) {
+            $scopedQuery->whereHas('students.section', function (Builder $sectionQuery) use ($schoolId) {
+                $sectionQuery->where('school_id', $schoolId);
+            })->orWhereHas('user', function (Builder $userQuery) use ($schoolId) {
+                $userQuery->where('school_id', $schoolId);
+            });
+        });
+    }
 }
