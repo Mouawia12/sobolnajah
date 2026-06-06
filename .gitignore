@@ -19,3 +19,6 @@ backend-soubel-alnajah/.phpunit.result.cache
 .idea/
 .vscode/
 .claude/
+
+# Server-specific Apache config
+/.htaccess
