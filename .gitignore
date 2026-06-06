@@ -18,3 +18,4 @@ backend-soubel-alnajah/.phpunit.result.cache
 # Editors
 .idea/
 .vscode/
+.claude/
