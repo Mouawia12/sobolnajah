@@ -77,12 +77,18 @@ class ContractController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // كل تلاميذ المدرسة بدون حد — مع الاسم الكامل والقسم ورقم التعريف للبحث الدقيق
         $students = StudentInfo::query()
             ->forSchool($schoolId)
-            ->select(['id', 'user_id', 'created_at'])
-            ->with('user:id,name')
-            ->orderByDesc('created_at')
-            ->limit(200)
+            ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'national_id'])
+            ->with([
+                'user:id,name',
+                'section:id,classroom_id,name_section',
+                'section.classroom:id,grade_id,name_class',
+                'section.classroom.schoolgrade:id,name_grade',
+            ])
+            ->orderBy('nom')
+            ->orderBy('prenom')
             ->get();
 
         $plans = PaymentPlan::query()
