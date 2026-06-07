@@ -25,6 +25,25 @@ class Controller extends BaseController
     }
 
     /**
+     * Resolve the branch (school) filter chosen in list pages; null means all branches.
+     */
+    protected function branchFilterId(): ?int
+    {
+        return (int) request('branch_id') ?: null;
+    }
+
+    /**
+     * All branches (schools) for the list-pages branch filter dropdown.
+     */
+    protected function branchOptions(): Collection
+    {
+        return \App\Models\School\School::query()
+            ->select(['id', 'name_school'])
+            ->orderBy('name_school')
+            ->get();
+    }
+
+    /**
      * Fetch the latest notifications shared across admin views.
      */
     protected function notifications(): Collection

@@ -247,15 +247,26 @@
             </div>
             <div class="box-body">
                 <form method="GET" class="row g-2">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">{{ trans('accounting.payments_page.from_date') }}</label>
                         <input type="date" class="form-control" name="date_from" value="{{ request('date_from') }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">{{ trans('accounting.payments_page.to_date') }}</label>
                         <input type="date" class="form-control" name="date_to" value="{{ request('date_to') }}">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="form-label">الفرع</label>
+                        <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">كل الفروع</option>
+                            @foreach($schools as $school)
+                                <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>
+                                    {{ $school->name_school }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">{{ trans('accounting.payments_page.section') }}</label>
                         <select name="section_id" class="form-select">
                             <option value="">{{ trans('accounting.payments_page.all_sections') }}</option>

@@ -31,12 +31,12 @@ class ParentController extends Controller
 
     public function index()
     {
-        $schoolId = $this->currentSchoolId();
         $search = trim((string) request('q'));
         $filter = (string) request('filter'); // multi | synthetic | ''
+        $branchId = $this->branchFilterId();
 
         $parents = MyParent::query()
-            ->belongingToSchool($schoolId)
+            ->belongingToSchool($branchId)
             ->with([
                 'user:id,email',
                 'students:id,parent_id,section_id,prenom,nom,national_id',
@@ -70,20 +70,23 @@ class ParentController extends Controller
             ->withQueryString();
 
         $stats = [
-            'total' => MyParent::belongingToSchool($schoolId)->count(),
-            'multi' => MyParent::belongingToSchool($schoolId)->has('students', '>=', 2)->count(),
-            'synthetic' => MyParent::belongingToSchool($schoolId)
+            'total' => MyParent::belongingToSchool($branchId)->count(),
+            'multi' => MyParent::belongingToSchool($branchId)->has('students', '>=', 2)->count(),
+            'synthetic' => MyParent::belongingToSchool($branchId)
                 ->whereHas('user', fn ($userQuery) => $userQuery->where('email', 'like', '%@import.local'))
                 ->count(),
         ];
 
         $suggestions = request('tab') === 'suggestions'
-            ? $this->siblingSuggestions($schoolId)
+            ? $this->siblingSuggestions($branchId)
             : [];
+
+        $schools = $this->branchOptions();
 
         return view('admin.parents', [
             'Parents' => $parents,
             'stats' => $stats,
+            'schools' => $schools,
             'suggestions' => $suggestions,
             'notify' => $this->notifications(),
             'breadcrumbs' => [

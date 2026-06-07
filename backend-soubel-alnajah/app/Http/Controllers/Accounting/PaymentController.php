@@ -33,9 +33,10 @@ class PaymentController extends Controller
         $from = request('date_from');
         $to = request('date_to');
         $sectionId = request('section_id');
+        $branchId = $this->branchFilterId();
 
         $payments = Payment::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select([
                 'id',
                 'contract_id',
@@ -61,7 +62,7 @@ class PaymentController extends Controller
             ->withQueryString();
 
         $contracts = StudentContract::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'student_id', 'academic_year', 'created_at'])
             ->with([
                 'student:id,user_id',
@@ -72,7 +73,7 @@ class PaymentController extends Controller
             ->get();
 
         $overdue = StudentContract::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'student_id', 'academic_year', 'updated_at'])
             ->with(['student:id,user_id', 'student.user:id,name'])
             ->whereHas('installments', fn ($q) => $q->where('status', 'overdue'))
@@ -81,7 +82,7 @@ class PaymentController extends Controller
             ->get();
 
         $sections = Section::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'classroom_id', 'name_section'])
             ->with([
                 'classroom:id,grade_id,name_class',
@@ -90,12 +91,15 @@ class PaymentController extends Controller
             ->orderBy('id')
             ->get();
 
+        $schools = $this->branchOptions();
+
         return view('admin.accounting.payments.index', [
             'notify' => $this->notifications(),
             'payments' => $payments,
             'contracts' => $contracts,
             'overdue' => $overdue,
             'sections' => $sections,
+            'schools' => $schools,
             'nextReceiptNumber' => $schoolId ? $this->nextReceiptNumber((int) $schoolId) : '001',
             'breadcrumbs' => [
                 ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => $this->dashboardUrl()],

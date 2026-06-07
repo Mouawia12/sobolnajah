@@ -112,9 +112,18 @@
          <div class="box-body">
             <form method="GET" action="{{ route('Exames.index') }}" class="admin-form-panel mb-15">
               <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <label class="form-label">بحث</label>
                   <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم الامتحان">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">الفرع</label>
+                  <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">كل الفروع</option>
+                    @foreach ($schools as $school)
+                      <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>{{ $school->name_school }}</option>
+                    @endforeach
+                  </select>
                 </div>
                 <div class="col-md-2">
                   <label class="form-label">{{ trans('exam.module') }}</label>
@@ -125,7 +134,7 @@
                     @endforeach
                   </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                   <label class="form-label">{{ trans('exam.perscolaire') }}</label>
                   <select name="grade_id" class="form-select">
                     <option value="">الكل</option>
@@ -134,7 +143,7 @@
                     @endforeach
                   </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                   <label class="form-label">{{ trans('exam.phase') }}</label>
                   <select name="classroom_id" class="form-select">
                     <option value="">الكل</option>

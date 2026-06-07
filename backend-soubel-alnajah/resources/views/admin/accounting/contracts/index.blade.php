@@ -619,8 +619,18 @@
             </div>
             <div class="box-body">
                 <form method="GET" class="row mb-3" id="contractsFilterForm">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" name="q" id="contractsSearchInput" class="form-control" value="{{ request('q') }}" placeholder="بحث باسم التلميذ/البريد/رقم العقد">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">كل الفروع</option>
+                            @foreach($schools as $school)
+                                <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>
+                                    {{ $school->name_school }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <select name="status" id="contractsStatusFilter" class="form-select">
@@ -644,8 +654,11 @@
                         <label class="form-label">إلى تاريخ</label>
                         <input type="date" name="to_date" class="form-control" required>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-6 d-flex align-items-end gap-2">
                         <button class="btn btn-outline-primary" type="submit">طباعة العقود حسب الفترة</button>
+                        <button class="btn btn-outline-success" type="submit"
+                                formaction="{{ route('accounting.contracts.export-range') }}"
+                                formtarget="_self">تحميل Excel</button>
                     </div>
                 </form>
                 @if(request('highlight_contract'))

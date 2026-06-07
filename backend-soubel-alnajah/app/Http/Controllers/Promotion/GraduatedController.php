@@ -6,7 +6,6 @@ use App\Http\Requests\DestroyGraduatedRequest;
 use App\Http\Requests\RestoreGraduatedStudentRequest;
 use App\Http\Requests\StoreGraduatedRequest;
 
-use App\Models\School\School;
 use App\Models\School\Section;
 use App\Models\Inscription\StudentInfo;
 use App\Models\Promotion\Promotion;
@@ -29,16 +28,14 @@ class GraduatedController extends Controller
     public function index()
     {
         $this->authorize('viewAny', StudentInfo::class);
-        $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $search = trim((string) request('q'));
         $sectionId = request('section_id');
 
-        $data['School'] = School::query()
-            ->forSchool($schoolId)
-            ->select(['id', 'name_school'])
-            ->get();
+        $data['School'] = $this->branchOptions();
+        $data['schools'] = $data['School'];
         $data['Sections'] = Section::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'classroom_id', 'name_section'])
             ->with([
                 'classroom:id,grade_id,name_class',
@@ -48,7 +45,7 @@ class GraduatedController extends Controller
             ->get();
         $data['StudentInfo'] = StudentInfo::query()
             ->onlyTrashed()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'numtelephone', 'deleted_at'])
             ->with([
                 'user:id,email',

@@ -51,6 +51,7 @@ class InscriptionController extends Controller
         }
 
         $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $search = trim((string) request('q'));
         $status = request('status');
         $classroomId = request('classroom_id');
@@ -60,6 +61,8 @@ class InscriptionController extends Controller
             ->with('schoolgrades')
             ->orderBy('name_school')
             ->get();
+
+        $data['schools'] = $this->branchOptions();
 
         if ($isAdmin) {
             $inscriptionQuery = Inscription::query()
@@ -74,7 +77,7 @@ class InscriptionController extends Controller
                     'statu',
                     'created_at',
                 ])
-                ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+                ->when($branchId, fn ($query) => $query->where('school_id', $branchId))
                 ->with([
                     'Classroom:id,school_id,grade_id,name_class',
                     'Classroom.Schoolgrade:id,school_id,name_grade',
@@ -100,7 +103,7 @@ class InscriptionController extends Controller
             $data['Inscription'] = $inscriptionQuery->paginate(20)->withQueryString();
 
             $data['Classrooms'] = Classroom::query()
-                ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+                ->when($branchId, fn ($query) => $query->where('school_id', $branchId))
                 ->with('schoolgrade')
                 ->orderBy('id')
                 ->get();

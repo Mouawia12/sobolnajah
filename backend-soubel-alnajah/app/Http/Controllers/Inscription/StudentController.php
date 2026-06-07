@@ -35,20 +35,16 @@ class StudentController extends Controller
     public function index()
     {
         $this->authorize('viewAny', StudentInfo::class);
-        $schoolId = $this->currentSchoolId();
         $search = trim((string) request('q'));
         $sectionId = request('section_id');
         $classroomId = request('classroom_id');
         $gradeId = request('grade_id');
+        $branchId = $this->branchFilterId();
 
-        $data['School'] = School::query()
-            ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
-            ->select(['id', 'name_school'])
-            ->orderBy('name_school')
-            ->get();
+        $data['School'] = $this->branchOptions();
 
         $data['StudentInfo'] = StudentInfo::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->with([
                 'user:id,email',
                 'parent:id,prenomwali,nomwali,relationetudiant,adressewali,wilayawali,dayrawali,baladiawali,numtelephonewali,user_id',
@@ -86,7 +82,7 @@ class StudentController extends Controller
             ->withQueryString();
 
         $data['Sections'] = Section::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'classroom_id', 'name_section'])
             ->with([
                 'classroom:id,grade_id,name_class',

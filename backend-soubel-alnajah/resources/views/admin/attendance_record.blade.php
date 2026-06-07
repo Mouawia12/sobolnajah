@@ -433,8 +433,17 @@
 
     <div class="att-topbar">
 
-    {{-- شريط الفلاتر: القسم + التاريخ --}}
+    {{-- شريط الفلاتر: الفرع + القسم + التاريخ --}}
     <div class="att-filters">
+        <select id="attBranch" class="form-select"
+            onchange="window.location = '{{ route('attendance.record') }}' + (this.value ? '?branch_id=' + this.value : '')">
+            <option value="">كل الفروع</option>
+            @foreach ($schools as $school)
+                <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>
+                    {{ $school->name_school }}
+                </option>
+            @endforeach
+        </select>
         <select id="attSection" class="form-select att-section-select">
             <option value="">{{ trans('opt.choose_section') }}</option>
             @foreach ($Sections as $section)

@@ -18,9 +18,17 @@
         <!-- /.box-header -->
         <div class="box-body">
            <form method="GET" class="row mb-3">
-             <div class="col-md-3">
+             <div class="col-md-2">
                <input type="text" name="q" class="form-control" value="{{ request('q') }}"
                  placeholder="بحث: عنوان / محتوى">
+             </div>
+             <div class="col-md-2">
+               <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                 <option value="">كل الفروع</option>
+                 @foreach ($schools as $school)
+                   <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>{{ $school->name_school }}</option>
+                 @endforeach
+               </select>
              </div>
              <div class="col-md-2">
                <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
@@ -28,7 +36,7 @@
              <div class="col-md-2">
                <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
              </div>
-             <div class="col-md-2">
+             <div class="col-md-1">
                <select name="grade_id" class="form-select">
                  <option value="">كل المستويات</option>
                  @foreach ($Grade as $g)
