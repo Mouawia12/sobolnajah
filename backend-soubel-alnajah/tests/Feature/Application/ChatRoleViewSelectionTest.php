@@ -61,4 +61,23 @@ class ChatRoleViewSelectionTest extends TestCase
         $response->assertStatus(200);
         $response->assertViewIs('chat.admin');
     }
+
+    public function test_search_users_matches_translated_name_with_portable_json_query(): void
+    {
+        $admin = User::factory()->create([
+            'must_change_password' => false,
+            'school_id' => null,
+        ]);
+        $admin->attachRole('admin');
+
+        $target = User::factory()->create([
+            'must_change_password' => false,
+            'name' => ['fr' => 'Karim Belabbas', 'ar' => 'كريم بلعباس', 'en' => 'Karim Belabbas'],
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('chat.users.search', ['q' => 'بلعباس']));
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['id' => $target->id]);
+    }
 }

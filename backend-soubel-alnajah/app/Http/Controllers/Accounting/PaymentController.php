@@ -482,11 +482,16 @@ class PaymentController extends Controller
      */
     private function nextReceiptNumber(int $schoolId): string
     {
-        $max = (int) Payment::query()
+        // أرقام الوصولات الأساسية أرقام صرفة؛ اللاحقات (/2 للعائلات أو -2 للتعارض) تُستبعد.
+        // نرشّح اللاحقات في الاستعلام ثم نحسب الأقصى عدديًا في PHP لضمان التوافق مع MySQL وSQLite معًا.
+        $max = Payment::query()
             ->where('school_id', $schoolId)
-            ->whereRaw("receipt_number REGEXP '^[0-9]+$'")
-            ->selectRaw('MAX(CAST(receipt_number AS UNSIGNED)) as max_number')
-            ->value('max_number');
+            ->where('receipt_number', 'not like', '%/%')
+            ->where('receipt_number', 'not like', '%-%')
+            ->pluck('receipt_number')
+            ->filter(fn ($number) => ctype_digit((string) $number))
+            ->map(fn ($number) => (int) $number)
+            ->max() ?? 0;
 
         return str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT);
     }
