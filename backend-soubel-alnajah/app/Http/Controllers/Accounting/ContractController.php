@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Actions\Accounting\ImportAccountingWorkbookAction;
+use App\Exports\ContractsRangeExport;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportAccountingWorkbookRequest;
 use App\Http\Requests\StoreStudentContractRequest;
@@ -275,6 +277,35 @@ class ContractController extends Controller
         $this->authorize('viewAny', StudentContract::class);
         $this->ensureAccountingRole();
 
+        [$contracts, $fromDate, $toDate, $totals] = $this->contractsForRange($request);
+
+        return view('admin.accounting.contracts.print-range', [
+            'contracts' => $contracts,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'totals' => $totals,
+        ]);
+    }
+
+    public function exportRange(Request $request)
+    {
+        $this->authorize('viewAny', StudentContract::class);
+        $this->ensureAccountingRole();
+
+        [$contracts, $fromDate, $toDate, $totals] = $this->contractsForRange($request);
+
+        $filename = 'contracts_' . $fromDate->format('Y-m-d') . '_' . $toDate->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new ContractsRangeExport($contracts, $totals, $fromDate, $toDate), $filename);
+    }
+
+    /**
+     * استعلام العقود ضمن فترة (مشترك بين الطباعة وتصدير Excel).
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: Carbon, 2: Carbon, 3: array}
+     */
+    private function contractsForRange(Request $request): array
+    {
         $validated = $request->validate([
             'from_date' => ['required', 'date'],
             'to_date' => ['required', 'date', 'after_or_equal:from_date'],
@@ -309,12 +340,7 @@ class ContractController extends Controller
         ];
         $totals['remaining'] = max($totals['total_amount'] - $totals['paid_total'], 0);
 
-        return view('admin.accounting.contracts.print-range', [
-            'contracts' => $contracts,
-            'fromDate' => $fromDate,
-            'toDate' => $toDate,
-            'totals' => $totals,
-        ]);
+        return [$contracts, $fromDate, $toDate, $totals];
     }
 
     public function destroy(StudentContract $contract)

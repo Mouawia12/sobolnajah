@@ -654,8 +654,11 @@
                         <label class="form-label">إلى تاريخ</label>
                         <input type="date" name="to_date" class="form-control" required>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-6 d-flex align-items-end gap-2">
                         <button class="btn btn-outline-primary" type="submit">طباعة العقود حسب الفترة</button>
+                        <button class="btn btn-outline-success" type="submit"
+                                formaction="{{ route('accounting.contracts.export-range') }}"
+                                formtarget="_self">تحميل Excel</button>
                     </div>
                 </form>
                 @if(request('highlight_contract'))
