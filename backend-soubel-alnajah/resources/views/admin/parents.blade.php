@@ -168,6 +168,16 @@
                             placeholder="بحث: اسم الولي / الهاتف / اسم التلميذ / رقم التعريف">
                     </div>
                     <div class="col-md-3">
+                        <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">كل الفروع</option>
+                            @foreach ($schools as $school)
+                                <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>
+                                    {{ $school->name_school }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <select name="filter" class="form-select">
                             <option value="">كل الأولياء</option>
                             <option value="multi" @selected(request('filter') === 'multi')>بعدة أبناء (إخوة)</option>

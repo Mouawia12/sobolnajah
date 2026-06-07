@@ -36,15 +36,11 @@ class SectionController extends Controller
     {
         $this->authorize('viewAny', Section::class);
         $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $query = trim((string) request('q'));
         $gradeFilter = request('grade_id');
         $classroomFilter = request('classroom_id');
         $statusFilter = request('status');
-
-        if ($schoolId) {
-            $gradeFilter = $gradeFilter ?: null;
-            $classroomFilter = $classroomFilter ?: null;
-        }
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
@@ -52,21 +48,23 @@ class SectionController extends Controller
             ->orderBy('name_school')
             ->get();
 
+        $data['schools'] = $this->branchOptions();
+
         $data['SchoolgradeFilterOptions'] = Schoolgrade::query()
-            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->when($branchId, fn ($query) => $query->where('school_id', $branchId))
             ->select(['id', 'name_grade'])
             ->orderBy('name_grade')
             ->get();
 
         $data['ClassroomFilterOptions'] = Classroom::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'name_class'])
             ->orderBy('name_class')
             ->get();
 
-        $applySectionConstraints = function ($sectionsQuery) use ($schoolId, $gradeFilter, $classroomFilter, $statusFilter, $query) {
+        $applySectionConstraints = function ($sectionsQuery) use ($branchId, $gradeFilter, $classroomFilter, $statusFilter, $query) {
             $sectionsQuery
-                ->forSchool($schoolId)
+                ->forSchool($branchId)
                 ->when($gradeFilter, fn ($q) => $q->where('grade_id', (int) $gradeFilter))
                 ->when($classroomFilter, fn ($q) => $q->where('classroom_id', (int) $classroomFilter))
                 ->when($statusFilter !== null && $statusFilter !== '', fn ($q) => $q->where('Status', (int) $statusFilter))
@@ -92,7 +90,7 @@ class SectionController extends Controller
         };
 
         $data['Schoolgrade'] = Schoolgrade::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($branchId, fn ($q) => $q->where('school_id', $branchId))
             ->select(['id', 'school_id', 'name_grade'])
             ->when($gradeFilter, fn ($q) => $q->whereKey((int) $gradeFilter))
             ->whereHas('sections', $applySectionConstraints)
@@ -117,7 +115,7 @@ class SectionController extends Controller
             ->withQueryString();
 
         $data['Teacher'] = Teacher::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'name'])
             ->orderByDesc('created_at')
             ->get();

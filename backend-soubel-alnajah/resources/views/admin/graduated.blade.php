@@ -77,11 +77,22 @@
          <div class="box-body">
             <form method="GET" action="{{ route('graduated.index') }}" class="admin-form-panel mb-15">
               <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <label class="form-label">بحث</label>
                   <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم التلميذ أو البريد أو الهاتف">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                  <label class="form-label">الفرع</label>
+                  <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">كل الفروع</option>
+                    @foreach ($schools as $school)
+                      <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>
+                        {{ $school->name_school }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
+                <div class="col-md-3">
                   <label class="form-label">{{ trans('inscription.section') }}</label>
                   <select name="section_id" class="form-select">
                     <option value="">الكل</option>
@@ -92,7 +103,7 @@
                     @endforeach
                   </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end gap-2">
+                <div class="col-md-3 d-flex align-items-end gap-2">
                   <button class="btn btn-primary" type="submit">بحث</button>
                   <a href="{{ route('graduated.index') }}" class="btn btn-light">Reset</a>
                 </div>

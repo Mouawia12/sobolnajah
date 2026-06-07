@@ -32,12 +32,12 @@ class ContractController extends Controller
         $this->authorize('viewAny', StudentContract::class);
         $this->ensureAccountingRole();
 
-        $schoolId = $this->currentSchoolId();
         $status = request('status');
         $search = request('q');
+        $branchId = $this->branchFilterId();
 
         $contracts = StudentContract::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select([
                 'id',
                 'student_id',
@@ -79,7 +79,7 @@ class ContractController extends Controller
 
         // كل تلاميذ المدرسة بدون حد — مع الاسم الكامل والقسم ورقم التعريف للبحث الدقيق
         $students = StudentInfo::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'national_id'])
             ->with([
                 'user:id,name',
@@ -92,14 +92,14 @@ class ContractController extends Controller
             ->get();
 
         $plans = PaymentPlan::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->where('is_active', true)
             ->select(['id', 'name'])
             ->orderBy('name')
             ->get();
 
         $overdueContracts = StudentContract::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'student_id', 'academic_year'])
             ->whereHas('installments', function ($query) {
                 $query->where('status', 'overdue');
@@ -108,11 +108,14 @@ class ContractController extends Controller
             ->limit(20)
             ->get();
 
+        $schools = $this->branchOptions();
+
         return view('admin.accounting.contracts.index', [
             'notify' => $this->notifications(),
             'contracts' => $contracts,
             'students' => $students,
             'plans' => $plans,
+            'schools' => $schools,
             'overdueContracts' => $overdueContracts,
             'breadcrumbs' => [
                 ['label' => trans('accounting.breadcrumbs.dashboard'), 'url' => $this->dashboardUrl()],

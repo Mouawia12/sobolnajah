@@ -31,13 +31,13 @@ class TeacherController extends Controller
     public function index()
     {
         $this->authorize('viewAny', Teacher::class);
-        $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $search = trim((string) request('q'));
         $specializationId = request('specialization_id');
         $gender = request('gender');
 
         $data['Teacher'] = Teacher::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select([
                 'id',
                 'user_id',
@@ -71,6 +71,7 @@ class TeacherController extends Controller
             ->select(['id', 'name'])
             ->orderBy('name')
             ->get();
+        $data['schools'] = $this->branchOptions();
         $data['notify'] = $this->notifications();
         $data['breadcrumbs'] = [
             ['label' => 'لوحة التحكم', 'url' => url('/admin')],

@@ -30,7 +30,7 @@ class ExamesController extends Controller
      */
     public function index()
     {
-        $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $search = trim((string) request('q'));
         $gradeId = request('grade_id');
         $classroomId = request('classroom_id');
@@ -53,8 +53,8 @@ class ExamesController extends Controller
                 'schoolgrade:id,name_grade',
                 'specialization:id,name',
             ])
-            ->when(Auth::check() && Auth::user()->hasRole('admin') && $schoolId, function ($query) use ($schoolId) {
-                $query->whereHas('classroom', fn ($classroomQuery) => $classroomQuery->where('school_id', $schoolId));
+            ->when(Auth::check() && Auth::user()->hasRole('admin') && $branchId, function ($query) use ($branchId) {
+                $query->whereHas('classroom', fn ($classroomQuery) => $classroomQuery->where('school_id', $branchId));
             })
             ->when($gradeId, fn ($q) => $q->where('grade_id', (int) $gradeId))
             ->when($classroomId, fn ($q) => $q->where('classroom_id', (int) $classroomId))
@@ -73,25 +73,26 @@ class ExamesController extends Controller
             if(Auth::user()->hasRole('admin')){
                 $data['notify'] = $this->notifications();
                 $data['Exames'] = $query->paginate(20)->withQueryString();
-                $cacheSchoolId = (int) ($schoolId ?? 0);
+                $cacheBranchId = (int) ($branchId ?? 0);
                 $data['Schoolgrade'] = Cache::remember(
-                    sprintf('exam:school:%d:grades', $cacheSchoolId),
+                    sprintf('exam:branch:%d:grades', $cacheBranchId),
                     now()->addMinutes(15),
                     fn () => Schoolgrade::query()
-                        ->forSchool($schoolId)
+                        ->forSchool($branchId)
                         ->select(['id', 'name_grade'])
                         ->orderBy('name_grade')
                         ->get()
                 );
                 $data['Classrooms'] = Cache::remember(
-                    sprintf('exam:school:%d:classrooms', $cacheSchoolId),
+                    sprintf('exam:branch:%d:classrooms', $cacheBranchId),
                     now()->addMinutes(15),
                     fn () => Classroom::query()
-                        ->forSchool($schoolId)
+                        ->forSchool($branchId)
                         ->select(['id', 'grade_id', 'name_class'])
                         ->orderBy('name_class')
                         ->get()
                 );
+                $data['schools'] = $this->branchOptions();
                 $data['Specializations'] = Cache::remember(
                     'exam:lookups:specializations',
                     now()->addMinutes(15),

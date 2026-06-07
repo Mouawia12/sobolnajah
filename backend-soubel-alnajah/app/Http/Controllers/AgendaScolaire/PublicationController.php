@@ -11,7 +11,6 @@ use App\Http\Requests\StorePublication;
 use App\Http\Requests\UpdatePublicationRequest;
 use App\Models\AgendaScolaire\Agenda;
 use App\Models\AgendaScolaire\Grade;
-use App\Models\School\School;
 use App\Models\AgendaScolaire\Publication;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -29,7 +28,7 @@ class PublicationController extends Controller
 
     public function index(Request $request)
     {
-        $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $isAdmin = Auth::check() && Auth::user()->hasRole('admin');
 
         if (!$isAdmin) {
@@ -47,8 +46,8 @@ class PublicationController extends Controller
             ->with(['gallery:id,publication_id,img_url'])
             ->orderByDesc('created_at');
 
-        if ($schoolId) {
-            $publicationQuery->where('school_id', $schoolId);
+        if ($branchId) {
+            $publicationQuery->where('school_id', $branchId);
         }
 
         $publicationQuery
@@ -72,10 +71,8 @@ class PublicationController extends Controller
             ->select(['id', 'name_agenda'])
             ->orderBy('id')
             ->get();
-        $data['School'] = School::query()
-            ->select(['id', 'name_school'])
-            ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
-            ->get();
+        $data['School'] = $this->branchOptions();
+        $data['schools'] = $data['School'];
         $data['notify'] = $this->notifications();
         $data['breadcrumbs'] = [
             ['label' => 'لوحة التحكم', 'url' => url('/admin')],

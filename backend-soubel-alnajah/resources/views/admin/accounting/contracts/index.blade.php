@@ -619,8 +619,18 @@
             </div>
             <div class="box-body">
                 <form method="GET" class="row mb-3" id="contractsFilterForm">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" name="q" id="contractsSearchInput" class="form-control" value="{{ request('q') }}" placeholder="بحث باسم التلميذ/البريد/رقم العقد">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">كل الفروع</option>
+                            @foreach($schools as $school)
+                                <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>
+                                    {{ $school->name_school }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <select name="status" id="contractsStatusFilter" class="form-select">

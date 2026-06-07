@@ -4,7 +4,6 @@ namespace App\Http\Controllers\AgendaScolaire;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAbsenceStatusRequest;
 
-use App\Models\School\School;
 use App\Models\School\Section;
 use App\Models\Inscription\StudentInfo;
 
@@ -29,7 +28,7 @@ class AbsenceController extends Controller
     public function index()
     {
         $this->authorize('viewAny', Absence::class);
-        $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $search = trim((string) request('q'));
         $from = request('date_from');
         $to = request('date_to');
@@ -50,10 +49,8 @@ class AbsenceController extends Controller
                 'hour_8',
                 'hour_9',
             ])
-            ->whereHas('student.section', function ($query) use ($schoolId) {
-                if ($schoolId) {
-                    $query->where('school_id', $schoolId);
-                }
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereHas('student.section', fn ($sectionQuery) => $sectionQuery->where('school_id', $branchId));
             })
             ->when($sectionId, function ($query) use ($sectionId) {
                 $query->whereHas('student', fn ($studentQuery) => $studentQuery->where('section_id', $sectionId));
@@ -76,7 +73,7 @@ class AbsenceController extends Controller
             ->paginate(20)
             ->withQueryString();
         $data['Sections'] = Section::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'classroom_id', 'name_section'])
             ->with([
                 'classroom:id,grade_id,name_class',
@@ -84,6 +81,7 @@ class AbsenceController extends Controller
             ])
             ->orderBy('id')
             ->get();
+        $data['schools'] = $this->branchOptions();
         $data['notify'] = $this->notifications();
         $data['breadcrumbs'] = [
             ['label' => 'لوحة التحكم', 'url' => url('/admin')],
@@ -100,10 +98,8 @@ class AbsenceController extends Controller
 public function storeOrUpdate(StoreAbsenceStatusRequest $request)
 {
     $this->authorize('create', Absence::class);
-    $schoolId = $this->currentSchoolId();
 
     $student = StudentInfo::query()
-        ->forSchool($schoolId)
         ->findOrFail((int) $request->student_id);
 
     // التاريخ اختياري — الصفحة الجديدة ترسل تاريخاً محدداً، المودال القديم يستعمل اليوم
@@ -134,9 +130,7 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
                 return response()->json([], 200);
             }
 
-            $schoolId = $this->currentSchoolId();
             StudentInfo::query()
-                ->forSchool($schoolId)
                 ->findOrFail((int) $studentId);
 
             $absence = Absence::where('student_id', $studentId)
@@ -165,10 +159,10 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
     public function recordPage()
     {
         $this->authorize('viewAny', Absence::class);
-        $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
 
         $data['Sections'] = Section::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'classroom_id', 'name_section'])
             ->with([
                 'classroom:id,grade_id,name_class',
@@ -176,6 +170,8 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
             ])
             ->orderBy('id')
             ->get();
+
+        $data['schools'] = $this->branchOptions();
 
         // خريطة الساعات: 8:00 => hour_1 ... 16:00 => hour_9
         $hours = [];
@@ -203,18 +199,15 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
     public function recordData(Request $request)
     {
         $this->authorize('viewAny', Absence::class);
-        $schoolId = $this->currentSchoolId();
 
         $validated = $request->validate([
             'section_id' => ['required', 'integer'],
             'date' => ['required', 'date'],
         ]);
 
-        // نطاق المدرسة: القسم يجب أن يتبع مدرسة المشرف
-        $section = Section::query()->forSchool($schoolId)->findOrFail((int) $validated['section_id']);
+        $section = Section::query()->findOrFail((int) $validated['section_id']);
 
         $students = StudentInfo::query()
-            ->forSchool($schoolId)
             ->where('section_id', $section->id)
             ->orderBy('nom')
             ->orderBy('prenom')
@@ -262,7 +255,6 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
     public function bulkUpdate(Request $request)
     {
         $this->authorize('create', Absence::class);
-        $schoolId = $this->currentSchoolId();
 
         $validated = $request->validate([
             'section_id' => ['required', 'integer'],
@@ -271,10 +263,9 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
             'status' => ['required', 'integer', 'in:0,1,2'],
         ]);
 
-        $section = Section::query()->forSchool($schoolId)->findOrFail((int) $validated['section_id']);
+        $section = Section::query()->findOrFail((int) $validated['section_id']);
 
         $studentIds = StudentInfo::query()
-            ->forSchool($schoolId)
             ->where('section_id', $section->id)
             ->pluck('id');
 

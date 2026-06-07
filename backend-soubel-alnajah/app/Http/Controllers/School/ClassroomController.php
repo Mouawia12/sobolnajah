@@ -36,13 +36,9 @@ class ClassroomController extends Controller
     {
         $this->authorize('viewAny', Classroom::class);
         $schoolId = $this->currentSchoolId();
+        $branchId = $this->branchFilterId();
         $query = trim((string) request('q'));
-        $schoolFilter = request('school_id');
         $gradeFilter = request('grade_id');
-
-        if ($schoolId) {
-            $schoolFilter = $schoolId;
-        }
 
         $data['School'] = School::query()
             ->when($schoolId, fn ($query) => $query->whereKey($schoolId))
@@ -50,20 +46,21 @@ class ClassroomController extends Controller
             ->orderBy('name_school')
             ->get();
 
+        $data['schools'] = $this->branchOptions();
+
         $data['Schoolgradee'] = Schoolgrade::query()
-            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->when($branchId, fn ($query) => $query->where('school_id', $branchId))
             ->select(['id', 'name_grade'])
             ->orderBy('name_grade')
             ->get();
 
         $data['Classroom'] = Classroom::query()
-            ->forSchool($schoolId)
+            ->forSchool($branchId)
             ->select(['id', 'school_id', 'grade_id', 'name_class', 'created_at'])
             ->with([
                 'schoolgrade:id,school_id,name_grade',
                 'schoolgrade.school:id,name_school',
             ])
-            ->when($schoolFilter, fn ($classroomQuery) => $classroomQuery->where('school_id', (int) $schoolFilter))
             ->when($gradeFilter, fn ($classroomQuery) => $classroomQuery->where('grade_id', (int) $gradeFilter))
             ->when($query !== '', function ($classroomQuery) use ($query) {
                 $classroomQuery->where(function ($textQuery) use ($query) {
@@ -75,7 +72,6 @@ class ClassroomController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();
-        $data['currentSchoolId'] = $schoolId;
 
         $data['notify'] = $this->notifications();
 

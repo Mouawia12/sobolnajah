@@ -29,17 +29,15 @@
                  <label class="form-label">بحث</label>
                  <input type="text" name="q" class="form-control" value="{{ request('q') }}" placeholder="اسم القسم الدراسي">
                </div>
-               @if(!$currentSchoolId)
                <div class="col-md-3">
-                 <label class="form-label">{{ trans('inscription.ecole') }}</label>
-                 <select name="school_id" class="form-select">
-                   <option value="">الكل</option>
-                   @foreach ($School as $sc)
-                     <option value="{{ $sc->id }}" @selected((string) request('school_id') === (string) $sc->id)>{{ $sc->name_school }}</option>
+                 <label class="form-label">الفرع</label>
+                 <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                   <option value="">كل الفروع</option>
+                   @foreach ($schools as $school)
+                     <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>{{ $school->name_school }}</option>
                    @endforeach
                  </select>
                </div>
-               @endif
                <div class="col-md-3">
                  <label class="form-label">{{ trans('inscription.niveau') }}</label>
                  <select name="grade_id" class="form-select">
