@@ -79,19 +79,21 @@ class ContractController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        // كل تلاميذ المدرسة بدون حد — مع الاسم الكامل والقسم ورقم التعريف للبحث الدقيق
-        $students = StudentInfo::query()
-            ->forSchool($branchId)
-            ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'national_id'])
-            ->with([
-                'user:id,name',
-                'section:id,classroom_id,name_section',
-                'section.classroom:id,grade_id,name_class',
-                'section.classroom.schoolgrade:id,name_grade',
-            ])
-            ->orderBy('nom')
-            ->orderBy('prenom')
-            ->get();
+        // التلميذ يُختار عبر بحث AJAX (studentSearch) بدل تحميل كل التلاميذ.
+        // عند خطأ تحقّق نعيد تعبئة التلميذ المختار سابقاً فقط.
+        $selectedStudent = null;
+        if (old('student_id')) {
+            $selectedStudent = StudentInfo::query()
+                ->forSchool($branchId)
+                ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'national_id'])
+                ->with([
+                    'user:id,name',
+                    'section:id,classroom_id,name_section',
+                    'section.classroom:id,grade_id,name_class',
+                    'section.classroom.schoolgrade:id,name_grade',
+                ])
+                ->find((int) old('student_id'));
+        }
 
         $plans = PaymentPlan::query()
             ->forSchool($branchId)
@@ -115,7 +117,7 @@ class ContractController extends Controller
         return view('admin.accounting.contracts.index', [
             'notify' => $this->notifications(),
             'contracts' => $contracts,
-            'students' => $students,
+            'selectedStudent' => $selectedStudent,
             'plans' => $plans,
             'schools' => $schools,
             'overdueContracts' => $overdueContracts,
@@ -124,6 +126,79 @@ class ContractController extends Controller
                 ['label' => trans('accounting.breadcrumbs.contracts')],
             ],
         ]);
+    }
+
+    /**
+     * بحث AJAX عن تلميذ لإضافة عقد (بدل تحميل كل التلاميذ في القائمة المنسدلة).
+     */
+    public function studentSearch(Request $request)
+    {
+        $this->authorize('viewAny', StudentContract::class);
+        $this->ensureAccountingRole();
+
+        $branchId = $this->branchFilterId();
+        $search = trim((string) $request->query('q'));
+
+        if (mb_strlen($search) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $students = StudentInfo::query()
+            ->forSchool($branchId)
+            ->select(['id', 'user_id', 'section_id', 'prenom', 'nom', 'national_id'])
+            ->where(function ($query) use ($search) {
+                $query->where('prenom->ar', 'like', '%' . $search . '%')
+                    ->orWhere('prenom->fr', 'like', '%' . $search . '%')
+                    ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                    ->orWhere('nom->fr', 'like', '%' . $search . '%')
+                    ->orWhere('national_id', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', fn ($userQuery) => $userQuery
+                        ->where('name->ar', 'like', '%' . $search . '%')
+                        ->orWhere('name->fr', 'like', '%' . $search . '%'));
+            })
+            ->with([
+                'user:id,name',
+                'section:id,classroom_id,name_section',
+                'section.classroom:id,grade_id,name_class',
+                'section.classroom.schoolgrade:id,name_grade',
+            ])
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'results' => $students->map(fn ($student) => [
+                'id' => $student->id,
+                'label' => $this->studentSearchLabel($student),
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * تسمية موحّدة للتلميذ في نتائج البحث والاختيار المسبق.
+     */
+    private function studentSearchLabel(StudentInfo $student): string
+    {
+        $label = trim(($student->prenom ?? '') . ' ' . ($student->nom ?? ''));
+        if ($label === '') {
+            $label = $student->user->name ?? ('Student #' . $student->id);
+        }
+
+        $sectionLabel = trim(
+            ($student->section->classroom->schoolgrade->name_grade ?? '') . ' / ' .
+            ($student->section->name_section ?? ''),
+            ' /'
+        );
+        if ($sectionLabel !== '') {
+            $label .= ' — ' . $sectionLabel;
+        }
+
+        if (!empty($student->national_id)) {
+            $label .= ' — ' . $student->national_id;
+        }
+
+        return $label;
     }
 
     public function store(StoreStudentContractRequest $request)

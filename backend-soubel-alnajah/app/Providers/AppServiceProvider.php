@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Inscription\StudentInfo;
+use App\Models\School\School;
 use App\Services\HomeDashboardCacheService;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,5 +53,12 @@ class AppServiceProvider extends ServiceProvider
         StudentInfo::forceDeleted(function (StudentInfo $student): void {
             app(HomeDashboardCacheService::class)->forgetForStudent($student);
         });
+
+        // قائمة الفروع مخزّنة مؤقتاً (Controller::branchOptions)، نبطلها عند أي تغيير على الفروع.
+        $forgetBranches = static function (): void {
+            Cache::forget('lookup:branches');
+        };
+        School::saved($forgetBranches);
+        School::deleted($forgetBranches);
     }
 }

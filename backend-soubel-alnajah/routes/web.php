@@ -239,6 +239,7 @@ Route::group(
         Route::group(['middleware' => ['auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
             Route::get('/accounting', fn () => redirect()->route('accounting.contracts.index'))->name('accounting.dashboard');
             Route::get('/accounting/contracts', [ContractController::class, 'index'])->name('accounting.contracts.index');
+            Route::get('/accounting/contracts/student-search', [ContractController::class, 'studentSearch'])->name('accounting.contracts.student-search');
             Route::post('/accounting/contracts', [ContractController::class, 'store'])->name('accounting.contracts.store');
             Route::post('/accounting/contracts/import', [ContractController::class, 'import'])->name('accounting.contracts.import');
             Route::get('/accounting/contracts/print-range', [ContractController::class, 'printRange'])->name('accounting.contracts.print-range');
@@ -253,6 +254,7 @@ Route::group(
             Route::delete('/accounting/contracts/{contract}', [ContractController::class, 'destroy'])->name('accounting.contracts.destroy');
 
             Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
+            Route::get('/accounting/payments/contract-search', [PaymentController::class, 'contractSearch'])->name('accounting.payments.contract-search');
             Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
             Route::get('/accounting/payments/family-search', [PaymentController::class, 'familySearch'])->name('accounting.payments.family.search');
             Route::get('/accounting/payments/family-data', [PaymentController::class, 'familyData'])->name('accounting.payments.family.data');

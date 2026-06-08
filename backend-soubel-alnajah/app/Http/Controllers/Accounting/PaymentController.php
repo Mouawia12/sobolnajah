@@ -61,17 +61,7 @@ class PaymentController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $contracts = StudentContract::query()
-            ->forSchool($branchId)
-            ->select(['id', 'student_id', 'academic_year', 'created_at'])
-            ->with([
-                'student:id,user_id',
-                'student.user:id,name',
-            ])
-            ->orderByDesc('created_at')
-            ->limit(200)
-            ->get();
-
+        // العقد يُختار عبر بحث AJAX (contractSearch) بدل تحميل 200 عقد في القائمة.
         $overdue = StudentContract::query()
             ->forSchool($branchId)
             ->select(['id', 'student_id', 'academic_year', 'updated_at'])
@@ -96,7 +86,6 @@ class PaymentController extends Controller
         return view('admin.accounting.payments.index', [
             'notify' => $this->notifications(),
             'payments' => $payments,
-            'contracts' => $contracts,
             'overdue' => $overdue,
             'sections' => $sections,
             'schools' => $schools,
@@ -288,6 +277,50 @@ class PaymentController extends Controller
                 ),
                 'parent_name' => $student->parent ? trim($student->parent->prenomwali . ' ' . $student->parent->nomwali) : '',
             ])->values(),
+        ]);
+    }
+
+    /**
+     * بحث AJAX عن عقد لتسجيل دفعة فردية (بدل تحميل كل العقود في القائمة المنسدلة).
+     */
+    public function contractSearch(Request $request)
+    {
+        $this->authorize('viewAny', Payment::class);
+        $this->ensureAccountingRole();
+
+        $branchId = (int) $request->query('branch_id') ?: null;
+        $search = trim((string) $request->query('q'));
+
+        if (mb_strlen($search) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $contracts = StudentContract::query()
+            ->forSchool($branchId)
+            ->select(['id', 'student_id', 'academic_year', 'created_at'])
+            ->where(function ($query) use ($search) {
+                if (ctype_digit($search)) {
+                    $query->orWhere('id', (int) $search);
+                }
+                $query->orWhere('academic_year', 'like', '%' . $search . '%')
+                    ->orWhereHas('student.user', fn ($userQuery) => $userQuery
+                        ->where('name->ar', 'like', '%' . $search . '%')
+                        ->orWhere('name->fr', 'like', '%' . $search . '%'));
+            })
+            ->with(['student:id,user_id', 'student.user:id,name'])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'results' => $contracts->map(function ($contract) {
+                $studentName = $contract->student->user->name ?? ('Student #' . $contract->student_id);
+
+                return [
+                    'id' => $contract->id,
+                    'label' => '#' . $contract->id . ' - ' . $studentName . ' - ' . $contract->academic_year,
+                ];
+            })->values(),
         ]);
     }
 
