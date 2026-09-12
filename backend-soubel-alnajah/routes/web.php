@@ -180,6 +180,7 @@ Route::group(
             Route::post('/Parents/merge', [ParentController::class, 'merge'])->name('Parents.merge');
             Route::post('/Parents/{parent}/link-student', [ParentController::class, 'linkStudent'])->name('Parents.link');
             Route::resource('Parents', ParentController::class)->only(['index', 'store', 'update', 'destroy']);
+            Route::post('/students/delete-all', [StudentController::class, 'deleteAll'])->name('students.delete_all');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
             Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');

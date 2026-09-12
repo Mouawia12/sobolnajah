@@ -6,6 +6,7 @@ use App\Actions\Inscription\BuildStudentEnrollmentPayloadAction;
 use App\Actions\Inscription\DeleteStudentEnrollmentAction;
 use App\Actions\Inscription\UpdateStudentEnrollmentAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DeleteBulkStudentsRequest;
 use App\Http\Requests\DestroyStudentRequest;
 use App\Http\Requests\ImportStudentsRequest;
 use App\Http\Requests\StoreStudent;
@@ -15,6 +16,7 @@ use App\Models\School\Section;
 use App\Services\MinistryStudentImportService;
 use App\Services\StudentImportProgressService;
 use App\Services\StudentEnrollmentService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Throwable;
@@ -192,6 +194,46 @@ class StudentController extends Controller
         $this->deleteStudentEnrollmentAction->execute($student);
 
         toastr()->error(trans('messages.delete'));
+
+        return redirect()->route('Students.index');
+    }
+
+    public function deleteAll(DeleteBulkStudentsRequest $request)
+    {
+        $this->authorize('viewAny', StudentInfo::class);
+        $validated = $request->validated();
+
+        $ids = collect(explode(',', $validated['delete_all_id']))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return redirect()->route('Students.index')
+                ->withErrors(['delete_all_id' => trans('messages.cantdelete')]);
+        }
+
+        // مقيّد بمدرسة المستخدم الحالي حتى لا يمكن حذف تلاميذ مدرسة أخرى بحقن معرّفات.
+        $students = StudentInfo::query()
+            ->forSchool($this->currentSchoolId())
+            ->with(['user', 'parent.students', 'parent.user', 'section'])
+            ->whereIn('id', $ids)
+            ->get();
+
+        $deleted = 0;
+        DB::transaction(function () use ($students, &$deleted) {
+            foreach ($students as $student) {
+                $this->authorize('delete', $student);
+                $this->deleteStudentEnrollmentAction->execute($student);
+                $deleted++;
+            }
+        });
+
+        if ($deleted > 0) {
+            toastr()->error(trans('messages.delete'));
+        }
 
         return redirect()->route('Students.index');
     }

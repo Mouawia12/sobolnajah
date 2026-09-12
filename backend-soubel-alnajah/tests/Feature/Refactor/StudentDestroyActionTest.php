@@ -164,6 +164,85 @@ class StudentDestroyActionTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $guardianUser->id]);
     }
 
+    public function test_delete_all_removes_only_selected_students_of_current_school(): void
+    {
+        [$admin, $schoolId, $sectionId] = $this->bootstrapSchoolAdminAndSection();
+
+        $firstId = $this->createStudentInSection($schoolId, $sectionId, 'One', 550000021);
+        $secondId = $this->createStudentInSection($schoolId, $sectionId, 'Two', 550000022);
+        $keptId = $this->createStudentInSection($schoolId, $sectionId, 'Kept', 550000023);
+
+        $response = $this->actingAs($admin)->post(route('students.delete_all'), [
+            'delete_all_id' => $firstId . ',' . $secondId,
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('studentinfos', ['id' => $firstId]);
+        $this->assertDatabaseMissing('studentinfos', ['id' => $secondId]);
+        $this->assertDatabaseHas('studentinfos', ['id' => $keptId]);
+    }
+
+    public function test_delete_all_cannot_remove_students_from_another_school(): void
+    {
+        [$admin, $schoolId, $sectionId] = $this->bootstrapSchoolAdminAndSection();
+        [, $otherSchoolId, $otherSectionId] = $this->bootstrapSchoolAdminAndSection();
+
+        $foreignId = $this->createStudentInSection($otherSchoolId, $otherSectionId, 'Foreign', 550000031);
+
+        $response = $this->actingAs($admin)->post(route('students.delete_all'), [
+            'delete_all_id' => (string) $foreignId,
+        ]);
+
+        $response->assertStatus(302);
+        // لم يُحذف أي تلميذ من مدرسة أخرى رغم تمرير معرّفه.
+        $this->assertDatabaseHas('studentinfos', ['id' => $foreignId]);
+    }
+
+    private function createStudentInSection(int $schoolId, int $sectionId, string $tag, int $phone): int
+    {
+        $studentUser = User::factory()->create([
+            'school_id' => $schoolId,
+            'must_change_password' => false,
+        ]);
+        $guardianUser = User::factory()->create([
+            'school_id' => $schoolId,
+            'must_change_password' => false,
+        ]);
+
+        $guardianId = DB::table('my_parents')->insertGetId([
+            'prenomwali' => json_encode(['fr' => 'G' . $tag, 'ar' => 'ولي', 'en' => 'G' . $tag]),
+            'nomwali' => json_encode(['fr' => 'P' . $tag, 'ar' => 'ولي', 'en' => 'P' . $tag]),
+            'relationetudiant' => 'father',
+            'adressewali' => 'Address',
+            'wilayawali' => 'Wilaya',
+            'dayrawali' => 'Dayra',
+            'baladiawali' => 'Baladia',
+            'numtelephonewali' => $phone,
+            'user_id' => $guardianUser->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return DB::table('studentinfos')->insertGetId([
+            'user_id' => $studentUser->id,
+            'section_id' => $sectionId,
+            'parent_id' => $guardianId,
+            'gender' => 1,
+            'prenom' => json_encode(['fr' => $tag, 'ar' => $tag, 'en' => $tag]),
+            'nom' => json_encode(['fr' => 'Last', 'ar' => 'لقب', 'en' => 'Last']),
+            'lieunaissance' => 'City',
+            'wilaya' => 'Wilaya',
+            'dayra' => 'Dayra',
+            'baladia' => 'Baladia',
+            'datenaissance' => '2012-01-01',
+            'numtelephone' => $phone,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     private function bootstrapSchoolAdminAndSection(): array
     {
         $admin = User::factory()->create([
