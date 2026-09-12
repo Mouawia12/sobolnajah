@@ -183,7 +183,9 @@
                     <thead>
                         <tr>
                             <th style="width:36px;">
-                                <input type="checkbox" id="check_all_students" title="{{ trans('opt.deleteall') }}">
+                                <input type="checkbox" id="check_all_students" class="chk-col-info"
+                                    title="{{ trans('opt.deleteall') }}" />
+                                <label for="check_all_students"></label>
                             </th>
                             <th></th>
                             <th>{{ trans('inscription.student') }}</th>
@@ -200,7 +202,9 @@
                         @foreach ($StudentInfo as $index => $ins)
                             <tr>
                                 <td>
-                                    <input type="checkbox" class="student-check" value="{{ $ins->id }}">
+                                    <input type="checkbox" id="student_chk_{{ $ins->id }}"
+                                        class="student-check chk-col-info" value="{{ $ins->id }}" />
+                                    <label for="student_chk_{{ $ins->id }}"></label>
                                 </td>
                                 <td>{{ $StudentInfo->firstItem() + $index }}</td>
                                 <td class="col-md-2">
