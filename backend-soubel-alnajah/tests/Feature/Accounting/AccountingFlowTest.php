@@ -77,6 +77,51 @@ class AccountingFlowTest extends TestCase
         }
     }
 
+    public function test_payment_without_receipt_number_gets_auto_generated_sequential_number(): void
+    {
+        [$accountant, $schoolId, $studentId] = $this->bootstrapUserWithStudent('accountant');
+
+        $contractId = DB::table('student_contracts')->insertGetId([
+            'school_id' => $schoolId,
+            'student_id' => $studentId,
+            'academic_year' => '2026-2027',
+            'total_amount' => 1000,
+            'plan_type' => 'yearly',
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // وصل رقمي سابق برقم 7 => التالي المتوقع 008 (يمرّ عبر nextReceiptNumber المحمول).
+        DB::table('payments')->insert([
+            'school_id' => $schoolId,
+            'contract_id' => $contractId,
+            'receipt_number' => '7',
+            'paid_on' => now()->toDateString(),
+            'amount' => 100,
+            'payment_method' => 'cash',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($accountant)->post(route('accounting.payments.store'), [
+            'contract_id' => $contractId,
+            'paid_on' => now()->toDateString(),
+            'amount' => 200,
+            'payment_method' => 'cash',
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('payments', [
+            'school_id' => $schoolId,
+            'contract_id' => $contractId,
+            'receipt_number' => '008',
+            'amount' => 200,
+        ]);
+    }
+
     public function test_accountant_cannot_create_contract_for_student_from_another_school(): void
     {
         [$accountant] = $this->bootstrapUserWithStudent('accountant');

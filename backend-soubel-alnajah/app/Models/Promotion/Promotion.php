@@ -56,7 +56,7 @@ class Promotion extends Model
 
     public function t_school()
     {
-        return $this->belongsTo(School::class, 'from_grade');
+        return $this->belongsTo(School::class, 'to_school');
     }
 
     // علاقة بين الترقيات والمراحل الدراسية لجلب اسم المرحلة في جدول الترقيات

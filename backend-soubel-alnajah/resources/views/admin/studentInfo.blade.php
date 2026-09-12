@@ -119,6 +119,12 @@
 
         <!-- /.box-header -->
         <div class="box-body">
+            <div class="d-flex justify-content-end mb-2">
+                <a href="javascript:void(0);" class="btn btn-danger disabled" id="btn_delete_all_students">
+                    <span class="icon-Trash1 me-1"><span class="path1"></span><span class="path2"></span></span>
+                    {{ trans('opt.deleteall') }} <span id="selected_students_count"></span>
+                </a>
+            </div>
             <form method="GET" class="row mb-3">
                 <div class="col-md-2">
                     <input type="text" name="q" class="form-control" value="{{ request('q') }}"
@@ -176,6 +182,9 @@
                 <table class="table table-bordered text-center" style="width:100%">
                     <thead>
                         <tr>
+                            <th style="width:36px;">
+                                <input type="checkbox" id="check_all_students" title="{{ trans('opt.deleteall') }}">
+                            </th>
                             <th></th>
                             <th>{{ trans('inscription.student') }}</th>
                             <th> {{ trans('inscription.ecole') }}</th>
@@ -190,7 +199,9 @@
 
                         @foreach ($StudentInfo as $index => $ins)
                             <tr>
-
+                                <td>
+                                    <input type="checkbox" class="student-check" value="{{ $ins->id }}">
+                                </td>
                                 <td>{{ $StudentInfo->firstItem() + $index }}</td>
                                 <td class="col-md-2">
                                     @php
@@ -866,6 +877,29 @@
 </div>
 
 </div>
+
+<!-- مودال حذف التلاميذ المحددين -->
+<div class="modal center-modal fade" id="delete_all_students_modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="delete_all_students_form" action="{{ route('students.delete_all') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <h4 class="text-danger">{{ trans('opt.deletemsg') }}</h4>
+                    <p class="mb-0">
+                        {{ trans('opt.deleteall') }}:
+                        <strong id="delete_all_students_count">0</strong>
+                    </p>
+                    <input type="hidden" id="delete_all_students_id" name="delete_all_id" value="">
+                </div>
+                <div class="modal-footer modal-footer-uniform">
+                    <a type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</a>
+                    <button type="submit" class="btn btn-danger float-end">{{ trans('opt.delete2') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('jsa')
@@ -959,6 +993,57 @@
                     });
             });
         });
+    });
+
+    // تحديد التلاميذ وحذف الكل (المحددين)
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkAll = document.getElementById('check_all_students');
+        const deleteBtn = document.getElementById('btn_delete_all_students');
+        const countLabel = document.getElementById('selected_students_count');
+        const modalEl = document.getElementById('delete_all_students_modal');
+        const idsInput = document.getElementById('delete_all_students_id');
+        const modalCount = document.getElementById('delete_all_students_count');
+
+        if (!deleteBtn) {
+            return;
+        }
+
+        const boxes = () => Array.prototype.slice.call(document.querySelectorAll('.student-check'));
+        const checked = () => boxes().filter(cb => cb.checked);
+
+        function refresh() {
+            const count = checked().length;
+            countLabel.textContent = count > 0 ? '(' + count + ')' : '';
+            deleteBtn.classList.toggle('disabled', count === 0);
+            if (checkAll) {
+                const all = boxes();
+                checkAll.checked = all.length > 0 && count === all.length;
+                checkAll.indeterminate = count > 0 && count < all.length;
+            }
+        }
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function() {
+                boxes().forEach(cb => {
+                    cb.checked = checkAll.checked;
+                });
+                refresh();
+            });
+        }
+
+        boxes().forEach(cb => cb.addEventListener('change', refresh));
+
+        deleteBtn.addEventListener('click', function() {
+            const ids = checked().map(cb => cb.value);
+            if (ids.length === 0) {
+                return;
+            }
+            idsInput.value = ids.join(',');
+            modalCount.textContent = ids.length;
+            new bootstrap.Modal(modalEl).show();
+        });
+
+        refresh();
     });
 </script>
 @endsection

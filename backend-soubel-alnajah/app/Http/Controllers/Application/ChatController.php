@@ -205,16 +205,17 @@ class ChatController extends Controller
         }
 
         $schoolId = $this->currentSchoolId();
-        $lower = mb_strtolower($term, 'UTF-8');
 
         $users = User::query()
             ->whereKeyNot($request->user()->id)
             ->when($schoolId, fn (Builder $query) => $query->where('school_id', $schoolId))
-            ->where(function (Builder $query) use ($lower) {
-                $like = '%' . $lower . '%';
-                $query->whereRaw('LOWER(JSON_EXTRACT(name, "$.\"fr\"")) like ?', [$like])
-                    ->orWhereRaw('LOWER(JSON_EXTRACT(name, "$.\"ar\"")) like ?', [$like])
-                    ->orWhereRaw('LOWER(JSON_EXTRACT(name, "$.\"en\"")) like ?', [$like]);
+            ->where(function (Builder $query) use ($term) {
+                // مُعامل JSON المحمول في Laravel (name->ar) يولّد استخراجًا مناسبًا لكل قاعدة بيانات،
+                // والبحث case-insensitive عبر ترتيب MySQL (utf8mb4_*_ci) وLIKE في SQLite.
+                $like = '%' . $term . '%';
+                $query->where('name->fr', 'like', $like)
+                    ->orWhere('name->ar', 'like', $like)
+                    ->orWhere('name->en', 'like', $like);
             })
             ->orderByDesc('created_at')
             ->limit(8)
