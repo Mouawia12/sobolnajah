@@ -41,6 +41,7 @@ use App\Http\Controllers\Portal\StudentReportController;
 use App\Http\Controllers\Profile\ProfilePhotoController;
 use App\Http\Controllers\HR\EmployeeController;
 use App\Http\Controllers\HR\StaffAttendanceController;
+use App\Http\Controllers\Academic\AssessmentController;
 
 
 
@@ -261,6 +262,16 @@ Route::group(
 
         Route::group(['middleware' => ['role:accountant','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
             Route::get('/accountant/dashboard', [AccountantDashboardController::class, 'index'])->name('accountant.dashboard');
+        });
+
+        // نظام نقاط الفروض والامتحانات — للأستاذ (أقسامه) والمسؤول (الكل)
+        Route::group(['middleware' => ['role:admin|teacher','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
+            Route::get('/assessments', [AssessmentController::class, 'index'])->name('assessments.index');
+            Route::post('/assessments', [AssessmentController::class, 'store'])->name('assessments.store');
+            Route::get('/assessments/results/{section}', [AssessmentController::class, 'results'])->name('assessments.results');
+            Route::get('/assessments/{assessment}/marks', [AssessmentController::class, 'marks'])->name('assessments.marks');
+            Route::post('/assessments/{assessment}/marks', [AssessmentController::class, 'storeMarks'])->name('assessments.marks.store');
+            Route::delete('/assessments/{assessment}', [AssessmentController::class, 'destroy'])->name('assessments.destroy');
         });
 
         Route::group(['middleware' => ['auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {

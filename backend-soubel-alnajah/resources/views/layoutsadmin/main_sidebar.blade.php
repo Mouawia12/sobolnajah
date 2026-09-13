@@ -57,6 +57,13 @@
                                 <span>{{ trans('main_sidebar.teacher_weekly_schedule') }}</span>
                             </a>
                         </li>
+                        <li class="header">{{ trans('academic.assessments') }}</li>
+                        <li>
+                            <a href="{{ route('assessments.index') }}">
+                                <i class="mdi mdi-clipboard-text me-15"></i>
+                                <span>{{ trans('academic.assessments') }}</span>
+                            </a>
+                        </li>
 
                         <li class="header">{{ trans('main_sidebar.langue') }}</li>
                         <li class="treeview">
@@ -143,6 +150,14 @@
                             <ul class="treeview-menu">
                                 <li><a href="{{ route('Teachers.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('teacher.teacherlist') }}</a></li>
                             </ul>
+                        </li>
+
+                        <li class="header">{{ trans('academic.assessments') }}</li>
+                        <li>
+                            <a href="{{ route('assessments.index') }}">
+                                <i class="mdi mdi-clipboard-text me-15"></i>
+                                <span>{{ trans('academic.assessments') }}</span>
+                            </a>
                         </li>
 
                         <li class="header">{{ trans('hr.employees') }}</li>
