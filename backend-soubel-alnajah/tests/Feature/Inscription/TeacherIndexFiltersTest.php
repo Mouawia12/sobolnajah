@@ -43,7 +43,8 @@ class TeacherIndexFiltersTest extends TestCase
         }
         $this->createTeacher($schoolB, $specMath, 'B1', 1);
 
-        $response = $this->actingAs($admin)->get(route('Teachers.index'));
+        // فلتر الفروع الجديد: العرض يشمل كل الفروع افتراضياً، والعزل يتم باختيار الفرع.
+        $response = $this->actingAs($admin)->get(route('Teachers.index', ['branch_id' => $schoolA]));
         $response->assertStatus(200);
         $response->assertViewHas('Teacher', function ($paginator) {
             return $paginator->count() === 20 && $paginator->total() === 25;

@@ -72,7 +72,8 @@ class AdminIndexFiltersTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->actingAs($admin)->get(route('Absences.index'));
+        // فلتر الفروع الجديد: العرض يشمل كل الفروع افتراضياً، والعزل يتم باختيار الفرع.
+        $response = $this->actingAs($admin)->get(route('Absences.index', ['branch_id' => $schoolA]));
         $response->assertStatus(200);
         $response->assertViewHas('Absence', function ($paginator) {
             return $paginator->count() === 20 && $paginator->total() === 25;
@@ -124,13 +125,14 @@ class AdminIndexFiltersTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->actingAs($admin)->get(route('Publications.index'));
+        // فلتر الفروع الجديد: العرض يشمل كل الفروع افتراضياً، والعزل يتم باختيار الفرع.
+        $response = $this->actingAs($admin)->get(route('Publications.index', ['branch_id' => $schoolA]));
         $response->assertStatus(200);
         $response->assertViewHas('Publications', function ($paginator) {
             return $paginator->count() === 20 && $paginator->total() === 23;
         });
 
-        $filtered = $this->actingAs($admin)->get(route('Publications.index', ['q' => 'Special Filter']));
+        $filtered = $this->actingAs($admin)->get(route('Publications.index', ['branch_id' => $schoolA, 'q' => 'Special Filter']));
         $filtered->assertStatus(200);
         $filtered->assertViewHas('Publications', function ($paginator) {
             return $paginator->total() === 1;

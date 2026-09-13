@@ -99,7 +99,9 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
 {
     $this->authorize('create', Absence::class);
 
+    // الكتابة مقيّدة بمدرسة المستخدم دائماً (فلتر الفروع يخصّ العرض فقط، لا الكتابة).
     $student = StudentInfo::query()
+        ->forSchool($this->currentSchoolId())
         ->findOrFail((int) $request->student_id);
 
     // التاريخ اختياري — الصفحة الجديدة ترسل تاريخاً محدداً، المودال القديم يستعمل اليوم
@@ -205,9 +207,12 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
             'date' => ['required', 'date'],
         ]);
 
-        $section = Section::query()->findOrFail((int) $validated['section_id']);
+        // نطاق المدرسة: القسم وتلاميذه يجب أن يتبعوا مدرسة المستخدم.
+        $schoolId = $this->currentSchoolId();
+        $section = Section::query()->forSchool($schoolId)->findOrFail((int) $validated['section_id']);
 
         $students = StudentInfo::query()
+            ->forSchool($schoolId)
             ->where('section_id', $section->id)
             ->orderBy('nom')
             ->orderBy('prenom')
@@ -263,9 +268,12 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
             'status' => ['required', 'integer', 'in:0,1,2'],
         ]);
 
-        $section = Section::query()->findOrFail((int) $validated['section_id']);
+        // نطاق المدرسة: الكتابة الجماعية مقيّدة بمدرسة المستخدم.
+        $schoolId = $this->currentSchoolId();
+        $section = Section::query()->forSchool($schoolId)->findOrFail((int) $validated['section_id']);
 
         $studentIds = StudentInfo::query()
+            ->forSchool($schoolId)
             ->where('section_id', $section->id)
             ->pluck('id');
 

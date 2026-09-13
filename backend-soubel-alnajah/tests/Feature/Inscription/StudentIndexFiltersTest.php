@@ -43,7 +43,8 @@ class StudentIndexFiltersTest extends TestCase
 
         $this->createStudent($schoolB, $sectionB1, 'B1', 552000001);
 
-        $response = $this->actingAs($admin)->get(route('Students.index'));
+        // فلتر الفروع الجديد: العرض يشمل كل الفروع افتراضياً، والعزل يتم باختيار الفرع.
+        $response = $this->actingAs($admin)->get(route('Students.index', ['branch_id' => $schoolA]));
         $response->assertStatus(200);
         $response->assertViewHas('StudentInfo', function ($paginator) {
             return $paginator->count() === 20 && $paginator->total() === 25;
