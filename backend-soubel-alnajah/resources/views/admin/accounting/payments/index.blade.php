@@ -194,15 +194,21 @@
                     @csrf
                     <div class="col-md-4">
                         <label class="form-label">{{ trans('accounting.payments_page.contract') }}</label>
-                        <select name="contract_id" class="form-select" required>
+                        <select name="contract_id" id="contractSelect" class="d-none" required>
                             <option value="">{{ trans('accounting.payments_page.choose_contract') }}</option>
-                            @foreach($contracts as $contract)
-                                @php
-                                    $studentName = $contract->student->user->name ?? ('Student #' . $contract->student_id);
-                                @endphp
-                                <option value="{{ $contract->id }}">#{{ $contract->id }} - {{ $studentName }} - {{ $contract->academic_year }}</option>
-                            @endforeach
                         </select>
+                        <div class="contract-search-select" id="contractSearchSelect"
+                             data-search-url="{{ route('accounting.payments.contract-search') }}"
+                             data-branch-id="{{ request('branch_id') }}">
+                            <button type="button" id="contractSearchToggle" class="form-control text-start d-flex justify-content-between align-items-center">
+                                <span id="contractSearchSelectedText">{{ trans('accounting.payments_page.choose_contract') }}</span>
+                                <span>▾</span>
+                            </button>
+                            <div class="contract-search-menu" id="contractSearchMenu">
+                                <input type="text" id="contractSearchInput" class="form-control" placeholder="{{ trans('accounting.payments_page.choose_contract') }}">
+                                <div class="contract-search-list" id="contractSearchList"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">{{ trans('accounting.payments_page.receipt_number') }}</label>
@@ -543,5 +549,147 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.disabled = count === 0 || total <= 0;
     }
 });
+</script>
+
+<style>
+    .contract-search-select { position: relative; }
+    .contract-search-menu {
+        position: absolute;
+        inset-inline: 0;
+        top: calc(100% + 4px);
+        z-index: 1050;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        padding: 8px;
+        display: none;
+    }
+    .contract-search-menu.is-open { display: block; }
+    .contract-search-list { max-height: 240px; overflow-y: auto; margin-top: 6px; }
+    .contract-search-option {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: start;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .contract-search-option:hover { background: #eef5ff; }
+</style>
+<script>
+    (function () {
+        const select = document.getElementById('contractSelect');
+        const wrapper = document.getElementById('contractSearchSelect');
+        const toggle = document.getElementById('contractSearchToggle');
+        const menu = document.getElementById('contractSearchMenu');
+        const searchInput = document.getElementById('contractSearchInput');
+        const list = document.getElementById('contractSearchList');
+        const selectedText = document.getElementById('contractSearchSelectedText');
+        if (!select || !wrapper || !toggle || !menu || !searchInput || !list || !selectedText) {
+            return;
+        }
+
+        const searchUrl = wrapper.dataset.searchUrl;
+        const branchId = wrapper.dataset.branchId || '';
+        const hintText = 'اكتب حرفين على الأقل (الاسم أو رقم العقد)...';
+        let debounceTimer = null;
+        let activeController = null;
+
+        function setPlaceholder(text) {
+            list.innerHTML = '';
+            const el = document.createElement('div');
+            el.className = 'admin-empty-state';
+            el.textContent = text;
+            list.appendChild(el);
+        }
+
+        function closeMenu() { menu.classList.remove('is-open'); }
+
+        function openMenu() {
+            menu.classList.add('is-open');
+            searchInput.focus();
+            searchInput.select();
+        }
+
+        function chooseContract(value, label) {
+            let option = Array.from(select.options).find(function (o) { return o.value === value; });
+            if (!option) {
+                option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                select.appendChild(option);
+            }
+            select.value = value;
+            selectedText.textContent = label;
+            closeMenu();
+            searchInput.value = '';
+        }
+
+        function renderResults(results) {
+            list.innerHTML = '';
+            if (!results.length) {
+                setPlaceholder('لا توجد نتائج');
+                return;
+            }
+            results.forEach(function (item) {
+                const optionButton = document.createElement('button');
+                optionButton.type = 'button';
+                optionButton.className = 'contract-search-option';
+                optionButton.textContent = item.label;
+                optionButton.dataset.value = item.id;
+                optionButton.addEventListener('click', function () {
+                    chooseContract(String(item.id), item.label);
+                });
+                list.appendChild(optionButton);
+            });
+        }
+
+        function fetchResults(term) {
+            if (term.trim().length < 2) {
+                setPlaceholder(hintText);
+                return;
+            }
+            setPlaceholder('جارٍ البحث...');
+            if (activeController) { activeController.abort(); }
+            activeController = new AbortController();
+
+            const url = new URL(searchUrl, window.location.origin);
+            url.searchParams.set('q', term.trim());
+            if (branchId) { url.searchParams.set('branch_id', branchId); }
+
+            fetch(url.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                signal: activeController.signal
+            })
+                .then(function (response) { return response.ok ? response.json() : { results: [] }; })
+                .then(function (data) { renderResults(data.results || []); })
+                .catch(function (error) {
+                    if (error.name !== 'AbortError') { setPlaceholder('تعذّر البحث، حاول مجدداً'); }
+                });
+        }
+
+        toggle.addEventListener('click', function () {
+            if (menu.classList.contains('is-open')) {
+                closeMenu();
+            } else {
+                openMenu();
+                if (!searchInput.value.trim()) { setPlaceholder(hintText); }
+            }
+        });
+
+        searchInput.addEventListener('input', function () {
+            const term = searchInput.value;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () { fetchResults(term); }, 250);
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!wrapper.contains(event.target)) { closeMenu(); }
+        });
+
+        setPlaceholder(hintText);
+    })();
 </script>
 @endsection

@@ -522,37 +522,40 @@
                     @csrf
                     <div class="col-md-4">
                         <label class="form-label">التلميذ</label>
+                        @php
+                            $selectedStudentLabel = '';
+                            if (!empty($selectedStudent)) {
+                                $selectedStudentLabel = trim(($selectedStudent->prenom ?? '') . ' ' . ($selectedStudent->nom ?? ''));
+                                if ($selectedStudentLabel === '') {
+                                    $selectedStudentLabel = $selectedStudent->user->name ?? ('Student #' . $selectedStudent->id);
+                                }
+                                $selSectionLabel = trim(
+                                    ($selectedStudent->section->classroom->schoolgrade->name_grade ?? '') . ' / ' .
+                                    ($selectedStudent->section->name_section ?? ''), ' /'
+                                );
+                                if ($selSectionLabel !== '') {
+                                    $selectedStudentLabel .= ' — ' . $selSectionLabel;
+                                }
+                                if (!empty($selectedStudent->national_id)) {
+                                    $selectedStudentLabel .= ' — ' . $selectedStudent->national_id;
+                                }
+                            }
+                        @endphp
                         <select name="student_id" id="studentSelect" class="d-none">
                             <option value="">اختر التلميذ</option>
-                            @foreach($students as $student)
-                                @php
-                                    $studentLabel = trim(($student->prenom ?? '') . ' ' . ($student->nom ?? ''));
-                                    if ($studentLabel === '') {
-                                        $studentLabel = $student->user->name ?? ('Student #' . $student->id);
-                                    }
-                                    $sectionLabel = trim(
-                                        ($student->section->classroom->schoolgrade->name_grade ?? '') . ' / ' .
-                                        ($student->section->name_section ?? ''), ' /'
-                                    );
-                                    if ($sectionLabel !== '') {
-                                        $studentLabel .= ' — ' . $sectionLabel;
-                                    }
-                                    if (!empty($student->national_id)) {
-                                        $studentLabel .= ' — ' . $student->national_id;
-                                    }
-                                @endphp
-                                <option value="{{ $student->id }}" {{ (string) old('student_id') === (string) $student->id ? 'selected' : '' }}>
-                                    {{ $studentLabel }}
-                                </option>
-                            @endforeach
+                            @if(!empty($selectedStudent))
+                                <option value="{{ $selectedStudent->id }}" selected>{{ $selectedStudentLabel }}</option>
+                            @endif
                         </select>
-                        <div class="student-search-select" id="studentSearchSelect">
+                        <div class="student-search-select" id="studentSearchSelect"
+                             data-search-url="{{ route('accounting.contracts.student-search') }}"
+                             data-branch-id="{{ request('branch_id') }}">
                             <button type="button" id="studentSearchToggle" class="form-control text-start d-flex justify-content-between align-items-center">
-                                <span id="studentSearchSelectedText">اختر التلميذ</span>
+                                <span id="studentSearchSelectedText">{{ $selectedStudentLabel !== '' ? $selectedStudentLabel : 'اختر التلميذ' }}</span>
                                 <span>▾</span>
                             </button>
                             <div class="student-search-menu" id="studentSearchMenu">
-                                <input type="text" id="studentSearchInput" class="form-control" placeholder="ابحث بالاسم أو رقم التعريف أو القسم...">
+                                <input type="text" id="studentSearchInput" class="form-control" placeholder="ابحث بالاسم أو رقم التعريف (حرفان على الأقل)...">
                                 <div class="student-search-list" id="studentSearchList"></div>
                             </div>
                         </div>
@@ -908,18 +911,76 @@
                     return;
                 }
 
-                const studentOptions = Array.from(select.options)
-                    .filter(function (option) { return option.value !== ''; })
-                    .map(function (option) {
-                        return {
-                            value: option.value,
-                            text: option.text.trim()
-                        };
-                    });
+                const searchUrl = wrapper.dataset.searchUrl;
+                const branchId = wrapper.dataset.branchId || '';
+                let debounceTimer = null;
+                let activeController = null;
 
-                function updateSelectedText() {
-                    const current = select.options[select.selectedIndex];
-                    selectedText.textContent = current && current.value ? current.text : 'اختر التلميذ';
+                function setPlaceholder(text) {
+                    list.innerHTML = '';
+                    const el = document.createElement('div');
+                    el.className = 'admin-empty-state';
+                    el.textContent = text;
+                    list.appendChild(el);
+                }
+
+                // يضبط القيمة المختارة في الـ select المخفي (ينشئ option إن لزم) ليُرسل مع النموذج
+                function chooseStudent(value, label) {
+                    let option = Array.from(select.options).find(function (o) { return o.value === value; });
+                    if (!option) {
+                        option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = label;
+                        select.appendChild(option);
+                    }
+                    select.value = value;
+                    selectedText.textContent = label;
+                    toggle.classList.remove('is-invalid');
+                    closeMenu();
+                    searchInput.value = '';
+                }
+
+                function renderResults(results) {
+                    list.innerHTML = '';
+                    if (!results.length) {
+                        setPlaceholder('لا توجد نتائج');
+                        return;
+                    }
+                    results.forEach(function (item) {
+                        const optionButton = document.createElement('button');
+                        optionButton.type = 'button';
+                        optionButton.className = 'student-search-option';
+                        optionButton.textContent = item.label;
+                        optionButton.dataset.value = item.id;
+                        optionButton.addEventListener('click', function () {
+                            chooseStudent(String(item.id), item.label);
+                        });
+                        list.appendChild(optionButton);
+                    });
+                }
+
+                function fetchResults(term) {
+                    if (term.trim().length < 2) {
+                        setPlaceholder('اكتب حرفين على الأقل للبحث...');
+                        return;
+                    }
+                    setPlaceholder('جارٍ البحث...');
+                    if (activeController) { activeController.abort(); }
+                    activeController = new AbortController();
+
+                    const url = new URL(searchUrl, window.location.origin);
+                    url.searchParams.set('q', term.trim());
+                    if (branchId) { url.searchParams.set('branch_id', branchId); }
+
+                    fetch(url.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                        signal: activeController.signal
+                    })
+                        .then(function (response) { return response.ok ? response.json() : { results: [] }; })
+                        .then(function (data) { renderResults(data.results || []); })
+                        .catch(function (error) {
+                            if (error.name !== 'AbortError') { setPlaceholder('تعذّر البحث، حاول مجدداً'); }
+                        });
                 }
 
                 function closeMenu() {
@@ -944,53 +1005,19 @@
                         .trim();
                 }
 
-                function renderList(term) {
-                    const normalized = normalizeArabic(term);
-                    // دعم البحث بعدة كلمات بأي ترتيب: "خزان محمد" يجد "محمد لمين خزان"
-                    const words = normalized.split(' ').filter(Boolean);
-                    const filtered = studentOptions.filter(function (item) {
-                        const haystack = normalizeArabic(item.text);
-                        return words.every(function (word) {
-                            return haystack.indexOf(word) !== -1;
-                        });
-                    });
-
-                    list.innerHTML = '';
-                    if (filtered.length === 0) {
-                        const empty = document.createElement('div');
-                        empty.className = 'admin-empty-state';
-                        empty.textContent = 'لا توجد نتائج';
-                        list.appendChild(empty);
-                        return;
-                    }
-
-                    filtered.forEach(function (item) {
-                        const optionButton = document.createElement('button');
-                        optionButton.type = 'button';
-                        optionButton.className = 'student-search-option';
-                        optionButton.textContent = item.text;
-                        optionButton.dataset.value = item.value;
-                        optionButton.addEventListener('click', function () {
-                            select.value = item.value;
-                            updateSelectedText();
-                            closeMenu();
-                            searchInput.value = '';
-                            renderList('');
-                        });
-                        list.appendChild(optionButton);
-                    });
-                }
-
                 toggle.addEventListener('click', function () {
                     if (menu.classList.contains('is-open')) {
                         closeMenu();
                     } else {
                         openMenu();
+                        if (!searchInput.value.trim()) { setPlaceholder('اكتب حرفين على الأقل للبحث...'); }
                     }
                 });
 
                 searchInput.addEventListener('input', function () {
-                    renderList(searchInput.value);
+                    const term = searchInput.value;
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(function () { fetchResults(term); }, 250);
                 });
 
                 document.addEventListener('click', function (event) {
@@ -1003,12 +1030,7 @@
                     toggle.classList.add('is-invalid');
                 });
 
-                select.addEventListener('change', function () {
-                    toggle.classList.remove('is-invalid');
-                });
-
-                updateSelectedText();
-                renderList('');
+                setPlaceholder('اكتب حرفين على الأقل للبحث...');
             })();
         </script>
         <script>

@@ -271,17 +271,47 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
 
         $updated = 0;
         DB::transaction(function () use ($studentIds, $validated, &$updated) {
-            foreach ($studentIds as $studentId) {
-                $absence = Absence::firstOrCreate(
-                    ['student_id' => $studentId, 'date' => $validated['date']],
-                    ['hour_1' => Absence::PRESENT, 'hour_2' => Absence::PRESENT, 'hour_3' => Absence::PRESENT,
-                     'hour_4' => Absence::PRESENT, 'hour_5' => Absence::PRESENT, 'hour_6' => Absence::PRESENT,
-                     'hour_7' => Absence::PRESENT, 'hour_8' => Absence::PRESENT, 'hour_9' => Absence::PRESENT]
-                );
-                $absence->{$validated['hour']} = (int) $validated['status'];
-                $absence->save();
-                $updated++;
+            $hour = $validated['hour'];
+            $status = (int) $validated['status'];
+            $date = $validated['date'];
+
+            // التلاميذ الذين لهم سجل غياب في هذا التاريخ مسبقاً
+            $existingIds = Absence::query()
+                ->whereIn('student_id', $studentIds)
+                ->where('date', $date)
+                ->pluck('student_id');
+
+            // تحديث الموجودين دفعة واحدة: نضبط الساعة المختارة فقط
+            if ($existingIds->isNotEmpty()) {
+                Absence::query()
+                    ->whereIn('student_id', $existingIds)
+                    ->where('date', $date)
+                    ->update([$hour => $status]);
             }
+
+            // إدراج من لا سجل له دفعة واحدة: كل الساعات «حاضر» عدا الساعة المختارة
+            $missingIds = $studentIds->diff($existingIds);
+            if ($missingIds->isNotEmpty()) {
+                $now = now();
+                $defaults = [];
+                foreach (range(1, 9) as $h) {
+                    $defaults['hour_' . $h] = Absence::PRESENT;
+                }
+
+                $rows = $missingIds->map(function ($studentId) use ($defaults, $hour, $status, $date, $now) {
+                    return array_merge($defaults, [
+                        'student_id' => $studentId,
+                        'date' => $date,
+                        $hour => $status,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                })->all();
+
+                Absence::query()->insert($rows);
+            }
+
+            $updated = $studentIds->count();
         });
 
         return response()->json([

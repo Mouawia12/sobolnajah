@@ -17,9 +17,17 @@ class AccountantDashboardController extends Controller
     {
         $schoolId = $this->currentSchoolId();
 
-        $contractsCount = StudentContract::query()->forSchool($schoolId)->count();
-        $activeContracts = StudentContract::query()->forSchool($schoolId)->where('status', 'active')->count();
-        $overdueContracts = StudentContract::query()->forSchool($schoolId)->where('status', 'overdue')->count();
+        // عدّادات العقود في استعلام واحد بدل ثلاثة
+        $contractStats = StudentContract::query()
+            ->forSchool($schoolId)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(status = 'active') as active")
+            ->selectRaw("SUM(status = 'overdue') as overdue")
+            ->first();
+
+        $contractsCount = (int) ($contractStats->total ?? 0);
+        $activeContracts = (int) ($contractStats->active ?? 0);
+        $overdueContracts = (int) ($contractStats->overdue ?? 0);
         $paymentsToday = (float) Payment::query()
             ->forSchool($schoolId)
             ->whereDate('paid_on', now()->toDateString())

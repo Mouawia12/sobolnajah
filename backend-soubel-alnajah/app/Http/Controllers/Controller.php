@@ -8,6 +8,7 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class Controller extends BaseController
@@ -34,13 +35,18 @@ class Controller extends BaseController
 
     /**
      * All branches (schools) for the list-pages branch filter dropdown.
+     *
+     * تُستدعى في كل صفحة قائمة تقريباً وتتغيّر نادراً، لذا تُخزَّن مؤقتاً.
+     * الإبطال يتم عبر App\Observers\SchoolObserver عند أي تعديل على الفروع.
      */
     protected function branchOptions(): Collection
     {
-        return \App\Models\School\School::query()
-            ->select(['id', 'name_school'])
-            ->orderBy('name_school')
-            ->get();
+        return Cache::remember('lookup:branches', 3600, function () {
+            return \App\Models\School\School::query()
+                ->select(['id', 'name_school'])
+                ->orderBy('name_school')
+                ->get();
+        });
     }
 
     /**

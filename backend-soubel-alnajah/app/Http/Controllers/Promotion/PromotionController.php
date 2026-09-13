@@ -48,9 +48,6 @@ class PromotionController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();
-        $data['StudentInfo'] = StudentInfo::query()
-            ->forSchool($schoolId)
-            ->get();
         $data['notify'] = $this->notifications();
 
         return view('admin.promotion', $data);
@@ -83,23 +80,24 @@ class PromotionController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $schoolId) {
-                $students = StudentInfo::query()
+                $studentIds = StudentInfo::query()
                     ->forSchool($schoolId)
                     ->where('section_id', $validated['section_id'])
-                    ->get();
+                    ->pluck('id');
 
-                if ($students->isEmpty()) {
+                if ($studentIds->isEmpty()) {
                     throw new \RuntimeException(trans('messages.error'));
                 }
 
-                // Move students to target section and keep a promotion audit row per student.
-                foreach ($students as $student) {
-                    $student->update([
-                        'section_id' => $validated['section_id_new'],
-                    ]);
+                // نقل التلاميذ للقسم الجديد دفعة واحدة بدل تحديث كل تلميذ على حدة.
+                StudentInfo::query()
+                    ->whereIn('id', $studentIds)
+                    ->update(['section_id' => $validated['section_id_new']]);
 
+                // سجل ترقية لكل تلميذ (مفتاح الترقية يختلف حسب student_id).
+                foreach ($studentIds as $studentId) {
                     Promotion::updateOrCreate([
-                        'student_id' => $student->id,
+                        'student_id' => $studentId,
                         'from_school' => $validated['school_id'],
                         'from_grade' => $validated['grade_id'],
                         'from_Classroom' => $validated['classroom_id'],
@@ -111,6 +109,9 @@ class PromotionController extends Controller
                     ]);
                 }
             });
+
+            // التحديث المجمّع لا يطلق أحداث الموديل، فنبطل كاش لوحة التحكم يدوياً.
+            app(HomeDashboardCacheService::class)->forgetForSchool($schoolId);
         } catch (Throwable $e) {
             return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
