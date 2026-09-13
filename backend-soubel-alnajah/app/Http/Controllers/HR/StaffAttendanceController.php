@@ -167,6 +167,55 @@ class StaffAttendanceController extends Controller
     {
         $this->authorize('viewAny', StaffAttendance::class);
 
+        $data = $this->reportData();
+        $data['schools'] = $this->branchOptions();
+        $data['notify'] = $this->notifications();
+        $data['breadcrumbs'] = [
+            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
+            ['label' => trans('hr.staff_attendance'), 'url' => route('staff-attendance.record')],
+            ['label' => trans('hr.attendance_report')],
+        ];
+
+        return view('admin.hr.staff_attendance.report', $data);
+    }
+
+    /**
+     * نسخة الطباعة/الـ PDF من تقرير حضور الموظفين بترويسة المدرسة.
+     */
+    public function reportPrint()
+    {
+        $this->authorize('viewAny', StaffAttendance::class);
+
+        $data = $this->reportData();
+        $wantsPdf = request('format') === 'pdf';
+
+        if ($wantsPdf && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true;
+            $data['pdfUrl'] = null;
+
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+                    'defaultFont' => 'DejaVu Sans',
+                    'isHtml5ParserEnabled' => true,
+                ])
+                ->loadView('admin.hr.staff_attendance.report_print', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('staff-attendance.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('staff-attendance.report.print', array_merge(
+            request()->only('branch_id', 'date_from', 'date_to'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.hr.staff_attendance.report_print', $data);
+    }
+
+    /**
+     * تجميع بيانات تقرير الحضور خلال فترة.
+     */
+    private function reportData(): array
+    {
         $schoolId = $this->branchFilterId();
         $from = request('date_from') ?: now()->startOfMonth()->toDateString();
         $to = request('date_to') ?: now()->toDateString();
@@ -193,18 +242,17 @@ class StaffAttendanceController extends Controller
             ];
         })->values();
 
-        $data['rows'] = $rows;
-        $data['from'] = $from;
-        $data['to'] = $to;
-        $data['schools'] = $this->branchOptions();
-        $data['notify'] = $this->notifications();
-        $data['breadcrumbs'] = [
-            ['label' => 'لوحة التحكم', 'url' => url('/admin')],
-            ['label' => trans('hr.staff_attendance'), 'url' => route('staff-attendance.record')],
-            ['label' => trans('hr.attendance_report')],
-        ];
+        $schoolName = null;
+        if ($schoolId) {
+            $schoolName = optional(\App\Models\School\School::find($schoolId))->name_school;
+        }
 
-        return view('admin.hr.staff_attendance.report', $data);
+        return [
+            'rows' => $rows,
+            'from' => $from,
+            'to' => $to,
+            'schoolName' => $schoolName ?: trans('print.system_name'),
+        ];
     }
 
     /**

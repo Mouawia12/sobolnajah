@@ -329,4 +329,109 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
         ]);
     }
 
+    /**
+     * تقرير حضور/غياب تلميذ خلال فترة — صفحة طباعة بترويسة المدرسة.
+     */
+    public function studentReport(StudentInfo $student)
+    {
+        $data = $this->buildStudentReportData($student);
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('absences.student.report.pdf', array_merge(
+            ['student' => $data['student']->id],
+            request()->only('date_from', 'date_to')
+        ));
+
+        return view('admin.attendance.student_report', $data);
+    }
+
+    /**
+     * نفس التقرير كملف PDF بترويسة المدرسة.
+     */
+    public function studentReportPdf(StudentInfo $student)
+    {
+        $data = $this->buildStudentReportData($student);
+        $data['isPdf'] = true;
+        $data['pdfUrl'] = null;
+
+        if (!class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            return redirect()->route('absences.student.report', array_merge(
+                ['student' => $data['student']->id],
+                request()->only('date_from', 'date_to')
+            ));
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+                'defaultFont' => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+            ])
+            ->loadView('admin.attendance.student_report', $data)
+            ->setPaper('a4', 'portrait');
+
+        $name = trim(($data['student']->prenom ?? '') . '-' . ($data['student']->nom ?? ''));
+
+        return $pdf->download('attendance-' . ($name ?: $data['student']->id) . '.pdf');
+    }
+
+    /**
+     * تجميع بيانات تقرير حضور التلميذ ضمن نطاق مدرسة المستخدم.
+     */
+    private function buildStudentReportData(StudentInfo $student): array
+    {
+        $this->authorize('viewAny', Absence::class);
+
+        // نطاق المدرسة: التلميذ يجب أن يتبع مدرسة المستخدم.
+        $student = StudentInfo::query()
+            ->forSchool($this->currentSchoolId())
+            ->with(['section.classroom.schoolgrade.school'])
+            ->findOrFail($student->id);
+
+        $from = request('date_from') ?: now()->startOfMonth()->toDateString();
+        $to = request('date_to') ?: now()->toDateString();
+
+        $absences = Absence::query()
+            ->where('student_id', $student->id)
+            ->whereBetween('date', [$from, $to])
+            ->orderBy('date')
+            ->get();
+
+        $rows = [];
+        $summary = ['present' => 0, 'late' => 0, 'absent' => 0];
+
+        foreach ($absences as $absence) {
+            $present = $late = $absent = 0;
+            foreach (range(1, 9) as $h) {
+                $value = (int) ($absence->{'hour_' . $h} ?? Absence::PRESENT);
+                if ($value === Absence::LATE) { $late++; }
+                elseif ($value === Absence::ABSENT) { $absent++; }
+                else { $present++; }
+            }
+
+            // حالة اليوم التمثيلية
+            if ($absent > 0 && $present === 0) { $dayStatus = 'absent'; }
+            elseif ($late > 0) { $dayStatus = 'late'; }
+            elseif ($absent > 0) { $dayStatus = 'absent'; }
+            else { $dayStatus = 'present'; }
+
+            $summary[$dayStatus]++;
+
+            $rows[] = [
+                'date' => $absence->date,
+                'present' => $present,
+                'late' => $late,
+                'absent' => $absent,
+                'status' => $dayStatus,
+            ];
+        }
+
+        return [
+            'student' => $student,
+            'rows' => $rows,
+            'summary' => $summary,
+            'from' => $from,
+            'to' => $to,
+            'notify' => $this->notifications(),
+        ];
+    }
+
 }

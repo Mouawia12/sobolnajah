@@ -259,6 +259,12 @@
                                         <i class="fa fa-calendar-check-o"></i>
                                     </a>
 
+                                    <a href="{{ route('absences.student.report', $ins->id) }}" target="_blank"
+                                        title="{{ trans('print.student_attendance_report') }}"
+                                        class="waves-effect waves-light btn btn-secondary-light btn-circle mx-2">
+                                        <i class="fa fa-print"></i>
+                                    </a>
+
 
                                 </td>
                             </tr>
