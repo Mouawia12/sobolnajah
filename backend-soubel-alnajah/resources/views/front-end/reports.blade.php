@@ -41,6 +41,7 @@
                                     <th>الفصل الأول</th>
                                     <th>الفصل الثاني</th>
                                     <th>الفصل الثالث</th>
+                                    <th>كشف النقاط</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -68,6 +69,10 @@
                                                 @endif
                                             </td>
                                         @endforeach
+                                        <td>
+                                            <a href="{{ route('reports.bulletin', $student->id) }}" class="btn btn-primary btn-sm" target="_blank">عرض</a>
+                                            <a href="{{ route('reports.bulletin', ['student' => $student->id, 'format' => 'pdf']) }}" class="btn btn-success btn-sm">تنزيل PDF</a>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>

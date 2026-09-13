@@ -134,6 +134,9 @@ Route::group(
             Route::get('/reports', [StudentReportController::class, 'index'])
                 ->middleware('role:student|guardian')
                 ->name('reports.index');
+            Route::get('/reports/bulletin/{student}', [StudentReportController::class, 'bulletin'])
+                ->middleware('role:student|guardian|admin')
+                ->name('reports.bulletin');
             Route::get('/DownloadNoteFromAdmin/{url}', [NoteStudentController::class, 'DownloadNoteFromAdmin'])
                 ->middleware('role:admin|student|guardian')
                 ->name('DownloadNoteFromAdmin');
