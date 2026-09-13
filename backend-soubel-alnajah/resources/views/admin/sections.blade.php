@@ -71,6 +71,9 @@
                   </div>
                </div>
             </form>
+            <div class="mb-2">
+               <a href="{{ route('Sections.print', request()->only('q','branch_id','grade_id','classroom_id','status')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
+            </div>
             <div class="d-flex justify-content-end mt-15">
                <a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">
                   {{ trans('main_sidebar.addsection') }}

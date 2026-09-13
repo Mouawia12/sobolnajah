@@ -42,6 +42,7 @@
                <div class="col-md-4 d-flex align-items-end gap-2">
                  <button type="submit" class="btn btn-primary">بحث</button>
                  <a href="{{ route('Schoolgrades.index') }}" class="btn btn-light">Reset</a>
+                 <a href="{{ route('Schoolgrades.print', request()->only('q','school_id')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
                </div>
              </div>
            </form>

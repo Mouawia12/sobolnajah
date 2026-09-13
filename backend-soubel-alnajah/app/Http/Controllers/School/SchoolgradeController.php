@@ -35,6 +35,41 @@ class SchoolgradeController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    public function printList()
+    {
+        $this->authorize('viewAny', Schoolgrade::class);
+        $schoolId = $this->currentSchoolId();
+        $query = trim((string) request('q'));
+        $schoolFilter = $schoolId ?: request('school_id');
+
+        $grades = Schoolgrade::query()
+            ->forSchool($schoolId)
+            ->with('school:id,name_school')
+            ->when($schoolFilter, fn ($q) => $q->where('school_id', (int) $schoolFilter))
+            ->when($query !== '', fn ($q) => $q->where(function ($t) use ($query) {
+                $t->where('name_grade->ar', 'like', '%' . $query . '%')
+                    ->orWhere('name_grade->fr', 'like', '%' . $query . '%');
+            }))
+            ->orderBy('school_id')
+            ->limit(3000)
+            ->get();
+
+        $data = ['grades' => $grades, 'schoolName' => $this->branchDisplayName($schoolFilter ? (int) $schoolFilter : null)];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.school_structure.schoolgrades_print', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('schoolgrades.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('Schoolgrades.print', array_merge(request()->only('q', 'school_id'), ['format' => 'pdf']));
+
+        return view('admin.school_structure.schoolgrades_print', $data);
+    }
+
     public function index()
     {
         $this->authorize('viewAny', Schoolgrade::class);

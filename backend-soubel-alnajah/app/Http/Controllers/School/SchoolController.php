@@ -17,6 +17,39 @@ class SchoolController extends Controller
     }
 
 
+    public function printList()
+    {
+        $this->authorize('viewAny', School::class);
+        $schoolId = $this->currentSchoolId();
+        $query = trim((string) request('q'));
+
+        $schools = School::query()
+            ->forSchool($schoolId)
+            ->withCount('schoolgrades')
+            ->when($query !== '', fn ($q) => $q->where(function ($t) use ($query) {
+                $t->where('name_school->ar', 'like', '%' . $query . '%')
+                    ->orWhere('name_school->fr', 'like', '%' . $query . '%');
+            }))
+            ->orderBy('name_school')
+            ->limit(3000)
+            ->get();
+
+        $data = ['schools' => $schools, 'schoolName' => $this->branchDisplayName($schoolId)];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.school_structure.schools_print', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('schools.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('Schools.print', array_merge(request()->only('q'), ['format' => 'pdf']));
+
+        return view('admin.school_structure.schools_print', $data);
+    }
+
     public function index()
     {
         $this->authorize('viewAny', School::class);

@@ -32,6 +32,52 @@ class SectionController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    public function printList()
+    {
+        $this->authorize('viewAny', Section::class);
+        $branchId = $this->branchFilterId();
+        $query = trim((string) request('q'));
+        $gradeFilter = request('grade_id');
+        $classroomFilter = request('classroom_id');
+        $statusFilter = request('status');
+
+        $sections = Section::query()
+            ->forSchool($branchId)
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,school_id,name_grade',
+                'classroom.schoolgrade.school:id,name_school',
+            ])
+            ->when($gradeFilter, fn ($q) => $q->where('grade_id', (int) $gradeFilter))
+            ->when($classroomFilter, fn ($q) => $q->where('classroom_id', (int) $classroomFilter))
+            ->when($statusFilter !== null && $statusFilter !== '', fn ($q) => $q->where('Status', (int) $statusFilter))
+            ->when($query !== '', fn ($q) => $q->where(function ($t) use ($query) {
+                $t->where('name_section->ar', 'like', '%' . $query . '%')
+                    ->orWhere('name_section->fr', 'like', '%' . $query . '%');
+            }))
+            ->orderBy('classroom_id')
+            ->limit(3000)
+            ->get();
+
+        $data = ['sections' => $sections, 'schoolName' => $this->branchDisplayName($branchId)];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.school_structure.sections_print', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('sections.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('Sections.print', array_merge(
+            request()->only('q', 'branch_id', 'grade_id', 'classroom_id', 'status'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.school_structure.sections_print', $data);
+    }
+
     public function index()
     {
         $this->authorize('viewAny', Section::class);

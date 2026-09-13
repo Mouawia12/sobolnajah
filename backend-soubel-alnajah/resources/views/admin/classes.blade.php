@@ -50,6 +50,7 @@
                <div class="col-md-3 d-flex align-items-end gap-2">
                  <button type="submit" class="btn btn-primary">بحث</button>
                  <a href="{{ route('Classes.index') }}" class="btn btn-light">Reset</a>
+                 <a href="{{ route('Classes.print', request()->only('q','branch_id','grade_id')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
                </div>
              </div>
            </form>

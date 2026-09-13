@@ -188,6 +188,10 @@ Route::group(
             Route::get('/teachers/print', [TeacherController::class, 'printList'])->name('teachers.print');
             Route::get('/admin/inscriptions/print', [InscriptionController::class, 'printList'])->name('Inscriptions.print');
             Route::get('/admin/parents/print', [ParentController::class, 'printList'])->name('Parents.print');
+            Route::get('/Schools/print', [SchoolController::class, 'printList'])->name('Schools.print');
+            Route::get('/Schoolgrades/print', [SchoolgradeController::class, 'printList'])->name('Schoolgrades.print');
+            Route::get('/Classes/print', [ClassroomController::class, 'printList'])->name('Classes.print');
+            Route::get('/Sections/print', [SectionController::class, 'printList'])->name('Sections.print');
 
             // الموارد البشرية: إدارة الموظفين + حضور الموظفين والأساتذة اليومي
             Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
