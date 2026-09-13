@@ -23,6 +23,10 @@ use App\Models\TeacherSchedule\TeacherSchedule;
 use App\Models\Chat\ChatRoom;
 use App\Models\Accounting\StudentContract;
 use App\Models\Accounting\Payment;
+use App\Models\HR\Employee;
+use App\Models\HR\StaffAttendance;
+use App\Policies\EmployeePolicy;
+use App\Policies\StaffAttendancePolicy;
 use App\Policies\ExamePolicy;
 use App\Policies\AbsencePolicy;
 use App\Policies\AgendaPolicy;
@@ -76,6 +80,8 @@ class AuthServiceProvider extends ServiceProvider
         ChatRoom::class => ChatRoomPolicy::class,
         StudentContract::class => StudentContractPolicy::class,
         Payment::class => PaymentPolicy::class,
+        Employee::class => EmployeePolicy::class,
+        StaffAttendance::class => StaffAttendancePolicy::class,
     ];
 
     /**

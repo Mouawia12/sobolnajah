@@ -39,6 +39,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Portal\StudentReportController;
 use App\Http\Controllers\Profile\ProfilePhotoController;
+use App\Http\Controllers\HR\EmployeeController;
+use App\Http\Controllers\HR\StaffAttendanceController;
 
 
 
@@ -182,6 +184,17 @@ Route::group(
             Route::resource('Parents', ParentController::class)->only(['index', 'store', 'update', 'destroy']);
             Route::post('/students/delete-all', [StudentController::class, 'deleteAll'])->name('students.delete_all');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
+
+            // الموارد البشرية: إدارة الموظفين + حضور الموظفين والأساتذة اليومي
+            Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+            Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
+            Route::patch('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+            Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+            Route::get('/staff-attendance', [StaffAttendanceController::class, 'recordPage'])->name('staff-attendance.record');
+            Route::get('/staff-attendance/data', [StaffAttendanceController::class, 'recordData'])->name('staff-attendance.data');
+            Route::get('/staff-attendance/report', [StaffAttendanceController::class, 'report'])->name('staff-attendance.report');
+            Route::post('/staff-attendance/update', [StaffAttendanceController::class, 'update'])->name('staff-attendance.update');
+            Route::post('/staff-attendance/bulk', [StaffAttendanceController::class, 'bulkUpdate'])->name('staff-attendance.bulk');
             Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');
             Route::get('/absences/today', [AbsenceController::class, 'getToday'])->name('absence.today');

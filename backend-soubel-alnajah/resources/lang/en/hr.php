@@ -1,0 +1,52 @@
+<?php
+
+return [
+    'employees' => 'Employees',
+    'add_employee' => 'Add employee',
+    'edit_employee' => 'Edit employee',
+    'staff_attendance' => 'Staff attendance',
+    'attendance_report' => 'Attendance report',
+
+    'teacher' => 'Teacher',
+    'employee' => 'Employee',
+    'staff_member' => 'Staff member',
+
+    'name' => 'Full name',
+    'job_title' => 'Job title',
+    'phone' => 'Phone',
+    'joining_date' => 'Joining date',
+    'address' => 'Address',
+    'is_active' => 'Active',
+    'active' => 'Active',
+    'inactive' => 'Inactive',
+    'actions' => 'Actions',
+    'email' => 'Email',
+    'create_account' => 'Create a login account for the employee',
+    'account_hint' => 'A password setup link will be sent to their email.',
+
+    'school' => 'School / Branch',
+    'school_required' => 'The employee branch is required.',
+    'branch_required' => 'Choose a specific branch before bulk recording.',
+    'all_branches' => 'All branches',
+    'choose_branch' => 'Choose branch',
+    'select_branch_first' => 'Choose a branch to list staff',
+    'no_staff' => 'No staff in this branch',
+
+    'date' => 'Date',
+    'search_staff' => 'Search by name or job title...',
+    'staff_count_of' => 'recorded of',
+    'saved' => 'Attendance saved',
+    'save_error' => 'Could not save the change, check the server',
+    'bulk_done' => 'All updated successfully',
+    'confirm_bulk' => 'Apply ":status" to all staff for this day?',
+
+    'report_present' => 'Present days',
+    'report_late' => 'Late days',
+    'report_absent' => 'Absent days',
+    'report_total' => 'Total recorded days',
+    'period_from' => 'From',
+    'period_to' => 'To',
+    'filter' => 'Filter',
+    'print' => 'Print',
+    'empty_report' => 'No data for the selected period.',
+];

@@ -1,0 +1,52 @@
+<?php
+
+return [
+    'employees' => 'الموظفون',
+    'add_employee' => 'إضافة موظف',
+    'edit_employee' => 'تعديل موظف',
+    'staff_attendance' => 'حضور الموظفين',
+    'attendance_report' => 'تقرير الحضور',
+
+    'teacher' => 'أستاذ',
+    'employee' => 'موظف',
+    'staff_member' => 'الموظف',
+
+    'name' => 'الاسم الكامل',
+    'job_title' => 'المنصب / الوظيفة',
+    'phone' => 'الهاتف',
+    'joining_date' => 'تاريخ التوظيف',
+    'address' => 'العنوان',
+    'is_active' => 'نشِط',
+    'active' => 'نشِط',
+    'inactive' => 'غير نشِط',
+    'actions' => 'إجراءات',
+    'email' => 'البريد الإلكتروني',
+    'create_account' => 'إنشاء حساب دخول للموظف',
+    'account_hint' => 'يُرسَل للموظف رابط لتعيين كلمة المرور على بريده.',
+
+    'school' => 'الفرع / المدرسة',
+    'school_required' => 'يجب تحديد الفرع للموظف.',
+    'branch_required' => 'اختر فرعاً محدّداً قبل التسجيل الجماعي.',
+    'all_branches' => 'كل الفروع',
+    'choose_branch' => 'اختر الفرع',
+    'select_branch_first' => 'اختر الفرع لعرض الموظفين',
+    'no_staff' => 'لا يوجد موظفون في هذا الفرع',
+
+    'date' => 'التاريخ',
+    'search_staff' => 'بحث باسم الموظف أو المنصب...',
+    'staff_count_of' => 'مُسجّل من',
+    'saved' => 'تم حفظ الحضور ✅',
+    'save_error' => 'تعذّر حفظ التغيير ❌ تحقق من السيرفر',
+    'bulk_done' => 'تم تحديث الجميع بنجاح ✅',
+    'confirm_bulk' => 'هل تريد تطبيق ":status" على جميع الموظفين لهذا اليوم؟',
+
+    'report_present' => 'أيام الحضور',
+    'report_late' => 'أيام التأخّر',
+    'report_absent' => 'أيام الغياب',
+    'report_total' => 'إجمالي الأيام المسجّلة',
+    'period_from' => 'من',
+    'period_to' => 'إلى',
+    'filter' => 'تصفية',
+    'print' => 'طباعة',
+    'empty_report' => 'لا توجد بيانات ضمن الفترة المحدّدة.',
+];

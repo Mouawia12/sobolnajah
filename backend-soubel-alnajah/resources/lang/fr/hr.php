@@ -1,0 +1,52 @@
+<?php
+
+return [
+    'employees' => 'Employes',
+    'add_employee' => 'Ajouter un employe',
+    'edit_employee' => 'Modifier un employe',
+    'staff_attendance' => 'Presence du personnel',
+    'attendance_report' => 'Rapport de presence',
+
+    'teacher' => 'Enseignant',
+    'employee' => 'Employe',
+    'staff_member' => 'Employe',
+
+    'name' => 'Nom complet',
+    'job_title' => 'Poste / Fonction',
+    'phone' => 'Telephone',
+    'joining_date' => 'Date de recrutement',
+    'address' => 'Adresse',
+    'is_active' => 'Actif',
+    'active' => 'Actif',
+    'inactive' => 'Inactif',
+    'actions' => 'Actions',
+    'email' => 'E-mail',
+    'create_account' => 'Creer un compte pour l employe',
+    'account_hint' => 'Un lien de definition du mot de passe sera envoye a son e-mail.',
+
+    'school' => 'Ecole / Branche',
+    'school_required' => 'La branche de l employe est requise.',
+    'branch_required' => 'Choisissez une branche avant l enregistrement groupe.',
+    'all_branches' => 'Toutes les branches',
+    'choose_branch' => 'Choisir la branche',
+    'select_branch_first' => 'Choisissez la branche pour afficher le personnel',
+    'no_staff' => 'Aucun employe dans cette branche',
+
+    'date' => 'Date',
+    'search_staff' => 'Rechercher par nom ou poste...',
+    'staff_count_of' => 'enregistre sur',
+    'saved' => 'Presence enregistree',
+    'save_error' => 'Echec de l enregistrement, verifiez le serveur',
+    'bulk_done' => 'Tous mis a jour avec succes',
+    'confirm_bulk' => 'Appliquer ":status" a tout le personnel pour ce jour ?',
+
+    'report_present' => 'Jours presents',
+    'report_late' => 'Jours en retard',
+    'report_absent' => 'Jours absents',
+    'report_total' => 'Total des jours enregistres',
+    'period_from' => 'Du',
+    'period_to' => 'Au',
+    'filter' => 'Filtrer',
+    'print' => 'Imprimer',
+    'empty_report' => 'Aucune donnee pour la periode selectionnee.',
+];

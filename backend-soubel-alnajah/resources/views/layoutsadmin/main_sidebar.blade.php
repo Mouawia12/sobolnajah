@@ -145,6 +145,22 @@
                             </ul>
                         </li>
 
+                        <li class="header">{{ trans('hr.employees') }}</li>
+                        <li class="treeview">
+                            <a href="#">
+                                <i class="si-people si"><span class="path1"></span><span class="path2"></span></i>
+                                <span>{{ trans('hr.employees') }}</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-right pull-right"></i>
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li><a href="{{ route('employees.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.employees') }}</a></li>
+                                <li><a href="{{ route('staff-attendance.record') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.staff_attendance') }}</a></li>
+                                <li><a href="{{ route('staff-attendance.report') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.attendance_report') }}</a></li>
+                            </ul>
+                        </li>
+
                         <li class="header">الأجندة والمحتوى</li>
                         <li class="treeview">
                             <a href="#">

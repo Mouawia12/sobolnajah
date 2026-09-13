@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\HR\Employee;
+use App\Models\HR\StaffAttendance;
 use App\Models\Inscription\StudentInfo;
+use App\Models\Inscription\Teacher;
 use App\Models\School\School;
 use App\Services\HomeDashboardCacheService;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
@@ -32,6 +36,13 @@ class AppServiceProvider extends ServiceProvider
         // الثيم الإداري مبني على Bootstrap — قالب الترقيم الافتراضي (Tailwind)
         // يعرض أسهم SVG عملاقة بدون تنسيق.
         Paginator::useBootstrapFive();
+
+        // أسماء مختصرة ثابتة لعلاقة حضور الموظفين متعددة الأشكال (staffable).
+        // morphMap غير ملزِمة: تضيف الاختصارات دون فرضها على باقي العلاقات (كالإشعارات).
+        Relation::morphMap([
+            StaffAttendance::TYPE_TEACHER => Teacher::class,
+            StaffAttendance::TYPE_EMPLOYEE => Employee::class,
+        ]);
 
         // Compatibility for older Blade compilers that don't provide @selected.
         Blade::directive('selected', function ($expression) {
