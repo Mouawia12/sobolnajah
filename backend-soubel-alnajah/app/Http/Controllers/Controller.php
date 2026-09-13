@@ -26,21 +26,37 @@ class Controller extends BaseController
     }
 
     /**
-     * Resolve the branch (school) filter chosen in list pages; null means all branches.
+     * Resolve the branch (school) filter for list pages.
+     *
+     * المسؤول المرتبط بمدرسة مقيّد بمدرسته دائماً ولا يتجاوزها عبر branch_id.
+     * المسؤول العام (بلا مدرسة) يفلتر بحرية: branch_id محدّد أو null = كل الفروع.
      */
     protected function branchFilterId(): ?int
     {
+        $ownSchoolId = Auth::user()?->school_id;
+        if ($ownSchoolId) {
+            return (int) $ownSchoolId;
+        }
+
         return (int) request('branch_id') ?: null;
     }
 
     /**
      * All branches (schools) for the list-pages branch filter dropdown.
      *
-     * تُستدعى في كل صفحة قائمة تقريباً وتتغيّر نادراً، لذا تُخزَّن مؤقتاً.
-     * الإبطال يتم عبر App\Observers\SchoolObserver عند أي تعديل على الفروع.
+     * المسؤول المرتبط بمدرسة يرى فرعه فقط في القائمة؛ المسؤول العام يرى كل الفروع.
+     * قائمة الفروع تتغيّر نادراً لذا تُخزَّن مؤقتاً (يبطلها App\Observers\SchoolObserver).
      */
     protected function branchOptions(): Collection
     {
+        $ownSchoolId = Auth::user()?->school_id;
+        if ($ownSchoolId) {
+            return \App\Models\School\School::query()
+                ->whereKey($ownSchoolId)
+                ->select(['id', 'name_school'])
+                ->get();
+        }
+
         return Cache::remember('lookup:branches', 3600, function () {
             return \App\Models\School\School::query()
                 ->select(['id', 'name_school'])

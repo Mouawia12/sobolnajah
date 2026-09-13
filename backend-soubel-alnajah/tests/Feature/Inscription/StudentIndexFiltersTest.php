@@ -43,11 +43,59 @@ class StudentIndexFiltersTest extends TestCase
 
         $this->createStudent($schoolB, $sectionB1, 'B1', 552000001);
 
-        // فلتر الفروع الجديد: العرض يشمل كل الفروع افتراضياً، والعزل يتم باختيار الفرع.
-        $response = $this->actingAs($admin)->get(route('Students.index', ['branch_id' => $schoolA]));
+        // التقييد: المسؤول المرتبط بمدرسة يرى مدرسته فقط افتراضياً (دون تمرير branch_id).
+        $response = $this->actingAs($admin)->get(route('Students.index'));
         $response->assertStatus(200);
         $response->assertViewHas('StudentInfo', function ($paginator) {
             return $paginator->count() === 20 && $paginator->total() === 25;
+        });
+    }
+
+    public function test_bound_admin_cannot_escape_own_school_via_branch_id(): void
+    {
+        $admin = User::factory()->create(['must_change_password' => false]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        [$schoolA, $sectionA1] = $this->createSchoolHierarchy('A');
+        [$schoolB, $sectionB1] = $this->createSchoolHierarchy('B');
+        $admin->update(['school_id' => $schoolA]);
+
+        $this->createStudent($schoolA, $sectionA1, 'A1', 554000001);
+        $this->createStudent($schoolB, $sectionB1, 'B1', 554000002);
+        $this->createStudent($schoolB, $sectionB1, 'B2', 554000003);
+
+        // محاولة رؤية مدرسة أخرى عبر branch_id يجب أن تبقى مقيّدة بمدرسة الحساب.
+        $response = $this->actingAs($admin)->get(route('Students.index', ['branch_id' => $schoolB]));
+        $response->assertStatus(200);
+        $response->assertViewHas('StudentInfo', function ($paginator) {
+            return $paginator->total() === 1;
+        });
+    }
+
+    public function test_super_admin_without_school_sees_all_branches(): void
+    {
+        $admin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        [$schoolA, $sectionA1] = $this->createSchoolHierarchy('A');
+        [$schoolB, $sectionB1] = $this->createSchoolHierarchy('B');
+
+        $this->createStudent($schoolA, $sectionA1, 'A1', 555000001);
+        $this->createStudent($schoolB, $sectionB1, 'B1', 555000002);
+
+        // مسؤول عام (بلا مدرسة) يرى كل الفروع افتراضياً.
+        $response = $this->actingAs($admin)->get(route('Students.index'));
+        $response->assertStatus(200);
+        $response->assertViewHas('StudentInfo', function ($paginator) {
+            return $paginator->total() === 2;
+        });
+
+        // ويمكنه العزل باختيار فرع محدّد.
+        $filtered = $this->actingAs($admin)->get(route('Students.index', ['branch_id' => $schoolB]));
+        $filtered->assertViewHas('StudentInfo', function ($paginator) {
+            return $paginator->total() === 1;
         });
     }
 

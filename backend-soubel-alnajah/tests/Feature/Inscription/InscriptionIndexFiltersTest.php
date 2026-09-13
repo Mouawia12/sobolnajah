@@ -41,8 +41,8 @@ class InscriptionIndexFiltersTest extends TestCase
         }
         $this->createInscription($schoolB, $gradeB, $classB, 'B1', 'accept');
 
-        // فلتر الفروع الجديد: العرض يشمل كل الفروع افتراضياً، والعزل يتم باختيار الفرع.
-        $response = $this->actingAs($admin)->get(route('Inscriptions.index', ['branch_id' => $schoolA]));
+        // التقييد: المسؤول المرتبط بمدرسة يرى مدرسته فقط افتراضياً (دون تمرير branch_id).
+        $response = $this->actingAs($admin)->get(route('Inscriptions.index'));
         $response->assertStatus(200);
         $response->assertViewHas('Inscription', function ($paginator) {
             return $paginator->count() === 20 && $paginator->total() === 25;
