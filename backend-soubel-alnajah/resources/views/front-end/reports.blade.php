@@ -24,6 +24,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-20">
                     <h4 class="mb-0">النتائج المتاحة</h4>
                     <div class="d-flex gap-2">
+                        <a href="{{ route('notifications.index') }}" class="btn btn-warning btn-sm">🔔 الإشعارات</a>
                         <a href="{{ route('Chats.index') }}" class="btn btn-primary btn-sm">المحادثات</a>
                         <a href="{{ route('home') }}" class="btn btn-secondary btn-sm">العودة للوحة</a>
                     </div>

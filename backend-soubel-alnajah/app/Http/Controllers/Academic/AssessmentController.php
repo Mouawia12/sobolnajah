@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Academic;
 
+use App\Actions\Notification\NotifyMarksEnteredAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAssessmentRequest;
 use App\Http\Requests\StoreMarksRequest;
@@ -113,7 +114,7 @@ class AssessmentController extends Controller
         ]);
     }
 
-    public function storeMarks(StoreMarksRequest $request, Assessment $assessment)
+    public function storeMarks(StoreMarksRequest $request, Assessment $assessment, NotifyMarksEnteredAction $notifyMarksEnteredAction)
     {
         $this->authorize('update', $assessment);
         $validated = $request->validated();
@@ -123,8 +124,9 @@ class AssessmentController extends Controller
         $max = (float) $assessment->max_mark;
 
         $studentIds = $this->sectionStudents($assessment->section_id)->pluck('id')->all();
+        $recorded = [];
 
-        DB::transaction(function () use ($assessment, $marks, $absents, $max, $studentIds) {
+        DB::transaction(function () use ($assessment, $marks, $absents, $max, $studentIds, &$recorded) {
             foreach ($studentIds as $studentId) {
                 $isAbsent = (int) ($absents[$studentId] ?? 0) === 1;
                 $rawMark = $marks[$studentId] ?? null;
@@ -147,8 +149,13 @@ class AssessmentController extends Controller
                     ['assessment_id' => $assessment->id, 'student_id' => $studentId],
                     ['mark' => $mark, 'is_absent' => $isAbsent]
                 );
+
+                $recorded[] = $studentId;
             }
         });
+
+        // إشعار كل تلميذ تم إدخال نقطته + ولي أمره (دون تكرار).
+        $notifyMarksEnteredAction->execute($assessment->loadMissing('specialization'), $recorded);
 
         toastr()->success(trans('academic.marks_saved'));
 

@@ -38,6 +38,7 @@ use App\Http\Controllers\Accounting\AccountantDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Portal\StudentReportController;
+use App\Http\Controllers\Portal\NotificationController;
 use App\Http\Controllers\Profile\ProfilePhotoController;
 use App\Http\Controllers\HR\EmployeeController;
 use App\Http\Controllers\HR\StaffAttendanceController;
@@ -137,6 +138,9 @@ Route::group(
             Route::get('/reports/bulletin/{student}', [StudentReportController::class, 'bulletin'])
                 ->middleware('role:student|guardian|admin')
                 ->name('reports.bulletin');
+            Route::get('/my-notifications', [NotificationController::class, 'index'])->name('notifications.index');
+            Route::post('/my-notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read_all');
+            Route::post('/my-notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
             Route::get('/DownloadNoteFromAdmin/{url}', [NoteStudentController::class, 'DownloadNoteFromAdmin'])
                 ->middleware('role:admin|student|guardian')
                 ->name('DownloadNoteFromAdmin');
