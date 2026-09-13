@@ -6,6 +6,7 @@ use App\Actions\Inscription\CreateTeacherEnrollmentAction;
 use App\Actions\Inscription\DeleteTeacherEnrollmentAction;
 use App\Actions\Inscription\UpdateTeacherEnrollmentAction;
 use App\Models\Inscription\Teacher;
+use App\Models\School\School;
 use App\Models\Specialization\Specialization;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DestroyTeacherRequest;
@@ -21,6 +22,56 @@ class TeacherController extends Controller
     )
     {
         $this->middleware(['auth', 'role:admin']);
+    }
+
+    public function printList()
+    {
+        $this->authorize('viewAny', Teacher::class);
+
+        $branchId = $this->branchFilterId();
+        $search = trim((string) request('q'));
+        $specializationId = request('specialization_id');
+        $gender = request('gender');
+
+        $teachers = Teacher::query()
+            ->forSchool($branchId)
+            ->with(['user:id,email', 'specialization:id,name'])
+            ->when($specializationId, fn ($q) => $q->where('specialization_id', $specializationId))
+            ->when($gender !== null && $gender !== '', fn ($q) => $q->where('gender', $gender))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($teacherQuery) use ($search) {
+                    $teacherQuery->where('name->fr', 'like', '%' . $search . '%')
+                        ->orWhere('name->ar', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', fn ($u) => $u->where('email', 'like', '%' . $search . '%'));
+                });
+            })
+            ->orderBy('name')
+            ->limit(3000)
+            ->get();
+
+        $schoolName = $branchId
+            ? (string) (optional(School::find($branchId))->name_school ?: trans('print.system_name'))
+            : trans('print.system_name');
+
+        $data = ['teachers' => $teachers, 'schoolName' => $schoolName];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true;
+            $data['pdfUrl'] = null;
+
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.teachers.print_list', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('teachers.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('teachers.print', array_merge(
+            request()->only('branch_id', 'q', 'specialization_id', 'gender'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.teachers.print_list', $data);
     }
 
     /**

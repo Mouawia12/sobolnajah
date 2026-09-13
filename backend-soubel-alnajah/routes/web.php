@@ -182,11 +182,14 @@ Route::group(
             Route::post('/Parents/merge', [ParentController::class, 'merge'])->name('Parents.merge');
             Route::post('/Parents/{parent}/link-student', [ParentController::class, 'linkStudent'])->name('Parents.link');
             Route::resource('Parents', ParentController::class)->only(['index', 'store', 'update', 'destroy']);
+            Route::get('/students/print', [StudentController::class, 'printList'])->name('students.print');
             Route::post('/students/delete-all', [StudentController::class, 'deleteAll'])->name('students.delete_all');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
+            Route::get('/teachers/print', [TeacherController::class, 'printList'])->name('teachers.print');
 
             // الموارد البشرية: إدارة الموظفين + حضور الموظفين والأساتذة اليومي
             Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+            Route::get('/employees/print', [EmployeeController::class, 'printList'])->name('employees.print');
             Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
             Route::patch('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
             Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');

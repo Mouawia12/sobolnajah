@@ -102,6 +102,76 @@ class StudentController extends Controller
         return view('admin.studentInfo', $data);
     }
 
+    public function printList()
+    {
+        $this->authorize('viewAny', StudentInfo::class);
+
+        $branchId = $this->branchFilterId();
+        $search = trim((string) request('q'));
+        $sectionId = request('section_id');
+        $classroomId = request('classroom_id');
+        $gradeId = request('grade_id');
+
+        $students = StudentInfo::query()
+            ->forSchool($branchId)
+            ->with([
+                'section:id,classroom_id,name_section',
+                'section.classroom:id,school_id,grade_id,name_class',
+                'section.classroom.schoolgrade:id,school_id,name_grade',
+                'section.classroom.schoolgrade.school:id,name_school',
+            ])
+            ->when($sectionId, fn ($q) => $q->where('section_id', $sectionId))
+            ->when($classroomId, fn ($q) => $q->whereHas('section', fn ($s) => $s->where('classroom_id', $classroomId)))
+            ->when($gradeId, fn ($q) => $q->whereHas('section.classroom', fn ($c) => $c->where('grade_id', $gradeId)))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($studentQuery) use ($search) {
+                    $studentQuery->where('prenom->fr', 'like', '%' . $search . '%')
+                        ->orWhere('prenom->ar', 'like', '%' . $search . '%')
+                        ->orWhere('nom->fr', 'like', '%' . $search . '%')
+                        ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                        ->orWhere('national_id', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('nom')
+            ->limit(3000)
+            ->get();
+
+        $data = [
+            'students' => $students,
+            'schoolName' => $this->resolveBranchName($branchId),
+        ];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true;
+            $data['pdfUrl'] = null;
+
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.students.print_list', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('students.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('students.print', array_merge(
+            request()->only('branch_id', 'q', 'section_id', 'classroom_id', 'grade_id'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.students.print_list', $data);
+    }
+
+    private function resolveBranchName(?int $branchId): string
+    {
+        if ($branchId) {
+            $school = School::find($branchId);
+            if ($school) {
+                return (string) $school->name_school;
+            }
+        }
+
+        return trans('print.system_name');
+    }
+
     public function create()
     {
         $this->authorize('create', StudentInfo::class);

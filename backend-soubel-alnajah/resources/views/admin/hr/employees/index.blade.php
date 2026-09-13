@@ -12,6 +12,9 @@
             <div class="box-header with-border d-flex justify-content-between align-items-center">
                 <h4 class="box-title">{{ trans('hr.employees') }}</h4>
                 <div class="d-flex gap-2">
+                    <a href="{{ route('employees.print', request()->only('q','branch_id')) }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fa fa-print"></i> {{ trans('print.print') }}
+                    </a>
                     <a href="{{ route('staff-attendance.record') }}" class="btn btn-success">
                         <i class="fa fa-calendar-check-o"></i> {{ trans('hr.staff_attendance') }}
                     </a>

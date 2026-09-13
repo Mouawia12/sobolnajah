@@ -119,7 +119,11 @@
 
         <!-- /.box-header -->
         <div class="box-body">
-            <div class="d-flex justify-content-end mb-2">
+            <div class="d-flex justify-content-end mb-2 gap-2">
+                <a href="{{ route('students.print', request()->only('q','branch_id','section_id','classroom_id','grade_id')) }}"
+                    target="_blank" class="btn btn-outline-secondary">
+                    <i class="fa fa-print"></i> {{ trans('print.print') }}
+                </a>
                 <a href="javascript:void(0);" class="btn btn-danger disabled" id="btn_delete_all_students">
                     <span class="icon-Trash1 me-1"><span class="path1"></span><span class="path2"></span></span>
                     {{ trans('opt.deleteall') }} <span id="selected_students_count"></span>
