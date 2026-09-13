@@ -47,6 +47,7 @@
                     <button class="btn btn-primary" type="submit">تصفية</button>
                     <a href="{{ route('Absences.index') }}" class="btn btn-outline-secondary">إعادة</a>
                     <a href="{{ route('attendance.record') }}" class="btn btn-success text-nowrap">{{ trans('opt.attendance_record_title') }}</a>
+                    <a href="{{ route('absences.print', request()->only('q','branch_id','section_id','date_from','date_to')) }}" target="_blank" class="btn btn-outline-secondary text-nowrap"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
                 </div>
             </form>
             <div class="table-responsive">

@@ -67,6 +67,10 @@
                         class="btn {{ request('tab') === 'suggestions' ? 'btn-warning' : 'btn-outline-warning' }}">
                         <i class="fa fa-magic me-5"></i>اقتراحات ذكية: دمج الإخوة
                     </a>
+
+                    <a href="{{ route('Parents.print', request()->only('q','branch_id','filter')) }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fa fa-print"></i> {{ trans('print.print') }}
+                    </a>
                 </div>
 
                 {{-- اقتراحات الدمج الذكية --}}

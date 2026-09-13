@@ -97,6 +97,52 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function printList()
+    {
+        $this->authorize('viewAny', Payment::class);
+        $this->ensureAccountingRole();
+
+        $branchId = $this->branchFilterId();
+        $from = request('date_from');
+        $to = request('date_to');
+        $sectionId = request('section_id');
+
+        $payments = Payment::query()
+            ->forSchool($branchId)
+            ->select(['id', 'contract_id', 'receipt_number', 'paid_on', 'amount', 'payment_method'])
+            ->with(['contract:id,student_id', 'contract.student:id,user_id', 'contract.student.user:id,name'])
+            ->when($from, fn ($q) => $q->whereDate('paid_on', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('paid_on', '<=', $to))
+            ->when($sectionId, fn ($q) => $q->whereHas('contract.student', fn ($s) => $s->where('section_id', $sectionId)))
+            ->orderByDesc('paid_on')
+            ->limit(5000)
+            ->get();
+
+        $data = [
+            'payments' => $payments,
+            'total' => $payments->sum('amount'),
+            'schoolName' => $this->branchDisplayName($branchId),
+            'from' => $from,
+            'to' => $to,
+        ];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.accounting.payments.print_list', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('payments.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('accounting.payments.print', array_merge(
+            request()->only('branch_id', 'date_from', 'date_to', 'section_id'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.accounting.payments.print_list', $data);
+    }
+
     public function store(StorePaymentRequest $request)
     {
         $this->authorize('create', Payment::class);

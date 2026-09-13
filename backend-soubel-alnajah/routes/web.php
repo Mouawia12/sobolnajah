@@ -186,6 +186,8 @@ Route::group(
             Route::post('/students/delete-all', [StudentController::class, 'deleteAll'])->name('students.delete_all');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
             Route::get('/teachers/print', [TeacherController::class, 'printList'])->name('teachers.print');
+            Route::get('/admin/inscriptions/print', [InscriptionController::class, 'printList'])->name('Inscriptions.print');
+            Route::get('/admin/parents/print', [ParentController::class, 'printList'])->name('Parents.print');
 
             // الموارد البشرية: إدارة الموظفين + حضور الموظفين والأساتذة اليومي
             Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
@@ -200,6 +202,7 @@ Route::group(
             Route::post('/staff-attendance/update', [StaffAttendanceController::class, 'update'])->name('staff-attendance.update');
             Route::post('/staff-attendance/bulk', [StaffAttendanceController::class, 'bulkUpdate'])->name('staff-attendance.bulk');
             Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
+            Route::get('/absences/print', [AbsenceController::class, 'printList'])->name('absences.print');
             Route::get('/absences/student/{student}/report', [AbsenceController::class, 'studentReport'])->name('absences.student.report');
             Route::get('/absences/student/{student}/report/pdf', [AbsenceController::class, 'studentReportPdf'])->name('absences.student.report.pdf');
             Route::post('/absence/update', [AbsenceController::class, 'storeOrUpdate'])->name('absence.update');
@@ -274,6 +277,7 @@ Route::group(
             Route::delete('/accounting/contracts/{contract}', [ContractController::class, 'destroy'])->name('accounting.contracts.destroy');
 
             Route::get('/accounting/payments', [PaymentController::class, 'index'])->name('accounting.payments.index');
+            Route::get('/accounting/payments/print', [PaymentController::class, 'printList'])->name('accounting.payments.print');
             Route::get('/accounting/payments/contract-search', [PaymentController::class, 'contractSearch'])->name('accounting.payments.contract-search');
             Route::post('/accounting/payments', [PaymentController::class, 'store'])->name('accounting.payments.store');
             Route::get('/accounting/payments/family-search', [PaymentController::class, 'familySearch'])->name('accounting.payments.family.search');

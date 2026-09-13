@@ -53,6 +53,7 @@
                     <div class="col-md-2 d-flex gap-1">
                         <button class="btn btn-primary" type="submit">تصفية</button>
                         <a href="{{ route('Inscriptions.index') }}" class="btn btn-outline-secondary">إعادة</a>
+                        <a href="{{ route('Inscriptions.print', request()->only('q','branch_id','status','classroom_id')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
                     </div>
                 </form>
 

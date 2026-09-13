@@ -66,6 +66,21 @@ class Controller extends BaseController
     }
 
     /**
+     * اسم الفرع للطباعة: اسم المدرسة إن حُدّد فرع، وإلا اسم النظام.
+     */
+    protected function branchDisplayName(?int $branchId): string
+    {
+        if ($branchId) {
+            $school = \App\Models\School\School::find($branchId);
+            if ($school) {
+                return (string) $school->name_school;
+            }
+        }
+
+        return trans('print.system_name');
+    }
+
+    /**
      * Fetch the latest notifications shared across admin views.
      */
     protected function notifications(): Collection

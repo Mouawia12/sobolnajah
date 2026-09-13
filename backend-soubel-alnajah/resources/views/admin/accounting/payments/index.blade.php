@@ -248,8 +248,9 @@
         </div>
 
         <div class="box mb-3">
-            <div class="box-header with-border">
+            <div class="box-header with-border d-flex justify-content-between align-items-center">
                 <h4 class="box-title">{{ trans('accounting.payments_page.filter_title') }}</h4>
+                <a href="{{ route('accounting.payments.print', request()->only('date_from','date_to','branch_id','section_id')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
             </div>
             <div class="box-body">
                 <form method="GET" class="row g-2">

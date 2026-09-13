@@ -89,7 +89,75 @@ class AbsenceController extends Controller
         ];
 
         return view('admin.AbsenceStudent',$data);
-     
+
+    }
+
+    /**
+     * طباعة/PDF كشف الغيابات المفلتر بترويسة المدرسة.
+     */
+    public function printList()
+    {
+        $this->authorize('viewAny', Absence::class);
+
+        $branchId = $this->branchFilterId();
+        $search = trim((string) request('q'));
+        $from = request('date_from');
+        $to = request('date_to');
+        $sectionId = request('section_id');
+
+        $records = Absence::query()
+            ->when($branchId, fn ($q) => $q->whereHas('student.section', fn ($s) => $s->where('school_id', $branchId)))
+            ->when($sectionId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('section_id', $sectionId)))
+            ->when($from, fn ($q) => $q->whereDate('date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('date', '<=', $to))
+            ->when($search !== '', fn ($q) => $q->whereHas('student', function ($s) use ($search) {
+                $s->where('prenom->ar', 'like', '%' . $search . '%')
+                    ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                    ->orWhere('national_id', 'like', '%' . $search . '%');
+            }))
+            ->with(['student:id,section_id,prenom,nom', 'student.section:id,name_section'])
+            ->orderByDesc('date')
+            ->limit(3000)
+            ->get();
+
+        $rows = $records->map(function ($absence) {
+            $present = $late = $absent = 0;
+            foreach (range(1, 9) as $h) {
+                $value = (int) ($absence->{'hour_' . $h} ?? Absence::PRESENT);
+                if ($value === Absence::LATE) { $late++; }
+                elseif ($value === Absence::ABSENT) { $absent++; }
+                else { $present++; }
+            }
+            if ($absent > 0 && $present === 0) { $status = 'absent'; }
+            elseif ($late > 0) { $status = 'late'; }
+            elseif ($absent > 0) { $status = 'absent'; }
+            else { $status = 'present'; }
+
+            return [
+                'date' => $absence->date,
+                'student' => trim(($absence->student->prenom ?? '') . ' ' . ($absence->student->nom ?? '')),
+                'section' => $absence->student->section->name_section ?? '—',
+                'present' => $present, 'late' => $late, 'absent' => $absent, 'status' => $status,
+            ];
+        });
+
+        $data = ['rows' => $rows, 'schoolName' => $this->branchDisplayName($branchId), 'from' => $from, 'to' => $to];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.attendance.absences_print', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('absences.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('absences.print', array_merge(
+            request()->only('branch_id', 'q', 'section_id', 'date_from', 'date_to'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.attendance.absences_print', $data);
     }
 
 

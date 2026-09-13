@@ -29,6 +29,46 @@ class ParentController extends Controller
         $this->middleware(['auth', 'role:admin']);
     }
 
+    public function printList()
+    {
+        $search = trim((string) request('q'));
+        $filter = (string) request('filter');
+        $branchId = $this->branchFilterId();
+
+        $parents = MyParent::query()
+            ->belongingToSchool($branchId)
+            ->withCount('students')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($parentQuery) use ($search) {
+                    $parentQuery->where('prenomwali->ar', 'like', '%' . $search . '%')
+                        ->orWhere('nomwali->ar', 'like', '%' . $search . '%')
+                        ->orWhere('numtelephonewali', 'like', '%' . $search . '%');
+                });
+            })
+            ->when($filter === 'multi', fn ($query) => $query->has('students', '>=', 2))
+            ->orderByDesc('students_count')
+            ->limit(3000)
+            ->get();
+
+        $data = ['parents' => $parents, 'schoolName' => $this->branchDisplayName($branchId)];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.parents.print_list', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('parents.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('Parents.print', array_merge(
+            request()->only('branch_id', 'q', 'filter'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.parents.print_list', $data);
+    }
+
     public function index()
     {
         $search = trim((string) request('q'));

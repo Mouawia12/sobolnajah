@@ -34,7 +34,49 @@ class InscriptionController extends Controller
     )
     {
         $this->middleware(['auth', 'role:admin', 'force.password.change'])
-            ->only(['show', 'approve', 'edit', 'update', 'destroy', 'updateStatus']);
+            ->only(['show', 'approve', 'edit', 'update', 'destroy', 'updateStatus', 'printList']);
+    }
+
+    public function printList()
+    {
+        $this->authorize('viewAny', Inscription::class);
+
+        $branchId = $this->branchFilterId();
+        $search = trim((string) request('q'));
+        $status = request('status');
+        $classroomId = request('classroom_id');
+
+        $inscriptions = Inscription::query()
+            ->when($branchId, fn ($q) => $q->where('school_id', $branchId))
+            ->when($classroomId, fn ($q) => $q->where('classroom_id', $classroomId))
+            ->when($status, fn ($q) => $q->where('statu', $status))
+            ->when($search !== '', fn ($q) => $q->where(function ($inner) use ($search) {
+                $inner->where('prenom->ar', 'like', '%' . $search . '%')
+                    ->orWhere('nom->ar', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%')
+                    ->orWhere('numtelephone', 'like', '%' . $search . '%');
+            }))
+            ->orderByDesc('created_at')
+            ->limit(3000)
+            ->get();
+
+        $data = ['inscriptions' => $inscriptions, 'schoolName' => $this->branchDisplayName($branchId)];
+
+        if (request('format') === 'pdf' && class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            $data['isPdf'] = true; $data['pdfUrl'] = null;
+            return \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isHtml5ParserEnabled' => true])
+                ->loadView('admin.inscriptions.print_list', $data)
+                ->setPaper('a4', 'portrait')
+                ->download('inscriptions.pdf');
+        }
+
+        $data['isPdf'] = false;
+        $data['pdfUrl'] = route('Inscriptions.print', array_merge(
+            request()->only('branch_id', 'q', 'status', 'classroom_id'),
+            ['format' => 'pdf']
+        ));
+
+        return view('admin.inscriptions.print_list', $data);
     }
 
     /**
