@@ -102,6 +102,10 @@ class StaffAttendanceController extends Controller
         $staffable = $this->resolveStaffable($validated['staff_type'], (int) $validated['staff_id']);
         $recordSchoolId = $this->resolveStaffSchoolId($staffable, $validated['staff_type']);
 
+        if (!$recordSchoolId) {
+            return response()->json(['success' => false, 'message' => trans('hr.branch_required')], 422);
+        }
+
         $date = $validated['date'] ?? now()->toDateString();
 
         $attendance = StaffAttendance::query()->updateOrCreate(
@@ -307,15 +311,13 @@ class StaffAttendanceController extends Controller
         }
 
         if ($type === StaffAttendance::TYPE_EMPLOYEE) {
-            return (int) $staffable->school_id;
+            $schoolId = (int) $staffable->school_id;
+        } else {
+            // أستاذ: المدرسة من حسابه أو أول قسم مرتبط به.
+            $schoolId = (int) ($staffable->user?->school_id ?: $staffable->sections()->value('school_id'));
         }
 
-        // أستاذ: المدرسة من حسابه أو أول قسم مرتبط به.
-        $viaUser = $staffable->user?->school_id;
-        if ($viaUser) {
-            return (int) $viaUser;
-        }
-
-        return $staffable->sections()->value('school_id');
+        // احتياط أخير: الفرع المختار في الصفحة، حتى لا يبقى school_id فارغاً (العمود NOT NULL).
+        return $schoolId ?: $this->branchFilterId();
     }
 }

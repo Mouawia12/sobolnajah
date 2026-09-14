@@ -8,8 +8,11 @@ class DestroyTeacherScheduleRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        // معامل المسار قد يكون نموذجاً (ربط ضمني) أو قيمة؛ نستخرج المفتاح في الحالتين.
+        $param = $this->route('teacher_schedule') ?? $this->route('teacherSchedule') ?? $this->route('id');
+
         $this->merge([
-            'id' => $this->route('teacher_schedule') ?? $this->route('teacherSchedule') ?? $this->route('id'),
+            'id' => is_object($param) ? $param->getKey() : $param,
         ]);
     }
 

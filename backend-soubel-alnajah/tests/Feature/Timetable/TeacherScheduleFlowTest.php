@@ -147,6 +147,29 @@ class TeacherScheduleFlowTest extends TestCase
         $this->assertDatabaseHas('teachers', ['id' => $teacherId]);
     }
 
+    public function test_admin_can_delete_teacher_schedule(): void
+    {
+        $admin = $this->createAdminWithoutSchool();
+        [$schoolId, $teacherId] = $this->bootstrapTeacherForSchool(true);
+
+        $schedule = TeacherSchedule::query()->create([
+            'school_id' => $schoolId,
+            'teacher_id' => $teacherId,
+            'academic_year' => '2026/2027',
+            'title' => 'جدول للحذف',
+            'status' => 'draft',
+            'visibility' => 'authenticated',
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+        ]);
+
+        $response = $this->actingAs($admin)->delete(route('teacher-schedules.destroy', $schedule));
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('teacher_schedules', ['id' => $schedule->id]);
+    }
+
     public function test_teacher_schedule_print_page_displays_school_logo(): void
     {
         $admin = $this->createAdminWithoutSchool();

@@ -155,6 +155,60 @@ class StaffAttendanceFlowTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_can_record_teacher_attendance_without_500(): void
+    {
+        // مسؤول عام (بلا مدرسة) يسجّل حضور أستاذ مدرسته محلولة عبر حسابه.
+        [, $schoolId, $teacherId] = $this->bootstrapSchoolAdmin('A');
+        $super = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $super->attachRole('admin');
+
+        $response = $this->actingAs($super)->postJson(route('staff-attendance.update'), [
+            'staff_type' => 'teacher',
+            'staff_id' => $teacherId,
+            'status' => StaffAttendance::PRESENT,
+            'date' => '2026-09-14',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('staff_attendances', [
+            'staffable_type' => 'teacher', 'staffable_id' => $teacherId,
+            'school_id' => $schoolId, 'date' => '2026-09-14',
+        ]);
+    }
+
+    public function test_unresolvable_school_returns_422_not_500(): void
+    {
+        // أستاذ بلا مدرسة قابلة للحلّ (حساب بلا school_id ولا أقسام) + مسؤول عام.
+        [, $schoolId] = $this->bootstrapSchoolAdmin('A');
+        $specId = DB::table('specializations')->insertGetId([
+            'name' => json_encode(['fr' => 'X', 'ar' => 'x', 'en' => 'X']), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $orphanUserId = DB::table('users')->insertGetId([
+            'name' => json_encode(['fr' => 'O', 'ar' => 'يتيم', 'en' => 'O']),
+            'email' => 'orphan-' . uniqid() . '@example.test', 'password' => bcrypt('x'),
+            'school_id' => null, 'must_change_password' => false, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $orphanTeacherId = DB::table('teachers')->insertGetId([
+            'user_id' => $orphanUserId, 'specialization_id' => $specId,
+            'name' => json_encode(['fr' => 'O', 'ar' => 'أستاذ يتيم', 'en' => 'O']), 'gender' => 1,
+            'joining_date' => '2024-09-01', 'address' => 'A', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $super = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $super->attachRole('admin');
+
+        $response = $this->actingAs($super)->postJson(route('staff-attendance.update'), [
+            'staff_type' => 'teacher',
+            'staff_id' => $orphanTeacherId,
+            'status' => StaffAttendance::PRESENT,
+            'date' => '2026-09-14',
+        ]);
+
+        // لا 500: رسالة واضحة بدل خطأ خادم صامت
+        $response->assertStatus(422);
+        $this->assertSame(0, DB::table('staff_attendances')->where('staffable_id', $orphanTeacherId)->count());
+    }
+
     public function test_bulk_update_sets_all_staff_for_the_day(): void
     {
         [$admin, $schoolId, $teacherId] = $this->bootstrapSchoolAdmin('A');
