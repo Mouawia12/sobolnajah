@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateTimetableRequest;
 use App\Models\Inscription\Teacher;
 use App\Models\School\Section;
 use App\Models\Timetable\Timetable;
+use App\Services\ScheduleConflictService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -57,9 +58,32 @@ class TimetableController extends Controller
             'notify' => $this->notifications(),
             'timetables' => $timetables,
             'sections' => $sections,
+            'conflictsCount' => app(ScheduleConflictService::class)->countForSchool($schoolId),
             'breadcrumbs' => [
                 ['label' => trans('timetable.breadcrumbs.dashboard'), 'url' => url('/admin')],
                 ['label' => trans('timetable.breadcrumbs.index')],
+            ],
+        ]);
+    }
+
+    /**
+     * صفحة تنبيه تعارضات الحصص: نفس الأستاذ/القاعة في قسمين بنفس اليوم والحصّة.
+     */
+    public function conflicts(ScheduleConflictService $conflictService)
+    {
+        $this->authorize('viewAny', Timetable::class);
+
+        $schoolId = $this->currentSchoolId();
+        $academicYear = request('academic_year') ?: null;
+
+        return view('admin.timetables.conflicts', [
+            'notify' => $this->notifications(),
+            'conflicts' => $conflictService->forSchool($schoolId, $academicYear),
+            'academicYear' => $academicYear,
+            'breadcrumbs' => [
+                ['label' => trans('timetable.breadcrumbs.dashboard'), 'url' => url('/admin')],
+                ['label' => trans('timetable.breadcrumbs.index'), 'url' => route('timetables.index')],
+                ['label' => trans('timetable.conflicts.title')],
             ],
         ]);
     }

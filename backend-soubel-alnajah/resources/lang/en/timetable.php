@@ -52,4 +52,18 @@ return [
         'updated' => 'Timetable updated successfully.',
         'deleted' => 'Timetable deleted successfully.',
     ],
+    'conflicts' => [
+        'title' => 'Schedule conflicts',
+        'subtitle' => 'Same teacher or room in two classes at the same day and period',
+        'none' => 'No conflicts in the timetables',
+        'teacher' => 'Teacher conflict',
+        'room' => 'Room conflict',
+        'day' => 'Day',
+        'period' => 'Period',
+        'time' => 'Time',
+        'involved' => 'Conflicting classes',
+        'alert' => 'Warning: :count schedule conflict(s)',
+        'view' => 'View conflicts',
+        'days' => ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    ],
 ];

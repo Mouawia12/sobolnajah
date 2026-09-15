@@ -5,9 +5,15 @@
 <div class="row">
     <div class="col-12">
         <div class="box">
-            <div class="box-header with-border d-flex justify-content-between">
+            <div class="box-header with-border d-flex justify-content-between align-items-center">
                 <h4 class="box-title">{{ trans('timetable.title') }}</h4>
-                <a href="{{ route('timetables.create') }}" class="btn btn-info">{{ trans('timetable.add') }}</a>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('timetables.conflicts') }}" class="btn {{ ($conflictsCount ?? 0) > 0 ? 'btn-danger' : 'btn-outline-success' }}">
+                        <i class="fa fa-exclamation-triangle"></i> {{ trans('timetable.conflicts.title') }}
+                        @if (($conflictsCount ?? 0) > 0)<span class="badge bg-white text-danger">{{ $conflictsCount }}</span>@endif
+                    </a>
+                    <a href="{{ route('timetables.create') }}" class="btn btn-info">{{ trans('timetable.add') }}</a>
+                </div>
             </div>
             <div class="box-body">
                 <form method="GET" class="row mb-3">

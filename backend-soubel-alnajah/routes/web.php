@@ -228,6 +228,7 @@ Route::group(
             Route::get('/recruitment/applications', [JobApplicationController::class, 'index'])->name('recruitment.applications.index');
             Route::patch('/recruitment/applications/{jobApplication}/status', [JobApplicationController::class, 'updateStatus'])->name('recruitment.applications.status');
             Route::get('/recruitment/applications/{jobApplication}/cv', [JobApplicationController::class, 'downloadCv'])->name('recruitment.applications.cv');
+            Route::get('/timetable-conflicts', [TimetableController::class, 'conflicts'])->name('timetables.conflicts');
             Route::get('/timetables/{timetable}/print', [TimetableController::class, 'print'])->name('timetables.print');
             Route::get('/teacher-schedules/{teacherSchedule}/print', [AdminTeacherScheduleController::class, 'print'])->name('teacher-schedules.print');
             Route::get('/teacher-schedules/{teacherSchedule}/pdf', [AdminTeacherScheduleController::class, 'pdf'])->name('teacher-schedules.pdf');

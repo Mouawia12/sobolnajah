@@ -52,4 +52,18 @@ return [
         'updated' => 'Emploi du temps mis a jour.',
         'deleted' => 'Emploi du temps supprime.',
     ],
+    'conflicts' => [
+        'title' => 'Conflits d horaires',
+        'subtitle' => 'Meme enseignant ou salle dans deux classes au meme jour et periode',
+        'none' => 'Aucun conflit dans les emplois du temps',
+        'teacher' => 'Conflit enseignant',
+        'room' => 'Conflit salle',
+        'day' => 'Jour',
+        'period' => 'Periode',
+        'time' => 'Horaire',
+        'involved' => 'Classes concernees',
+        'alert' => 'Attention : :count conflit(s) d horaires',
+        'view' => 'Voir les conflits',
+        'days' => ['','Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],
+    ],
 ];
