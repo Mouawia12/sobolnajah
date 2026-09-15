@@ -97,6 +97,7 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
+                                <li><a href="{{ route('accounts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('accounts.title') }}</a></li>
                                 <li><a href="{{ route('admin.users.create') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>إضافة مستخدم</a></li>
                             </ul>
                         </li>
