@@ -9,12 +9,12 @@ class StaffAttendancePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') || $user->hasRole('supervisor');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('admin');
+        return $user->hasRole('admin') || $user->hasRole('supervisor');
     }
 
     public function view(User $user, ?StaffAttendance $attendance = null): bool
@@ -29,7 +29,7 @@ class StaffAttendancePolicy
 
     private function canAccess(User $user, ?StaffAttendance $attendance = null): bool
     {
-        if (!$user->hasRole('admin')) {
+        if (!$user->hasRole('admin') && !$user->hasRole('supervisor')) {
             return false;
         }
 

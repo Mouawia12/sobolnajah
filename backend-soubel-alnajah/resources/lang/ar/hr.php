@@ -5,6 +5,9 @@ return [
     'add_employee' => 'إضافة موظف',
     'edit_employee' => 'تعديل موظف',
     'staff_attendance' => 'حضور الموظفين',
+    'teachers_attendance' => 'حضور الأساتذة',
+    'employees_attendance' => 'حضور الموظفين',
+    'supervisor' => 'الناظر',
     'attendance_report' => 'تقرير الحضور',
 
     'teacher' => 'أستاذ',

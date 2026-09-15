@@ -5,6 +5,9 @@ return [
     'add_employee' => 'Ajouter un employe',
     'edit_employee' => 'Modifier un employe',
     'staff_attendance' => 'Presence du personnel',
+    'teachers_attendance' => 'Presence des enseignants',
+    'employees_attendance' => 'Presence des employes',
+    'supervisor' => 'Censeur',
     'attendance_report' => 'Rapport de presence',
 
     'teacher' => 'Enseignant',

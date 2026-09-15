@@ -13,6 +13,7 @@
         <div class="box-header with-border">
             <h3 class="box-title d-inline-block"><a data-bs-target="#modal-store" data-bs-toggle="modal" class="btn btn-info">{{ trans('teacher.addteacher') }}</a>
                 <a href="{{ route('teachers.print', request()->only('q','branch_id','specialization_id','gender')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('print.print') }}</a>
+                <a href="{{ route('staff-attendance.record', 'teachers') }}" class="btn btn-success"><i class="fa fa-calendar-check-o"></i> {{ trans('hr.teachers_attendance') }}</a>
             </h3>
         </div>
          <!-- /.box-header -->

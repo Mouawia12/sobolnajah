@@ -171,8 +171,10 @@
                             </a>
                             <ul class="treeview-menu">
                                 <li><a href="{{ route('employees.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.employees') }}</a></li>
-                                <li><a href="{{ route('staff-attendance.record') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.staff_attendance') }}</a></li>
-                                <li><a href="{{ route('staff-attendance.report') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.attendance_report') }}</a></li>
+                                <li><a href="{{ route('staff-attendance.record', 'teachers') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.teachers_attendance') }}</a></li>
+                                <li><a href="{{ route('staff-attendance.record', 'employees') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.employees_attendance') }}</a></li>
+                                <li><a href="{{ route('staff-attendance.report', 'teachers') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.attendance_report') }} — {{ trans('hr.teachers_attendance') }}</a></li>
+                                <li><a href="{{ route('staff-attendance.report', 'employees') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.attendance_report') }} — {{ trans('hr.employees_attendance') }}</a></li>
                             </ul>
                         </li>
 

@@ -15,7 +15,7 @@
                     <a href="{{ route('employees.print', request()->only('q','branch_id')) }}" target="_blank" class="btn btn-outline-secondary">
                         <i class="fa fa-print"></i> {{ trans('print.print') }}
                     </a>
-                    <a href="{{ route('staff-attendance.record') }}" class="btn btn-success">
+                    <a href="{{ route('staff-attendance.record', 'employees') }}" class="btn btn-success">
                         <i class="fa fa-calendar-check-o"></i> {{ trans('hr.staff_attendance') }}
                     </a>
                     <a href="javascript:void(0);" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-add-employee">

@@ -5,6 +5,9 @@ return [
     'add_employee' => 'Add employee',
     'edit_employee' => 'Edit employee',
     'staff_attendance' => 'Staff attendance',
+    'teachers_attendance' => 'Teachers attendance',
+    'employees_attendance' => 'Employees attendance',
+    'supervisor' => 'Supervisor',
     'attendance_report' => 'Attendance report',
 
     'teacher' => 'Teacher',

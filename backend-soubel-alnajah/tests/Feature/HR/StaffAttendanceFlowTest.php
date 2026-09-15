@@ -215,18 +215,23 @@ class StaffAttendanceFlowTest extends TestCase
         $e1 = $this->createEmployee($schoolId, 'موظف 1');
         $e2 = $this->createEmployee($schoolId, 'موظف 2');
 
-        $response = $this->actingAs($admin)->postJson(route('staff-attendance.bulk'), [
-            'status' => StaffAttendance::PRESENT,
-            'date' => '2026-09-13',
+        // تسجيل جماعي للموظفين فقط => موظفان
+        $employeesBulk = $this->actingAs($admin)->postJson(route('staff-attendance.bulk', 'employees'), [
+            'status' => StaffAttendance::PRESENT, 'date' => '2026-09-13',
         ]);
+        $employeesBulk->assertStatus(200);
+        $this->assertSame(2, DB::table('staff_attendances')->where('date', '2026-09-13')->where('staffable_type', 'employee')->count());
 
-        $response->assertStatus(200);
-        // أستاذ + موظفان = 3 سجلات
-        $this->assertSame(3, DB::table('staff_attendances')->where('date', '2026-09-13')->count());
+        // تسجيل جماعي للأساتذة فقط => أستاذ واحد (منفصل)
+        $teachersBulk = $this->actingAs($admin)->postJson(route('staff-attendance.bulk', 'teachers'), [
+            'status' => StaffAttendance::LATE, 'date' => '2026-09-13',
+        ]);
+        $teachersBulk->assertStatus(200);
         $this->assertDatabaseHas('staff_attendances', [
             'staffable_type' => 'teacher', 'staffable_id' => $teacherId,
-            'date' => '2026-09-13', 'status' => StaffAttendance::PRESENT,
+            'date' => '2026-09-13', 'status' => StaffAttendance::LATE,
         ]);
+        $this->assertSame(3, DB::table('staff_attendances')->where('date', '2026-09-13')->count());
     }
 
     public function test_record_data_lists_only_current_school_staff(): void
@@ -236,7 +241,7 @@ class StaffAttendanceFlowTest extends TestCase
         [, $schoolB] = $this->bootstrapSchoolAdmin('B');
         $this->createEmployee($schoolB, 'موظف خارجي');
 
-        $response = $this->actingAs($admin)->getJson(route('staff-attendance.data', ['date' => '2026-09-10']));
+        $response = $this->actingAs($admin)->getJson(route('staff-attendance.data', ['kind' => 'employees', 'date' => '2026-09-10']));
         $response->assertStatus(200);
 
         $names = collect($response->json('staff'))->pluck('name');
@@ -249,7 +254,7 @@ class StaffAttendanceFlowTest extends TestCase
         [$admin, $schoolId] = $this->bootstrapSchoolAdmin('A');
         $this->createEmployee($schoolId, 'موظف تقرير');
 
-        $response = $this->actingAs($admin)->get(route('staff-attendance.report'));
+        $response = $this->actingAs($admin)->get(route('staff-attendance.report', 'employees'));
         $response->assertStatus(200);
         $response->assertViewHas('rows');
     }
@@ -258,7 +263,7 @@ class StaffAttendanceFlowTest extends TestCase
     {
         $user = User::factory()->create(['must_change_password' => false]);
 
-        $response = $this->actingAs($user)->get(route('staff-attendance.record'));
+        $response = $this->actingAs($user)->get(route('staff-attendance.record', 'teachers'));
         $this->assertTrue(in_array($response->status(), [302, 403, 404], true));
     }
 

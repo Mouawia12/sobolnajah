@@ -11,7 +11,7 @@
         <div class="box">
             <div class="box-header with-border d-flex justify-content-between align-items-center">
                 <h4 class="box-title">{{ trans('hr.attendance_report') }}</h4>
-                <a href="{{ route('staff-attendance.report.print', request()->only('branch_id', 'date_from', 'date_to')) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('hr.print') }}</a>
+                <a href="{{ route('staff-attendance.report.print', array_merge(['kind' => $kind], request()->only('branch_id', 'date_from', 'date_to'))) }}" target="_blank" class="btn btn-outline-secondary"><i class="fa fa-print"></i> {{ trans('hr.print') }}</a>
             </div>
 
             <div class="box-body">

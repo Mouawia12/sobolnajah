@@ -1,7 +1,7 @@
 @extends('layoutsadmin.masteradmin')
 @section('cssa')
 @section('titlea')
-    {{ trans('hr.staff_attendance') }}
+    {{ $pageTitle }}
 @stop
 @endsection
 
@@ -63,7 +63,7 @@
         <div class="att-filters">
             @if ($schools->count() > 1)
                 <select id="attBranch" class="form-select"
-                    onchange="window.location='{{ route('staff-attendance.record') }}'+(this.value?'?branch_id='+this.value:'')">
+                    onchange="window.location='{{ route('staff-attendance.record', $kind) }}'+(this.value?'?branch_id='+this.value:'')">
                     <option value="">{{ trans('hr.all_branches') }}</option>
                     @foreach ($schools as $school)
                         <option value="{{ $school->id }}" @selected((string) request('branch_id') === (string) $school->id)>{{ $school->name_school }}</option>
@@ -71,7 +71,7 @@
                 </select>
             @endif
             <input type="date" id="attDate" class="form-control" value="{{ date('Y-m-d') }}">
-            <a href="{{ route('staff-attendance.report', request()->only('branch_id')) }}" class="btn btn-outline-primary d-flex align-items-center">{{ trans('hr.attendance_report') }}</a>
+            <a href="{{ route('staff-attendance.report', array_merge(['kind' => $kind], request()->only('branch_id'))) }}" class="btn btn-outline-primary d-flex align-items-center">{{ trans('hr.attendance_report') }}</a>
         </div>
         <div class="att-bulk">
             <button type="button" class="att-bulk-chip" data-bulk="1"><span style="color:var(--att-green)"><svg><use href="#att-icon-check"/></svg></span>{{ trans('opt.all_present') }}</button>
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function loadData(){
         const date=dateInput.value; if(!date){ return; }
         listEl.innerHTML='<div class="att-empty"><div class="spinner-border text-success"></div></div>'; emptyEl.style.display='none';
-        let url="{{ route('staff-attendance.data') }}?date="+encodeURIComponent(date);
+        let url="{{ route('staff-attendance.data', $kind) }}?date="+encodeURIComponent(date);
         if(branchId){ url+="&branch_id="+encodeURIComponent(branchId); }
         fetch(url,{headers:{'Accept':'application/json'}})
             .then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const status=parseInt(this.dataset.bulk,10);
             if(!confirm(TRANS.confirmBulk.replace(':status',TRANS.statusNames[status]))) return;
             const body={ status:status, date:dateInput.value }; if(branchId){ body.branch_id=branchId; }
-            fetch("{{ route('staff-attendance.bulk') }}",{
+            fetch("{{ route('staff-attendance.bulk', $kind) }}",{
                 method:'POST',
                 headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrfToken,'Accept':'application/json'},
                 body:JSON.stringify(body)

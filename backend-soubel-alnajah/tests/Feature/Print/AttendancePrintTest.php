@@ -68,10 +68,10 @@ class AttendancePrintTest extends TestCase
     {
         [$admin] = $this->bootstrap('A');
 
-        $response = $this->actingAs($admin)->get(route('staff-attendance.report.print'));
+        $response = $this->actingAs($admin)->get(route('staff-attendance.report.print', 'employees'));
 
         $response->assertStatus(200);
-        $response->assertSee(trans('print.staff_attendance_report'));
+        $response->assertSee(trans('hr.employees_attendance'));
     }
 
     private function bootstrap(string $suffix): array

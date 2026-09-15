@@ -10,7 +10,7 @@
 
 <x-print-report
     :title="trans('hr.attendance_report')"
-    :reportTitle="trans('print.staff_attendance_report')"
+    :reportTitle="$reportTitle ?? trans('print.staff_attendance_report')"
     :schoolName="$schoolName"
     :meta="$meta"
     :isPdf="$isPdf"

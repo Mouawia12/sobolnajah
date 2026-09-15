@@ -207,12 +207,6 @@ Route::group(
             Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
             Route::patch('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
             Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
-            Route::get('/staff-attendance', [StaffAttendanceController::class, 'recordPage'])->name('staff-attendance.record');
-            Route::get('/staff-attendance/data', [StaffAttendanceController::class, 'recordData'])->name('staff-attendance.data');
-            Route::get('/staff-attendance/report', [StaffAttendanceController::class, 'report'])->name('staff-attendance.report');
-            Route::get('/staff-attendance/report/print', [StaffAttendanceController::class, 'reportPrint'])->name('staff-attendance.report.print');
-            Route::post('/staff-attendance/update', [StaffAttendanceController::class, 'update'])->name('staff-attendance.update');
-            Route::post('/staff-attendance/bulk', [StaffAttendanceController::class, 'bulkUpdate'])->name('staff-attendance.bulk');
             Route::post('/students/import/status/{token}', [StudentController::class, 'importStatus'])->name('students.import.status');
             Route::get('/absences/print', [AbsenceController::class, 'printList'])->name('absences.print');
             Route::get('/absences/student/{student}/report', [AbsenceController::class, 'studentReport'])->name('absences.student.report');
@@ -269,6 +263,16 @@ Route::group(
 
         Route::group(['middleware' => ['role:accountant','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
             Route::get('/accountant/dashboard', [AccountantDashboardController::class, 'index'])->name('accountant.dashboard');
+        });
+
+        // حضور الأساتذة والموظفين (منفصلان) — للمسؤول والناظر
+        Route::group(['middleware' => ['role:admin|supervisor','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
+            Route::get('/staff-attendance/{kind}', [StaffAttendanceController::class, 'recordPage'])->where('kind', 'teachers|employees')->name('staff-attendance.record');
+            Route::get('/staff-attendance/{kind}/data', [StaffAttendanceController::class, 'recordData'])->where('kind', 'teachers|employees')->name('staff-attendance.data');
+            Route::get('/staff-attendance/{kind}/report', [StaffAttendanceController::class, 'report'])->where('kind', 'teachers|employees')->name('staff-attendance.report');
+            Route::get('/staff-attendance/{kind}/report/print', [StaffAttendanceController::class, 'reportPrint'])->where('kind', 'teachers|employees')->name('staff-attendance.report.print');
+            Route::post('/staff-attendance/update', [StaffAttendanceController::class, 'update'])->name('staff-attendance.update');
+            Route::post('/staff-attendance/{kind}/bulk', [StaffAttendanceController::class, 'bulkUpdate'])->where('kind', 'teachers|employees')->name('staff-attendance.bulk');
         });
 
         // نظام نقاط الفروض والامتحانات — للأستاذ (أقسامه) والمسؤول (الكل)
