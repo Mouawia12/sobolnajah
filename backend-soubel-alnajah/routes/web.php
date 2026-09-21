@@ -38,6 +38,7 @@ use App\Http\Controllers\Accounting\AccountantDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\AccountsController;
+use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Portal\StudentReportController;
 use App\Http\Controllers\Portal\NotificationController;
 use App\Http\Controllers\Profile\ProfilePhotoController;
@@ -182,6 +183,10 @@ Route::group(
             Route::get('/admin', [HomeController::class, 'index'])->name('admin.dashboard');
             Route::get('/admin/users/create', [UserManagementController::class, 'create'])->name('admin.users.create');
             Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
+            Route::get('/admin/roles', [RolePermissionController::class, 'index'])->name('roles.index');
+            Route::post('/admin/roles', [RolePermissionController::class, 'storeRole'])->name('roles.store');
+            Route::delete('/admin/roles/{role}', [RolePermissionController::class, 'destroyRole'])->name('roles.destroy');
+            Route::post('/admin/roles/permissions', [RolePermissionController::class, 'savePermissions'])->name('roles.permissions.save');
             Route::get('/admin/accounts', [AccountsController::class, 'index'])->name('accounts.index');
             Route::post('/admin/accounts/{user}/reset-password', [AccountsController::class, 'resetPassword'])->name('accounts.reset');
             Route::post('/admin/accounts/{user}/roles', [AccountsController::class, 'updateRoles'])->name('accounts.roles');

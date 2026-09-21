@@ -5,268 +5,90 @@
                 <ul class="sidebar-menu" data-widget="tree">
                     @php
                         $user = auth()->user();
-                        $isAccountantOnly = auth()->check()
-                            && $user->hasRole('accountant')
-                            && !$user->hasRole('admin');
-                        $isTeacherOnly = auth()->check()
-                            && $user->hasRole('teacher')
-                            && !$user->hasRole('admin')
-                            && !$user->hasRole('accountant');
+                        $isAdmin = $user && $user->hasRole('admin');
+                        $allowedSections = app(\App\Services\MenuAccessService::class)->allowedSections($user);
+                        $catalog = \App\Support\MenuCatalog::sections();
+                        $dashboardUrl = $isAdmin
+                            ? url('/admin')
+                            : ($user && $user->hasRole('accountant')
+                                ? route('accountant.dashboard')
+                                : ($user && $user->hasRole('teacher') ? route('teacher.dashboard') : route('home')));
                     @endphp
 
-                    @if($isAccountantOnly)
-                        <li class="header">{{ trans('main_sidebar.finance') }}</li>
+                    {{-- الرئيسية (دائماً) --}}
+                    <li class="header">{{ __('الرئيسية') }}</li>
+                    <li>
+                        <a href="{{ $dashboardUrl }}">
+                            <i class="mdi mdi-view-dashboard me-15"></i>
+                            <span>{{ __('الرئيسية') }}</span>
+                        </a>
+                    </li>
+
+                    {{-- الأدوار والصلاحيات (للمسؤول فقط، غير قابل للإخفاء) --}}
+                    @if($isAdmin)
+                        <li class="header">{{ trans('roles.title') }}</li>
                         <li>
-                            <a href="{{ route('accountant.dashboard') }}">
-                                <i class="mdi mdi-view-dashboard me-15"></i>
-                                <span>{{ __('لوحة المحاسب') }}</span>
+                            <a href="{{ route('roles.index') }}">
+                                <i class="mdi mdi-shield-account me-15"></i>
+                                <span>{{ trans('roles.title') }}</span>
                             </a>
                         </li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="mdi mdi-cash-multiple me-15"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('main_sidebar.finance_management') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_contracts') }}</a></li>
-                                <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_payments') }}</a></li>
-                            </ul>
-                        </li>
-                    @elseif($isTeacherOnly)
-                        <li class="header">{{ __('لوحة المعلم') }}</li>
-                        <li>
-                            <a href="{{ route('teacher.dashboard') }}">
-                                <i class="mdi mdi-view-dashboard me-15"></i>
-                                <span>{{ __('الرئيسية') }}</span>
-                            </a>
-                        </li>
+                    @endif
 
-                        <li class="header">{{ __('التواصل') }}</li>
-                        <li>
-                            <a href="{{ route('Chats.index') }}">
-                                <i class="icon-Speach-Bubble4 me-15"></i>
-                                <span>{{ trans('opt.chat_users') }}</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('teacher.schedules.index') }}">
-                                <i class="mdi mdi-calendar-week me-15"></i>
-                                <span>{{ trans('main_sidebar.teacher_weekly_schedule') }}</span>
-                            </a>
-                        </li>
-                        <li class="header">{{ trans('academic.assessments') }}</li>
-                        <li>
-                            <a href="{{ route('assessments.index') }}">
-                                <i class="mdi mdi-clipboard-text me-15"></i>
-                                <span>{{ trans('academic.assessments') }}</span>
-                            </a>
-                        </li>
+                    {{-- الأقسام حسب صلاحيات الدور --}}
+                    @foreach($catalog as $key => $section)
+                        @continue(!in_array($key, $allowedSections, true))
+                        @php $links = $section['links']; @endphp
 
-                        <li class="header">{{ trans('main_sidebar.langue') }}</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="fa fa-refresh"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('main_sidebar.langue') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                @foreach(LaravelLocalization::getSupportedLocales() as $localeCode => $properties)
-                                    @if(in_array($properties['native'], ['العربية', 'English', 'français'], true))
-                                        <li>
-                                            <a hreflang="{{ $localeCode }}" href="{{ LaravelLocalization::getLocalizedURL($localeCode, null, [], true) }}">
-                                                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ $properties['native'] }}
-                                            </a>
-                                        </li>
-                                    @endif
-                                @endforeach
-                            </ul>
-                        </li>
-                    @else
-                        <li class="header">الهيكل المدرسي</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="mdi mdi-account-multiple-plus me-15"><span class="path1"></span><span class="path2"></span></i>
-                                <span>إدارة المستخدمين</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('accounts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('accounts.title') }}</a></li>
-                                <li><a href="{{ route('admin.users.create') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>إضافة مستخدم</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="mdi mdi-school me-15"><span class="path1"></span><span class="path2"></span></i>
-                                <span>إعدادات المدرسة</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('Schools.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.addecoles') }}</a></li>
-                                <li><a href="{{ route('Schoolgrades.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.addclasse') }}</a></li>
-                                <li><a href="{{ route('Classes.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.addclasseroom') }}</a></li>
-                                <li><a href="{{ route('Sections.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.addsection') }}</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="header">الطلاب</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="si-people si"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('inscription.student') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('Inscriptions.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('inscription.studentinscription') }}</a></li>
-                                <li><a href="{{ route('Students.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.studentlist') }}</a></li>
-                                <li><a href="{{ route('Students.create') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.addstudent') }}</a></li>
-                                <li><a href="{{ route('Parents.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>أولياء الأمور</a></li>
-                                <li><a href="{{ route('Promotions.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.promotion') }}</a></li>
-                                <li><a href="{{ route('graduated.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.graduated') }}</a></li>
-                                <li><a href="{{ route('Absences.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.Absences') }}</a></li>
-                                <li><a href="{{ route('attendance.record') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.attendance_record') }}</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="header">المعلمون</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="si-people si"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('teacher.teacher') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('Teachers.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('teacher.teacherlist') }}</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="header">{{ trans('academic.assessments') }}</li>
-                        <li>
-                            <a href="{{ route('assessments.index') }}">
-                                <i class="mdi mdi-clipboard-text me-15"></i>
-                                <span>{{ trans('academic.assessments') }}</span>
-                            </a>
-                        </li>
-
-                        <li class="header">{{ trans('hr.employees') }}</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="si-people si"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('hr.employees') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('employees.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.employees') }}</a></li>
-                                <li><a href="{{ route('staff-attendance.record', 'teachers') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.teachers_attendance') }}</a></li>
-                                <li><a href="{{ route('staff-attendance.record', 'employees') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.employees_attendance') }}</a></li>
-                                <li><a href="{{ route('staff-attendance.report', 'teachers') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.attendance_report') }} — {{ trans('hr.teachers_attendance') }}</a></li>
-                                <li><a href="{{ route('staff-attendance.report', 'employees') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('hr.attendance_report') }} — {{ trans('hr.employees_attendance') }}</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="header">الأجندة والمحتوى</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="icon-Write"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('main_header.agendascolaire') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('Agendas.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.agenda') }}</a></li>
-                                <li><a href="{{ route('Grades.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.grades') }}</a></li>
-                                <li><a href="{{ route('timetables.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.timetables') }}</a></li>
-                                <li><a href="{{ route('teacher-schedules.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.teacher_schedules') }}</a></li>
-                                <li><a href="{{ route('Publications.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.publication') }}</a></li>
-                                <li><a href="{{ route('Exames.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('exam.exam') }}</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="header">{{ trans('main_header.recruitment') }}</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="fa fa-briefcase me-15" aria-hidden="true"></i>
-                                <span>{{ trans('main_sidebar.recruitment_management') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('JobPosts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.recruitment_posts') }}</a></li>
-                                <li><a href="{{ route('recruitment.applications.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.recruitment_applications') }}</a></li>
-                            </ul>
-                        </li>
-
-                        @if(auth()->check() && ($user->hasRole('admin') || $user->hasRole('accountant')))
-                            <li class="header">{{ trans('main_sidebar.finance') }}</li>
+                        @if(count($links) === 1)
+                            <li class="header">{{ $section['label'] }}</li>
+                            <li>
+                                <a href="{{ route($links[0]['route'], $links[0]['params'] ?? []) }}">
+                                    <i class="{{ $section['icon'] }} me-15"></i>
+                                    <span>{{ $links[0]['label'] }}</span>
+                                </a>
+                            </li>
+                        @else
+                            <li class="header">{{ $section['label'] }}</li>
                             <li class="treeview">
                                 <a href="#">
-                                    <i class="mdi mdi-cash-multiple me-15"><span class="path1"></span><span class="path2"></span></i>
-                                    <span>{{ trans('main_sidebar.finance_management') }}</span>
-                                    <span class="pull-right-container">
-                                        <i class="fa fa-angle-right pull-right"></i>
-                                    </span>
+                                    <i class="{{ $section['icon'] }} me-15"></i>
+                                    <span>{{ $section['label'] }}</span>
+                                    <span class="pull-right-container"><i class="fa fa-angle-right pull-right"></i></span>
                                 </a>
                                 <ul class="treeview-menu">
-                                    <li><a href="{{ route('accounting.contracts.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_contracts') }}</a></li>
-                                    <li><a href="{{ route('accounting.payments.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('main_sidebar.finance_payments') }}</a></li>
+                                    @foreach($links as $link)
+                                        <li>
+                                            <a href="{{ route($link['route'], $link['params'] ?? []) }}">
+                                                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ $link['label'] }}
+                                            </a>
+                                        </li>
+                                    @endforeach
                                 </ul>
                             </li>
                         @endif
+                    @endforeach
 
-                        <li class="header">{{ trans('opt.application') }}</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="si-layers si"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('opt.application') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                <li><a href="{{ route('chat.ai') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('opt.chatai') }}</a></li>
-                                <li><a href="{{ route('Chats.index') }}"><i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ trans('opt.chat_users') }}</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="header">{{ trans('main_sidebar.langue') }}</li>
-                        <li class="treeview">
-                            <a href="#">
-                                <i class="fa fa-refresh"><span class="path1"></span><span class="path2"></span></i>
-                                <span>{{ trans('main_sidebar.langue') }}</span>
-                                <span class="pull-right-container">
-                                    <i class="fa fa-angle-right pull-right"></i>
-                                </span>
-                            </a>
-                            <ul class="treeview-menu">
-                                @foreach(LaravelLocalization::getSupportedLocales() as $localeCode => $properties)
-                                    @if(in_array($properties['native'], ['العربية', 'English', 'français'], true))
-                                        <li>
-                                            <a hreflang="{{ $localeCode }}" href="{{ LaravelLocalization::getLocalizedURL($localeCode, null, [], true) }}">
-                                                <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ $properties['native'] }}
-                                            </a>
-                                        </li>
-                                    @endif
-                                @endforeach
-                            </ul>
-                        </li>
-                    @endif
+                    {{-- اللغة (دائماً) --}}
+                    <li class="header">{{ trans('main_sidebar.langue') }}</li>
+                    <li class="treeview">
+                        <a href="#">
+                            <i class="fa fa-refresh"><span class="path1"></span><span class="path2"></span></i>
+                            <span>{{ trans('main_sidebar.langue') }}</span>
+                            <span class="pull-right-container"><i class="fa fa-angle-right pull-right"></i></span>
+                        </a>
+                        <ul class="treeview-menu">
+                            @foreach(LaravelLocalization::getSupportedLocales() as $localeCode => $properties)
+                                @if(in_array($properties['native'], ['العربية', 'English', 'français'], true))
+                                    <li>
+                                        <a hreflang="{{ $localeCode }}" href="{{ LaravelLocalization::getLocalizedURL($localeCode, null, [], true) }}">
+                                            <i class="icon-Commit"><span class="path1"></span><span class="path2"></span></i>{{ $properties['native'] }}
+                                        </a>
+                                    </li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    </li>
                 </ul>
             </div>
         </div>
