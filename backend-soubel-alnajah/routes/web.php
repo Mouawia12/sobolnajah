@@ -206,6 +206,8 @@ Route::group(
             Route::post('/Parents/{parent}/link-student', [ParentController::class, 'linkStudent'])->name('Parents.link');
             Route::resource('Parents', ParentController::class)->only(['index', 'store', 'update', 'destroy']);
             Route::get('/students/print', [StudentController::class, 'printList'])->name('students.print');
+            Route::get('/students/import-template', [StudentController::class, 'downloadImportTemplate'])->name('students.import.template');
+            Route::post('/students/import-template', [StudentController::class, 'importTemplate'])->name('students.import.template.upload');
             Route::post('/students/delete-all', [StudentController::class, 'deleteAll'])->name('students.delete_all');
             Route::post('/students/import', [StudentController::class, 'importExcel'])->name('students.import');
             Route::get('/teachers/print', [TeacherController::class, 'printList'])->name('teachers.print');

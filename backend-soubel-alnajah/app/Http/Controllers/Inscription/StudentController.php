@@ -16,6 +16,7 @@ use App\Models\School\Section;
 use App\Services\MinistryStudentImportService;
 use App\Services\StudentImportProgressService;
 use App\Services\StudentEnrollmentService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
@@ -302,6 +303,161 @@ class StudentController extends Controller
         }
 
         return redirect()->route('Students.index');
+    }
+
+    /** أعمدة قالب الاستيراد البسيط: العنوان العربي => مفتاح الحقل. */
+    private const TEMPLATE_COLUMNS = [
+        'رقم التعريف' => 'national_id',
+        'اللقب' => 'last_name_ar',
+        'الاسم' => 'first_name_ar',
+        'الجنس' => 'gender',
+        'تاريخ الازدياد' => 'birth_date',
+        'مكان الازدياد' => 'birth_place',
+        'السنة' => 'grade',
+        'الشعبة' => 'stream',
+        'القسم' => 'section',
+        'نظام التمدرس' => 'schooling_system',
+        'رقم القيد' => 'registration_number',
+        'تاريخ التسجيل' => 'enrolled_at',
+    ];
+
+    private const TEMPLATE_MAIN_SHEET = 'التلاميذ';
+
+    /**
+     * تنزيل قالب Excel فارغ لاستيراد التلاميذ، مع ورقة «مثال» توضيحية.
+     */
+    public function downloadImportTemplate()
+    {
+        $this->authorize('create', StudentInfo::class);
+
+        $headers = array_keys(self::TEMPLATE_COLUMNS);
+        $example = [
+            '1234567890123456', 'بن علي', 'أحمد', 'ذكر', '2012-09-15', 'الجزائر',
+            'السنة الأولى متوسط', 'جذع مشترك', 'القسم أ', 'خارجي', '2024-001', '2024-09-05',
+        ];
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+
+        // ورقة التعبئة (التلاميذ): الرؤوس فقط
+        $main = $spreadsheet->getActiveSheet();
+        $main->setTitle(self::TEMPLATE_MAIN_SHEET);
+        $main->setRightToLeft(true);
+        $main->fromArray($headers, null, 'A1');
+        $main->getStyle('A1:' . $main->getHighestColumn() . '1')->getFont()->setBold(true);
+        foreach (range('A', $main->getHighestColumn()) as $col) {
+            $main->getColumnDimension($col)->setWidth(20);
+        }
+
+        // ورقة المثال: الرؤوس + صف مثال (لا تُستورَد)
+        $sample = $spreadsheet->createSheet();
+        $sample->setTitle('مثال');
+        $sample->setRightToLeft(true);
+        $sample->fromArray($headers, null, 'A1');
+        $sample->fromArray($example, null, 'A2');
+        $sample->getStyle('A1:' . $sample->getHighestColumn() . '1')->getFont()->setBold(true);
+        foreach (range('A', $sample->getHighestColumn()) as $col) {
+            $sample->getColumnDimension($col)->setWidth(20);
+        }
+        $sample->setCellValue('A4', 'ملاحظة: عبّئ بياناتك في ورقة «التلاميذ». رقم التعريف يجب أن يكون 16 رقماً. الجنس: ذكر/أنثى.');
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $fileName = 'قالب-استيراد-التلاميذ.xlsx';
+        $tmp = tempnam(sys_get_temp_dir(), 'tpl') . '.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmp);
+
+        return response()->download($tmp, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * استيراد التلاميذ من قالب Excel المعبّأ (ورقة «التلاميذ» فقط).
+     */
+    public function importTemplate(Request $request, MinistryStudentImportService $ministryImportService)
+    {
+        $this->authorize('create', StudentInfo::class);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
+            'school_id' => ['nullable', 'integer', 'exists:schools,id'],
+        ]);
+
+        $schoolId = $this->currentSchoolId() ?: (int) $request->input('school_id');
+        $school = $schoolId ? School::find($schoolId) : null;
+        if (!$school) {
+            return back()->withErrors(['school_id' => 'يجب تحديد المدرسة قبل الاستيراد.']);
+        }
+
+        try {
+            $rows = $this->readTemplateRows($request->file('file')->getRealPath());
+        } catch (Throwable $exception) {
+            return back()->withErrors(['file' => 'تعذّر قراءة الملف: ' . $exception->getMessage()]);
+        }
+
+        if (empty($rows)) {
+            return back()->withErrors(['file' => 'لا توجد بيانات في ورقة «التلاميذ».']);
+        }
+
+        $token = Str::lower((string) Str::uuid());
+        $this->studentImportProgressService->initialize($token);
+        $summary = $ministryImportService->importRows($rows, $school, true, $token);
+        $this->studentImportProgressService->complete($token, ['message' => 'تم الاستيراد']);
+
+        toastr()->success(sprintf(
+            'تم الاستيراد: %d مضاف، %d محدّث، %d نُقل قسمه، %d دون تغيير، %d فشل.',
+            $summary['created_rows'], $summary['updated_rows'], $summary['moved_rows'],
+            $summary['unchanged_rows'], $summary['failed_rows']
+        ));
+
+        if (!empty($summary['issues'])) {
+            toastr()->warning('بعض الصفوف لم تُستورد: ' . implode(' | ', array_slice($summary['issues'], 0, 3)));
+        }
+
+        return redirect()->route('Students.index');
+    }
+
+    /**
+     * يقرأ ورقة «التلاميذ» من ملف xlsx ويحوّلها لصفوف بمفاتيح الحقول.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function readTemplateRows(string $path): array
+    {
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
+        $sheet = $spreadsheet->getSheetByName(self::TEMPLATE_MAIN_SHEET) ?? $spreadsheet->getSheet(0);
+        $matrix = $sheet->toArray(null, true, false, false);
+
+        if (count($matrix) < 2) {
+            return [];
+        }
+
+        $headerRow = array_shift($matrix);
+        $map = [];
+        foreach ($headerRow as $index => $title) {
+            $key = self::TEMPLATE_COLUMNS[trim((string) $title)] ?? null;
+            if ($key) {
+                $map[$index] = $key;
+            }
+        }
+
+        $rows = [];
+        foreach ($matrix as $line) {
+            $row = [];
+            $hasData = false;
+            foreach ($map as $index => $key) {
+                $value = trim((string) ($line[$index] ?? ''));
+                $row[$key] = $value;
+                if ($value !== '') {
+                    $hasData = true;
+                }
+            }
+            if ($hasData) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
     }
 
     public function importExcel(ImportStudentsRequest $request, MinistryStudentImportService $ministryImportService)

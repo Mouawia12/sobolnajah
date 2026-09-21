@@ -28,6 +28,34 @@
 
     <div class="col-12">
 
+        {{-- استيراد بقالب Excel بسيط (تنزيل قالب فارغ + تعبئته + رفعه) --}}
+        <div class="box">
+            <div class="box-header with-border bg-success">
+                <h4 class="box-title text-white"><strong>استيراد التلاميذ بقالب Excel جاهز</strong></h4>
+            </div>
+            <div class="box-body">
+                <p class="text-muted">حمّل القالب الفارغ، عبّئه (يوجد صف «مثال» توضيحي داخل الملف)، ثم ارفعه هنا. الطلاب يُضافون/يُحدَّثون حسب رقم التعريف.</p>
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                    <a href="{{ route('students.import.template') }}" class="btn btn-outline-success">
+                        <i class="fa fa-download"></i> تنزيل القالب الفارغ (Excel)
+                    </a>
+                    <form action="{{ route('students.import.template.upload') }}" method="POST" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center mb-0">
+                        @csrf
+                        @if (isset($School) && $School->count() > 1)
+                            <select name="school_id" class="form-select" style="width:auto;" required>
+                                <option value="" disabled selected>اختر المدرسة</option>
+                                @foreach ($School as $sc)
+                                    <option value="{{ $sc->id }}">{{ $sc->name_school }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                        <input type="file" name="file" class="form-control" style="width:auto;" accept=".xlsx,.xls" required>
+                        <button type="submit" class="btn btn-success"><i class="fa fa-upload"></i> رفع القالب المعبّأ</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="box box-slided-up">
             <div class="box-header with-border bg-info">
                 <h4 class="box-title"><strong>{{ trans('opt.addStudentbyExcel') }}</strong></h4>

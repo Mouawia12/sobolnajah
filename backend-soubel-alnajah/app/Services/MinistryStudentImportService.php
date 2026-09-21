@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Inscription\StudentInfo;
+use App\Models\School\School;
 use App\Models\School\Section;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -47,6 +48,19 @@ class MinistryStudentImportService
      */
     public function import(string $absolutePath, string $token): array
     {
+        $parsed = $this->parser->parse($absolutePath);
+        $school = $this->structureSync->resolveSchool($parsed['school_name']);
+
+        return $this->importRows($parsed['rows'], $school, $parsed['has_streams'], $token, $parsed['school_name']);
+    }
+
+    /**
+     * يعالج صفوفاً جاهزة (من ملف الوزارة أو من قالب Excel بسيط) ضمن مدرسة محدّدة.
+     * مفاتيح كل صف: national_id, first_name_ar, last_name_ar, gender, birth_date,
+     * birth_place, grade, section, واختياري stream/registration_number/enrolled_at/schooling_system.
+     */
+    public function importRows(array $rows, School $school, bool $hasStreams, string $token, ?string $schoolName = null): array
+    {
         // الاستيراد قد يستغرق دقائق لملفات كبيرة — نرفع مهلة التنفيذ ونكمل المعالجة
         // حتى لو أغلق المتصفح الاتصال (التقدم يُتابع عبر الـ polling).
         if (function_exists('set_time_limit')) {
@@ -54,11 +68,7 @@ class MinistryStudentImportService
         }
         @ignore_user_abort(true);
 
-        $parsed = $this->parser->parse($absolutePath);
-        $school = $this->structureSync->resolveSchool($parsed['school_name']);
-
-        $rows = $parsed['rows'];
-        $hasStreams = $parsed['has_streams'];
+        $schoolName = $schoolName ?: (string) $school->name_school;
         $totalRows = count($rows);
 
         $counters = [
@@ -74,7 +84,7 @@ class MinistryStudentImportService
         $this->progress->running($token, [
             'total_rows' => $totalRows,
             'processed_rows' => 0,
-            'school_name' => $parsed['school_name'],
+            'school_name' => $schoolName,
         ] + $counters);
 
         $processed = 0;
@@ -133,7 +143,7 @@ class MinistryStudentImportService
                     $this->progress->running($token, [
                         'total_rows' => $totalRows,
                         'processed_rows' => $processed,
-                        'school_name' => $parsed['school_name'],
+                        'school_name' => $schoolName,
                         'issues_preview' => array_slice($issues, -5),
                         'latest_issue' => !empty($issues) ? end($issues) : null,
                     ] + $counters);
@@ -144,7 +154,7 @@ class MinistryStudentImportService
         $absentReport = $this->buildAbsentReport($school->id, $seenNationalIds);
 
         return [
-            'school_name' => $parsed['school_name'],
+            'school_name' => $schoolName,
             'total_rows' => $totalRows,
             'processed_rows' => $processed,
             'structure_created' => $this->structureSync->created,
