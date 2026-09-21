@@ -83,11 +83,11 @@ class RolePermissionTest extends TestCase
     {
         $admin = $this->admin();
 
-        $response = $this->actingAs($admin)->post(route('roles.store'), [
+        $response = $this->actingAs($admin)->postJson(route('roles.store'), [
             'display_name' => 'الناظر العام',
             'name' => 'censeur',
         ]);
-        $response->assertStatus(302);
+        $response->assertStatus(200)->assertJson(['ok' => true]);
         $this->assertDatabaseHas('roles', ['name' => 'censeur', 'display_name' => 'الناظر العام']);
     }
 
@@ -96,9 +96,9 @@ class RolePermissionTest extends TestCase
         $admin = $this->admin();
         $custom = Role::create(['name' => 'librarian', 'display_name' => 'أمين مكتبة']);
 
-        $this->actingAs($admin)->post(route('roles.permissions.save'), [
+        $this->actingAs($admin)->postJson(route('roles.permissions.save'), [
             'perms' => [$custom->id => ['content', 'communication']],
-        ])->assertStatus(302);
+        ])->assertStatus(200)->assertJson(['ok' => true]);
 
         $user = User::factory()->create(['must_change_password' => false]);
         $user->attachRole('librarian');
@@ -112,8 +112,8 @@ class RolePermissionTest extends TestCase
         $admin = $this->admin();
         $accountant = Role::firstOrCreate(['name' => 'accountant']);
 
-        $response = $this->actingAs($admin)->delete(route('roles.destroy', $accountant->id));
-        $response->assertSessionHasErrors('error');
+        $response = $this->actingAs($admin)->deleteJson(route('roles.destroy', $accountant->id));
+        $response->assertStatus(422)->assertJson(['ok' => false]);
         $this->assertDatabaseHas('roles', ['name' => 'accountant']);
     }
 
@@ -122,8 +122,59 @@ class RolePermissionTest extends TestCase
         $admin = $this->admin();
         $custom = Role::create(['name' => 'temp_role', 'display_name' => 'مؤقت']);
 
-        $this->actingAs($admin)->delete(route('roles.destroy', $custom->id))->assertStatus(302);
+        $this->actingAs($admin)->deleteJson(route('roles.destroy', $custom->id))->assertStatus(200)->assertJson(['ok' => true]);
         $this->assertDatabaseMissing('roles', ['name' => 'temp_role']);
+    }
+
+    public function test_admin_can_create_user_with_roles_via_ajax(): void
+    {
+        $admin = $this->admin();
+        Role::firstOrCreate(['name' => 'supervisor']);
+
+        $response = $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'ناظر جديد',
+            'email' => 'new-staff@example.test',
+            'password' => 'Secret123',
+            'roles' => ['supervisor'],
+        ]);
+        $response->assertStatus(200)->assertJson(['ok' => true]);
+
+        $user = User::query()->where('email', 'new-staff@example.test')->first();
+        $this->assertNotNull($user);
+        $this->assertTrue($user->hasRole('supervisor'));
+        $this->assertTrue((bool) $user->must_change_password);
+    }
+
+    public function test_users_data_returns_json_list(): void
+    {
+        $admin = $this->admin();
+        User::factory()->create(['must_change_password' => false, 'email' => 'listme@example.test']);
+
+        $response = $this->actingAs($admin)->getJson(route('roles.users.data', ['q' => 'listme']));
+        $response->assertStatus(200)->assertJson(['ok' => true]);
+        $this->assertStringContainsString('listme@example.test', $response->getContent());
+    }
+
+    public function test_update_user_roles_via_ajax(): void
+    {
+        $admin = $this->admin();
+        Role::firstOrCreate(['name' => 'accountant']);
+        $target = User::factory()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)->postJson(route('roles.users.roles', $target->id), [
+            'roles' => ['accountant'],
+        ])->assertStatus(200)->assertJson(['ok' => true]);
+
+        $this->assertTrue($target->fresh()->hasRole('accountant'));
+    }
+
+    public function test_cannot_delete_self_via_ajax(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->deleteJson(route('roles.users.destroy', $admin->id))
+            ->assertStatus(422)->assertJson(['ok' => false]);
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }
 
     public function test_non_admin_cannot_access_roles_page(): void

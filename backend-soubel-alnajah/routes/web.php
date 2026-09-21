@@ -187,6 +187,11 @@ Route::group(
             Route::post('/admin/roles', [RolePermissionController::class, 'storeRole'])->name('roles.store');
             Route::delete('/admin/roles/{role}', [RolePermissionController::class, 'destroyRole'])->name('roles.destroy');
             Route::post('/admin/roles/permissions', [RolePermissionController::class, 'savePermissions'])->name('roles.permissions.save');
+            Route::get('/admin/roles/users-data', [RolePermissionController::class, 'usersData'])->name('roles.users.data');
+            Route::post('/admin/roles/users', [RolePermissionController::class, 'storeUser'])->name('roles.users.store');
+            Route::post('/admin/roles/users/{user}/roles', [RolePermissionController::class, 'updateUserRoles'])->name('roles.users.roles');
+            Route::post('/admin/roles/users/{user}/reset-password', [RolePermissionController::class, 'resetUserPassword'])->name('roles.users.reset');
+            Route::delete('/admin/roles/users/{user}', [RolePermissionController::class, 'destroyUser'])->name('roles.users.destroy');
             Route::get('/admin/accounts', [AccountsController::class, 'index'])->name('accounts.index');
             Route::post('/admin/accounts/{user}/reset-password', [AccountsController::class, 'resetPassword'])->name('accounts.reset');
             Route::post('/admin/accounts/{user}/roles', [AccountsController::class, 'updateRoles'])->name('accounts.roles');
