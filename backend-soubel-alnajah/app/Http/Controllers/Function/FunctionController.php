@@ -33,11 +33,10 @@ class FunctionController extends Controller
     }
 
     public function showAgenda($id){
-        $data = $this->buildAgendaPageDataAction->execute(Auth::user());
-        $view = $data['view'];
-        unset($data['view']);
+        // مسار قديم: العرض front-end.agenda غير موجود، وadmin.publications يحتاج بيانات لا يبنيها هذا المسار.
+        $user = Auth::user();
 
-        return view($view, $data);
+        return redirect()->route($user && $user->hasRole('admin') ? 'Publications.index' : 'public.publications.index');
     }
 
     public function showGallery(){
@@ -55,7 +54,7 @@ class FunctionController extends Controller
 
     public function listAgendaGrades($id = null)
     {
-        return Grade::query()->pluck('name_grade', 'id');
+        return Grade::query()->get(['id', 'name_grades'])->mapWithKeys(fn (Grade $grade) => [$grade->id => $grade->name_grades]);
     }
 
     // Backward-compatible alias for legacy route naming.

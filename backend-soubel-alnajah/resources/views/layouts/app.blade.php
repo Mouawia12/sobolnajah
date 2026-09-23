@@ -13,7 +13,13 @@
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
 
-    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @if (file_exists(public_path('build/manifest.json')))
+        @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @else
+        {{-- لا يوجد بناء Vite على السيرفر؛ نستعمل الأصول الثابتة بدل خطأ 500. --}}
+        <link rel="stylesheet" href="{{ asset('css/vendors_css.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    @endif
 </head>
 <body>
     <div id="app">

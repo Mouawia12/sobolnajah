@@ -2035,4 +2035,32 @@ class SprintZeroSecurityTest extends TestCase
         $response = $this->get(route('public.agenda.show', ['id' => 1]));
         $this->assertTrue(in_array($response->status(), [200, 301, 302, 303], true));
     }
+
+    public function test_public_agenda_grades_lists_translated_grade_names(): void
+    {
+        $this->withoutMiddleware([
+            \Mcamara\LaravelLocalization\Middleware\LocaleSessionRedirect::class,
+            \Mcamara\LaravelLocalization\Middleware\LocalizationRedirect::class,
+            \Mcamara\LaravelLocalization\Middleware\LocaleViewPath::class,
+        ]);
+        $gradeId = DB::table('grades')->insertGetId([
+            'name_grades' => json_encode(['fr' => 'Niveau', 'ar' => 'مستوى', 'en' => 'Level']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->get(route('public.agenda.grades', ['id' => 1]))
+            ->assertOk()
+            ->assertJson([$gradeId => 'مستوى']);
+    }
+
+    public function test_password_reset_page_renders_without_vite_build(): void
+    {
+        $this->withoutMiddleware([
+            \Mcamara\LaravelLocalization\Middleware\LocaleSessionRedirect::class,
+            \Mcamara\LaravelLocalization\Middleware\LocalizationRedirect::class,
+            \Mcamara\LaravelLocalization\Middleware\LocaleViewPath::class,
+        ]);
+        $this->get(route('password.request'))->assertOk();
+    }
 }

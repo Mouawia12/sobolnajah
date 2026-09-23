@@ -93,10 +93,9 @@ Route::group(
         Route::resources([
             'Inscriptions'=>InscriptionController::class,
             'Publications'=>PublicationController::class,
-            'Exames'=>ExamesController::class,
-
-
         ]);
+        // create/edit غير موجودين في ExamesController (كانا يعطيان 500).
+        Route::resource('Exames', ExamesController::class)->except(['create', 'edit']);
         Route::get('/lookup/schools/{id}/grades',[SchoolgradeController::class,'listBySchool'])->name('lookup.schoolGrades');
         Route::get('/lookup/grades/{id}/classes',[ClassroomController::class,'listByGrade'])->name('lookup.gradeClasses');
         Route::get('/lookup/classes/{id}/sections',[SectionController::class,'listByClassroom'])->name('lookup.classSections');
@@ -246,23 +245,22 @@ Route::group(
             Route::get('/teacher-schedules/{teacherSchedule}/pdf', [AdminTeacherScheduleController::class, 'pdf'])->name('teacher-schedules.pdf');
 
             Route::resources([
-                'Schools'=>SchoolController::class,
                 'Schoolgrades'=>SchoolgradeController::class,
                 'Classes'=>ClassroomController::class,
-                'Agendas'=>AgendaController::class,
                 'Grades'=>GradeController::class,
                 'Sections'=>SectionController::class,
-                'Students'=>StudentController::class,
                 'Teachers'=>TeacherController::class,
                 'graduated'=>GraduatedController::class,
-                'NoteStudents'=>NoteStudentController::class,
-                'Addnotestudents'=>NoteStudentController::class,
-                'Absences'=>AbsenceController::class,
-                'JobPosts'=>JobPostController::class,
-                'timetables'=>TimetableController::class,
-
-
             ]);
+            // لا نسجّل إلا دوال الـ resource الموجودة فعلاً في المتحكّمات (البقية كانت تعطي 500).
+            Route::resource('Schools', SchoolController::class)->except(['create', 'show', 'edit']);
+            Route::resource('Agendas', AgendaController::class)->except(['show', 'edit']);
+            Route::resource('Students', StudentController::class)->except(['show', 'edit']);
+            Route::resource('NoteStudents', NoteStudentController::class)->except(['create']);
+            Route::resource('Addnotestudents', NoteStudentController::class)->except(['create']);
+            Route::resource('Absences', AbsenceController::class)->only(['index']);
+            Route::resource('JobPosts', JobPostController::class)->except(['show']);
+            Route::resource('timetables', TimetableController::class)->except(['show']);
             Route::resource('teacher-schedules', AdminTeacherScheduleController::class)
                 ->parameters(['teacher-schedules' => 'teacherSchedule']);
             Route::resource('Promotions', PromotionController::class)->only(['index', 'store', 'destroy']);
