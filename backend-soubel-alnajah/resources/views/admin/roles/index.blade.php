@@ -397,7 +397,7 @@
                 '<td dir="ltr">' + esc(u.email) + '</td>' +
                 '<td data-roles="' + esc((u.roles || []).join(',')) + '">' + badges + '</td>' +
                 '<td>' +
-                    '<button class="btn btn-sm btn-primary-light rp-user-roles" data-id="' + u.id + '" data-name="' + esc(u.name) + '"><i class="fa fa-user-tag"></i></button> ' +
+                    '<button class="btn btn-sm btn-primary-light rp-user-roles" data-id="' + u.id + '" data-name="' + esc(u.name) + '"><i class="fa fa-id-badge"></i></button> ' +
                     '<button class="btn btn-sm btn-warning-light rp-user-pass" data-id="' + u.id + '" data-name="' + esc(u.name) + '"><i class="fa fa-key"></i></button> ' + del +
                 '</td></tr>';
         }).join('');

@@ -61,7 +61,7 @@
                                     </td>
                                     <td>{{ optional($user->school)->name_school ?? '—' }}</td>
                                     <td>
-                                        <a href="javascript:void(0);" class="btn btn-primary-light btn-sm" data-bs-toggle="modal" data-bs-target="#roles-{{ $user->id }}"><i class="fa fa-user-tag"></i> {{ trans('accounts.edit_roles') }}</a>
+                                        <a href="javascript:void(0);" class="btn btn-primary-light btn-sm" data-bs-toggle="modal" data-bs-target="#roles-{{ $user->id }}"><i class="fa fa-id-badge"></i> {{ trans('accounts.edit_roles') }}</a>
                                         <a href="javascript:void(0);" class="btn btn-warning-light btn-sm" data-bs-toggle="modal" data-bs-target="#pass-{{ $user->id }}"><i class="fa fa-key"></i> {{ trans('accounts.reset_password') }}</a>
                                         @if ($user->id !== $currentUserId)
                                             <a href="javascript:void(0);" class="btn btn-danger-light btn-sm" data-bs-toggle="modal" data-bs-target="#del-{{ $user->id }}"><i class="fa fa-trash"></i></a>
