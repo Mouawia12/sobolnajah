@@ -18,7 +18,7 @@ class StorePortalUserRequest extends FormRequest
         $currentSchoolId = $this->user()?->school_id;
 
         return [
-            'role' => ['required', Rule::in(['admin', 'teacher', 'student', 'guardian', 'accountant'])],
+            'role' => ['required', Rule::in(\App\Support\RoleCatalog::coreRoleNames())],
             'first_name_fr' => ['required_without:first_name_ar', 'nullable', 'string', 'max:120'],
             'last_name_fr' => ['required_without:last_name_ar', 'nullable', 'string', 'max:120'],
             'first_name_ar' => ['required_without:first_name_fr', 'nullable', 'string', 'max:120'],

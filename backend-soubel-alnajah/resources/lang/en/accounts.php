@@ -20,6 +20,7 @@ return [
 
     'edit_roles' => 'Edit roles',
     'roles_updated' => 'Account roles updated',
+    'single_role_hint' => 'One role per user — the user follows that role\'s permissions.',
 
     'delete_account' => 'Delete account',
     'account_deleted' => 'Account deleted',

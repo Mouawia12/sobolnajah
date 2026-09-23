@@ -6,23 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\School\School;
 use App\Models\User;
+use App\Support\RoleCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class AccountsController extends Controller
 {
-    /** الأدوار القابلة للإسناد من صندوق الحسابات مع تسمياتها. */
-    private const ASSIGNABLE_ROLES = [
-        'admin' => 'مدير',
-        'supervisor' => 'ناظر',
-        'teacher' => 'أستاذ',
-        'accountant' => 'محاسب',
-        'employee' => 'موظف',
-        'guardian' => 'ولي أمر',
-        'student' => 'تلميذ',
-    ];
-
     public function __construct()
     {
         $this->middleware(['auth', 'role:admin', 'force.password.change']);
@@ -49,7 +39,7 @@ class AccountsController extends Controller
 
         return view('admin.accounts.index', [
             'users' => $users,
-            'roles' => self::ASSIGNABLE_ROLES,
+            'roles' => RoleCatalog::CORE_ROLES,
             'currentUserId' => Auth::id(),
             'notify' => $this->notifications(),
             'breadcrumbs' => [
@@ -81,17 +71,21 @@ class AccountsController extends Controller
     {
         $this->assertSameSchool($user);
 
-        $validated = $request->validate([
-            'roles' => ['nullable', 'array'],
-            'roles.*' => ['string', 'in:' . implode(',', array_keys(self::ASSIGNABLE_ROLES))],
-        ]);
-
-        $roleNames = $validated['roles'] ?? [];
-        foreach ($roleNames as $name) {
-            Role::firstOrCreate(['name' => $name]);
+        if ($request->input('role') === '') {
+            $request->merge(['role' => null]);
         }
 
-        $user->syncRoles($roleNames);
+        $validated = $request->validate([
+            // دور واحد فقط لكل مستخدم.
+            'role' => ['nullable', 'string', 'in:' . implode(',', RoleCatalog::coreRoleNames())],
+        ]);
+
+        $role = $validated['role'] ?? null;
+        if ($role) {
+            Role::firstOrCreate(['name' => $role], ['display_name' => RoleCatalog::label($role)]);
+        }
+
+        $user->syncRoles($role ? [$role] : []);
 
         toastr()->success(trans('accounts.roles_updated'));
 

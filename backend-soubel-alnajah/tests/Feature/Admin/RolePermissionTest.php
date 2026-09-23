@@ -126,7 +126,7 @@ class RolePermissionTest extends TestCase
         $this->assertDatabaseMissing('roles', ['name' => 'temp_role']);
     }
 
-    public function test_admin_can_create_user_with_roles_via_ajax(): void
+    public function test_admin_can_create_user_with_single_role_via_ajax(): void
     {
         $admin = $this->admin();
         Role::firstOrCreate(['name' => 'supervisor']);
@@ -135,7 +135,7 @@ class RolePermissionTest extends TestCase
             'name' => 'ناظر جديد',
             'email' => 'new-staff@example.test',
             'password' => 'Secret123',
-            'roles' => ['supervisor'],
+            'role' => 'supervisor',
         ]);
         $response->assertStatus(200)->assertJson(['ok' => true]);
 
@@ -155,17 +155,39 @@ class RolePermissionTest extends TestCase
         $this->assertStringContainsString('listme@example.test', $response->getContent());
     }
 
-    public function test_update_user_roles_via_ajax(): void
+    public function test_update_user_role_via_ajax_replaces_existing_role(): void
     {
         $admin = $this->admin();
         Role::firstOrCreate(['name' => 'accountant']);
+        Role::firstOrCreate(['name' => 'teacher']);
+
         $target = User::factory()->create(['must_change_password' => false]);
+        $target->attachRole('teacher');
 
         $this->actingAs($admin)->postJson(route('roles.users.roles', $target->id), [
-            'roles' => ['accountant'],
+            'role' => 'accountant',
         ])->assertStatus(200)->assertJson(['ok' => true]);
 
-        $this->assertTrue($target->fresh()->hasRole('accountant'));
+        $target->refresh();
+        $this->assertTrue($target->hasRole('accountant'));
+        // دور واحد فقط: الدور القديم يُستبدل ولا يتراكم.
+        $this->assertFalse($target->hasRole('teacher'));
+        $this->assertCount(1, $target->roles);
+    }
+
+    public function test_update_user_role_with_empty_clears_roles(): void
+    {
+        $admin = $this->admin();
+        Role::firstOrCreate(['name' => 'teacher']);
+
+        $target = User::factory()->create(['must_change_password' => false]);
+        $target->attachRole('teacher');
+
+        $this->actingAs($admin)->postJson(route('roles.users.roles', $target->id), [
+            'role' => '',
+        ])->assertStatus(200)->assertJson(['ok' => true]);
+
+        $this->assertCount(0, $target->fresh()->roles);
     }
 
     public function test_cannot_delete_self_via_ajax(): void

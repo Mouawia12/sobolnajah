@@ -65,14 +65,14 @@
                                             <input type="text" name="password" class="form-control" dir="ltr" minlength="6" required>
                                         </div>
                                         <div class="mb-2">
-                                            <label class="form-label">{{ trans('roles.roles') }}</label>
-                                            <div class="d-flex flex-wrap gap-2">
+                                            <label class="form-label">{{ trans('roles.role') }}</label>
+                                            <select name="role" class="form-select">
+                                                <option value="">{{ trans('roles.no_role') }}</option>
                                                 @foreach ($roles as $r)
-                                                    <label class="form-check-label small border rounded px-2 py-1">
-                                                        <input type="checkbox" name="roles[]" value="{{ $r->name }}"> {{ $r->display_name ?: $r->name }}
-                                                    </label>
+                                                    <option value="{{ $r->name }}">{{ $r->display_name ?: $r->name }}</option>
                                                 @endforeach
-                                            </div>
+                                            </select>
+                                            <small class="text-muted">{{ trans('roles.single_role_hint') }}</small>
                                         </div>
                                         <button type="submit" class="btn btn-primary w-100"><i class="fa fa-user-plus"></i> {{ trans('roles.create_user') }}</button>
                                     </form>
@@ -188,7 +188,11 @@
 {{-- مودالات المستخدم (أدوار / كلمة مرور) --}}
 <div class="modal fade" id="userRolesModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title">{{ trans('roles.edit_roles') }} — <span id="urName"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body"><div id="urRoles" class="d-flex flex-wrap gap-2"></div></div>
+    <div class="modal-body">
+        <label class="form-label">{{ trans('roles.role') }}</label>
+        <select id="urRole" class="form-select"></select>
+        <small class="text-muted">{{ trans('roles.single_role_hint') }}</small>
+    </div>
     <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button><button class="btn btn-primary" id="urSave">{{ trans('roles.save_roles') }}</button></div>
 </div></div></div>
 
@@ -211,7 +215,7 @@
     const ROLES = @json($rolesForJs);
     const PROTECTED = @json($protectedRoles);
     const CURRENT_USER_ID = {{ (int) $currentUserId }};
-    const T = { you: @json(trans('roles.you')), core: @json(trans('roles.core')), noUsers: @json(trans('roles.no_users')), confirmDel: @json(trans('opt.deletemsg')) };
+    const T = { you: @json(trans('roles.you')), core: @json(trans('roles.core')), noUsers: @json(trans('roles.no_users')), noRole: @json(trans('roles.no_role')), confirmDel: @json(trans('opt.deletemsg')) };
     const URL = {
         usersData: "{{ route('roles.users.data') }}",
         storeUser: "{{ route('roles.users.store') }}",
@@ -285,10 +289,9 @@
     document.getElementById('createUserForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const f = e.target;
-        const roles = Array.from(f.querySelectorAll('input[name="roles[]"]:checked')).map(c => c.value);
         try {
             await api(URL.storeUser, 'POST', {
-                name: f.name.value, email: f.email.value, password: f.password.value, roles: roles,
+                name: f.name.value, email: f.email.value, password: f.password.value, role: f.role.value,
             });
             toast(@json(trans('roles.user_created')));
             f.reset();
@@ -305,9 +308,10 @@
             currentRolesUser = rolesBtn.dataset.id;
             document.getElementById('urName').textContent = rolesBtn.dataset.name;
             const current = (rolesBtn.closest('tr').querySelector('[data-roles]').dataset.roles || '').split(',').filter(Boolean);
-            document.getElementById('urRoles').innerHTML = ROLES.map(r =>
-                '<label class="border rounded px-2 py-1"><input type="checkbox" value="' + r.name + '" ' + (current.includes(r.name) ? 'checked' : '') + '> ' + esc(r.label) + '</label>'
-            ).join(' ');
+            const currentRole = current[0] || '';
+            document.getElementById('urRole').innerHTML =
+                '<option value="">' + esc(T.noRole) + '</option>' +
+                ROLES.map(r => '<option value="' + esc(r.name) + '" ' + (r.name === currentRole ? 'selected' : '') + '>' + esc(r.label) + '</option>').join('');
             new bootstrap.Modal(document.getElementById('userRolesModal')).show();
         } else if (passBtn) {
             currentPassUser = passBtn.dataset.id;
@@ -323,9 +327,9 @@
     });
 
     document.getElementById('urSave').addEventListener('click', async function () {
-        const roles = Array.from(document.querySelectorAll('#urRoles input:checked')).map(c => c.value);
+        const role = document.getElementById('urRole').value;
         try {
-            await api(URL.userRoles.replace('UID', currentRolesUser), 'POST', { roles: roles });
+            await api(URL.userRoles.replace('UID', currentRolesUser), 'POST', { role: role });
             toast(@json(trans('roles.roles_updated')));
             bootstrap.Modal.getInstance(document.getElementById('userRolesModal')).hide();
             loadUsers();

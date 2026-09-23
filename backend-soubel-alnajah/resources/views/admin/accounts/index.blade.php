@@ -75,12 +75,14 @@
                                         @csrf
                                         <div class="modal-header"><h5 class="modal-title">{{ trans('accounts.edit_roles') }} — {{ $user->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                                         <div class="modal-body text-start">
-                                            @foreach ($roles as $key => $label)
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="roles[]" value="{{ $key }}" id="r-{{ $user->id }}-{{ $key }}" @checked(in_array($key, $userRoles, true))>
-                                                    <label class="form-check-label" for="r-{{ $user->id }}-{{ $key }}">{{ $label }}</label>
-                                                </div>
-                                            @endforeach
+                                            <label class="form-label">{{ trans('accounts.role') }}</label>
+                                            <select name="role" class="form-select">
+                                                <option value="">{{ trans('accounts.no_roles') }}</option>
+                                                @foreach ($roles as $key => $label)
+                                                    <option value="{{ $key }}" @selected(in_array($key, $userRoles, true))>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            <small class="text-muted">{{ trans('accounts.single_role_hint') }}</small>
                                         </div>
                                         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button><button type="submit" class="btn btn-primary">{{ trans('accounts.save') }}</button></div>
                                     </form>

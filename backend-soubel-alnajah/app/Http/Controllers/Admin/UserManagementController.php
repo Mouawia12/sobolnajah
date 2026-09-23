@@ -12,6 +12,7 @@ use App\Models\School\School;
 use App\Models\School\Section;
 use App\Models\Specialization\Specialization;
 use App\Models\User;
+use App\Support\RoleCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,13 +34,8 @@ class UserManagementController extends Controller
         $filterRole = trim((string) $request->query('filter_role', ''));
         $filterSchoolId = $request->query('filter_school_id');
 
-        $roles = [
-            'admin' => 'مدير',
-            'teacher' => 'معلم',
-            'student' => 'تلميذ',
-            'guardian' => 'ولي',
-            'accountant' => 'محاسب',
-        ];
+        // قائمة أدوار موحّدة مع صفحة «الأدوار والصلاحيات» وصندوق الحسابات.
+        $roles = RoleCatalog::CORE_ROLES;
 
         $schools = School::query()
             ->when($currentSchoolId, fn ($query) => $query->whereKey($currentSchoolId))
@@ -147,9 +143,8 @@ class UserManagementController extends Controller
                 'school_id' => $targetSchoolId,
             ]);
 
-            if (!$user->hasRole($role)) {
-                $user->attachRole($role);
-            }
+            // دور واحد فقط لكل مستخدم.
+            $user->syncRoles([$role]);
 
             if ($role === 'teacher') {
                 Teacher::create([

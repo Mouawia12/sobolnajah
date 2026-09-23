@@ -58,19 +58,34 @@ class AccountsManagementTest extends TestCase
         $this->assertTrue((bool) $target->must_change_password);
     }
 
-    public function test_admin_can_update_roles(): void
+    public function test_admin_can_update_single_role(): void
     {
         $admin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
         $admin->attachRole('admin');
         $target = User::factory()->create(['must_change_password' => false]);
 
         $this->actingAs($admin)->post(route('accounts.roles', $target->id), [
-            'roles' => ['supervisor', 'employee'],
+            'role' => 'supervisor',
         ])->assertStatus(302);
 
         $target->refresh();
         $this->assertTrue($target->hasRole('supervisor'));
+        $this->assertCount(1, $target->roles);
+    }
+
+    public function test_updating_role_replaces_previous_role(): void
+    {
+        $admin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $admin->attachRole('admin');
+
+        $target = User::factory()->create(['must_change_password' => false]);
+        $this->actingAs($admin)->post(route('accounts.roles', $target->id), ['role' => 'supervisor'])->assertStatus(302);
+        $this->actingAs($admin)->post(route('accounts.roles', $target->id), ['role' => 'employee'])->assertStatus(302);
+
+        $target->refresh();
         $this->assertTrue($target->hasRole('employee'));
+        $this->assertFalse($target->hasRole('supervisor'));
+        $this->assertCount(1, $target->roles);
     }
 
     public function test_admin_cannot_delete_self(): void

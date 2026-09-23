@@ -20,6 +20,7 @@ return [
 
     'edit_roles' => 'تعديل الأدوار',
     'roles_updated' => 'تم تحديث أدوار الحساب ✅',
+    'single_role_hint' => 'دور واحد فقط لكل مستخدم — يخضع لصلاحيات هذا الدور.',
 
     'delete_account' => 'حذف الحساب',
     'account_deleted' => 'تم حذف الحساب',

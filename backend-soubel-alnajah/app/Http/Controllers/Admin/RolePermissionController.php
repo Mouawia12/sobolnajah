@@ -8,6 +8,7 @@ use App\Models\RoleMenuSection;
 use App\Models\User;
 use App\Services\MenuAccessService;
 use App\Support\MenuCatalog;
+use App\Support\RoleCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +17,6 @@ use Illuminate\Support\Str;
 
 class RolePermissionController extends Controller
 {
-    /** أدوار أساسية لا تُحذف. */
-    private const PROTECTED_ROLES = ['admin', 'teacher', 'student', 'guardian', 'accountant', 'supervisor', 'employee'];
-
     public function __construct()
     {
         $this->middleware(['auth', 'role:admin', 'force.password.change']);
@@ -26,6 +24,9 @@ class RolePermissionController extends Controller
 
     public function index()
     {
+        // ضمان وجود الأدوار الأساسية دائماً (ثابتة وغير قابلة للحذف).
+        RoleCatalog::ensureCoreRolesExist();
+
         $roles = Role::query()->orderBy('id')->get(['id', 'name', 'display_name']);
         $editableRoles = $roles->reject(fn ($r) => $r->name === 'admin')->values();
 
@@ -40,7 +41,7 @@ class RolePermissionController extends Controller
             'editableRoles' => $editableRoles,
             'sections' => MenuCatalog::sections(),
             'granted' => $granted,
-            'protectedRoles' => self::PROTECTED_ROLES,
+            'protectedRoles' => RoleCatalog::coreRoleNames(),
             'currentUserId' => Auth::id(),
             'breadcrumbs' => [
                 ['label' => 'لوحة التحكم', 'url' => url('/admin')],
@@ -80,7 +81,7 @@ class RolePermissionController extends Controller
 
     public function destroyRole(Role $role)
     {
-        if (in_array($role->name, self::PROTECTED_ROLES, true)) {
+        if (RoleCatalog::isCore($role->name)) {
             return response()->json(['ok' => false, 'message' => trans('roles.cannot_delete_core')], 422);
         }
 
@@ -155,12 +156,16 @@ class RolePermissionController extends Controller
 
     public function storeUser(Request $request)
     {
+        if ($request->input('role') === '') {
+            $request->merge(['role' => null]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6', 'max:100'],
-            'roles' => ['nullable', 'array'],
-            'roles.*' => ['string', 'exists:roles,name'],
+            // دور واحد فقط لكل مستخدم.
+            'role' => ['nullable', 'string', 'exists:roles,name'],
         ]);
 
         $user = User::create([
@@ -171,9 +176,8 @@ class RolePermissionController extends Controller
             'school_id' => $this->currentSchoolId(),
         ]);
 
-        if (!empty($validated['roles'])) {
-            $user->syncRoles($validated['roles']);
-        }
+        $role = $validated['role'] ?? null;
+        $user->syncRoles($role ? [$role] : []);
 
         MenuAccessService::bustCache();
 
@@ -184,7 +188,7 @@ class RolePermissionController extends Controller
                 'id' => $user->id,
                 'name' => $validated['name'],
                 'email' => $user->email,
-                'roles' => $validated['roles'] ?? [],
+                'roles' => $role ? [$role] : [],
             ],
         ]);
     }
@@ -193,12 +197,17 @@ class RolePermissionController extends Controller
     {
         $this->assertSameSchool($user);
 
+        if ($request->input('role') === '') {
+            $request->merge(['role' => null]);
+        }
+
         $validated = $request->validate([
-            'roles' => ['nullable', 'array'],
-            'roles.*' => ['string', 'exists:roles,name'],
+            // دور واحد فقط لكل مستخدم.
+            'role' => ['nullable', 'string', 'exists:roles,name'],
         ]);
 
-        $user->syncRoles($validated['roles'] ?? []);
+        $role = $validated['role'] ?? null;
+        $user->syncRoles($role ? [$role] : []);
         MenuAccessService::bustCache();
 
         return response()->json(['ok' => true, 'message' => trans('roles.roles_updated')]);
