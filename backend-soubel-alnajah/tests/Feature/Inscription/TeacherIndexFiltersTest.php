@@ -78,6 +78,38 @@ class TeacherIndexFiltersTest extends TestCase
         });
     }
 
+    public function test_teachers_index_renders_when_teacher_has_no_specialization(): void
+    {
+        $admin = User::factory()->create(['must_change_password' => false]);
+        Role::firstOrCreate(['name' => 'admin']);
+        $admin->attachRole('admin');
+
+        $schoolA = $this->createSchool('A');
+        $admin->update(['school_id' => $schoolA]);
+
+        // أستاذ بلا تخصص/جنس/تاريخ انضمام/عنوان (كما يُنشأ من المودل أو backfill).
+        $teacherUserId = DB::table('users')->insertGetId([
+            'name' => json_encode(['fr' => 'NoSpec', 'ar' => 'بلا تخصص', 'en' => 'NoSpec']),
+            'email' => 'nospec-' . uniqid() . '@example.test',
+            'password' => bcrypt('Secret123!'),
+            'school_id' => $schoolA,
+            'must_change_password' => false,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('teachers')->insert([
+            'user_id' => $teacherUserId,
+            'specialization_id' => null,
+            'name' => json_encode(['fr' => 'NoSpec', 'ar' => 'بلا تخصص', 'en' => 'NoSpec']),
+            'gender' => null,
+            'joining_date' => null,
+            'address' => null,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        // كان يُنتج 500 عند الوصول إلى specialization->name على علاقة فارغة.
+        $this->actingAs($admin)->get(route('Teachers.index'))->assertStatus(200);
+    }
+
     private function createSchool(string $suffix): int
     {
         return DB::table('schools')->insertGetId([

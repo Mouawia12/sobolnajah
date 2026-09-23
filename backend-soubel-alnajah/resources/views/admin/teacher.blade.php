@@ -163,7 +163,10 @@
           <div class="form-group">
             <label class="form-label">{{ trans('teacher.specialization') }}</label>
             <select class="form-select" name="specialization_id">
-              <option selected value="{{ $ins->specialization_id }}">{{ $ins->specialization->name }}</option>
+              <option value="" @selected(is_null($ins->specialization_id))>{{ trans('roles.choose') }}</option>
+              @if (!is_null($ins->specialization_id))
+                <option selected value="{{ $ins->specialization_id }}">{{ optional($ins->specialization)->name }}</option>
+              @endif
             @foreach ($Specializations as $sp)
               @if ($sp->id != $ins->specialization_id)
                  <option value="{{ $sp->id }}">{{ $sp->name }}</option>

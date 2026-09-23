@@ -192,7 +192,7 @@
                       </td> 
                   
         
-                      <td class="col-md-2">{{$ex->specialization->name}}</td>     
+                      <td class="col-md-2">{{ optional($ex->specialization)->name }}</td>
                        <td class="col-md-2">{{$ex->classroom->name_class}}</td>
                        <td >{{$ex->schoolgrade->name_grade}}</td>
                        <td>{{$ex->Annscolaire}}</td>
