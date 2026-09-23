@@ -39,7 +39,9 @@ return new class extends Migration
                 joining_date date null,
                 address text null,
                 created_at datetime null,
-                updated_at datetime null
+                updated_at datetime null,
+                foreign key(user_id) references users(id) on update cascade on delete cascade,
+                foreign key(specialization_id) references specializations(id) on update cascade on delete cascade
             )');
             DB::statement('INSERT INTO teachers (id, user_id, specialization_id, name, gender, joining_date, address, created_at, updated_at)
                 SELECT id, user_id, specialization_id, name, gender, joining_date, address, created_at, updated_at FROM teachers_old');

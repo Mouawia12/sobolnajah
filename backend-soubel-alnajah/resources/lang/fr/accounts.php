@@ -28,4 +28,5 @@ return [
 
     'save' => 'Enregistrer',
     'filter' => 'Filtrer',
+    'cannot_change_own_role' => 'Vous ne pouvez pas modifier votre propre role.',
 ];

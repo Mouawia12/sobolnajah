@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\User\CreatePortalUserAction;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\School\School;
@@ -9,6 +10,7 @@ use App\Models\User;
 use App\Support\RoleCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AccountsController extends Controller
@@ -67,9 +69,14 @@ class AccountsController extends Controller
         return redirect()->route('accounts.index');
     }
 
-    public function updateRoles(Request $request, User $user)
+    public function updateRoles(Request $request, User $user, CreatePortalUserAction $createPortalUser)
     {
         $this->assertSameSchool($user);
+
+        // منع المسؤول من تغيير دوره بنفسه حتى لا يفقد صلاحية الإدارة.
+        if ((int) $user->id === (int) Auth::id()) {
+            return back()->withErrors(['error' => trans('accounts.cannot_change_own_role')]);
+        }
 
         if ($request->input('role') === '') {
             $request->merge(['role' => null]);
@@ -85,7 +92,10 @@ class AccountsController extends Controller
             Role::firstOrCreate(['name' => $role], ['display_name' => RoleCatalog::label($role)]);
         }
 
-        $user->syncRoles($role ? [$role] : []);
+        DB::transaction(function () use ($user, $role, $createPortalUser) {
+            $createPortalUser->ensureProfileForRole($user, $role);
+            $user->syncRoles($role ? [$role] : []);
+        });
 
         toastr()->success(trans('accounts.roles_updated'));
 

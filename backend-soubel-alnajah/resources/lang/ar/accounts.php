@@ -28,4 +28,5 @@ return [
 
     'save' => 'حفظ',
     'filter' => 'تصفية',
+    'cannot_change_own_role' => 'لا يمكنك تغيير دورك بنفسك.',
 ];

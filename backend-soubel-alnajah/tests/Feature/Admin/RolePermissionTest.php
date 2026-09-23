@@ -293,11 +293,80 @@ class RolePermissionTest extends TestCase
             'guardian_user_id' => $guardianUserId,
             'section_id' => $sectionId,
             'gender' => 1,
+            'student_birth_date' => '2012-05-01',
         ])->assertStatus(200)->assertJson(['ok' => true]);
 
         $user = User::query()->where('email', 'student-modal@example.test')->first();
         $this->assertTrue($user->hasRole('student'));
         $this->assertDatabaseHas('studentinfos', ['user_id' => $user->id, 'section_id' => $sectionId]);
+    }
+
+    public function test_create_student_via_modal_rejects_non_guardian_user(): void
+    {
+        $admin = $this->admin();
+        [$sectionId] = $this->seedSectionAndGuardian();
+        $notGuardian = User::factory()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'تلميذ',
+            'email' => 'student-bad-guardian@example.test',
+            'password' => 'Secret123',
+            'role' => 'student',
+            'guardian_user_id' => $notGuardian->id,
+            'section_id' => $sectionId,
+            'student_birth_date' => '2012-05-01',
+        ])->assertStatus(422)->assertJsonValidationErrors('guardian_user_id');
+
+        $this->assertDatabaseMissing('users', ['email' => 'student-bad-guardian@example.test']);
+    }
+
+    public function test_create_student_via_modal_requires_birth_date(): void
+    {
+        $admin = $this->admin();
+        [$sectionId, $guardianUserId] = $this->seedSectionAndGuardian();
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'تلميذ',
+            'email' => 'student-no-birth@example.test',
+            'password' => 'Secret123',
+            'role' => 'student',
+            'guardian_user_id' => $guardianUserId,
+            'section_id' => $sectionId,
+        ])->assertStatus(422)->assertJsonValidationErrors('student_birth_date');
+    }
+
+    public function test_changing_role_to_teacher_creates_teacher_profile(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)->postJson(route('roles.users.roles', $target->id), ['role' => 'teacher'])
+            ->assertStatus(200)->assertJson(['ok' => true]);
+
+        $this->assertTrue($target->fresh()->hasRole('teacher'));
+        $this->assertDatabaseHas('teachers', ['user_id' => $target->id]);
+    }
+
+    public function test_changing_role_to_student_without_profile_is_rejected(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->create(['must_change_password' => false]);
+        $target->attachRole('accountant');
+
+        $this->actingAs($admin)->postJson(route('roles.users.roles', $target->id), ['role' => 'student'])
+            ->assertStatus(422);
+
+        $this->assertTrue($target->fresh()->hasRole('accountant'));
+    }
+
+    public function test_admin_cannot_change_own_role(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->postJson(route('roles.users.roles', $admin->id), ['role' => 'accountant'])
+            ->assertStatus(422)->assertJson(['ok' => false]);
+
+        $this->assertTrue($admin->fresh()->hasRole('admin'));
     }
 
     /** @return array{0:int,1:int} [sectionId, guardianUserId] */

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\User\CreatePortalUserAction;
 use App\Models\Inscription\MyParent;
 use App\Models\Inscription\Teacher;
 use App\Models\User;
@@ -17,7 +18,7 @@ class BackfillUserProfilesCommand extends Command
 
     protected $description = 'إنشاء ملفات المعلّمين/الأولياء الناقصة للمستخدمين الحاليين حسب أدوارهم';
 
-    public function handle(): int
+    public function handle(CreatePortalUserAction $createPortalUser): int
     {
         $dry = (bool) $this->option('dry-run');
         $teachers = 0;
@@ -27,21 +28,14 @@ class BackfillUserProfilesCommand extends Command
         User::query()
             ->whereHas('roles', fn ($q) => $q->where('name', 'teacher'))
             ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'admin'))
-            ->chunkById(100, function ($users) use (&$teachers, $dry) {
+            ->chunkById(100, function ($users) use (&$teachers, $dry, $createPortalUser) {
                 foreach ($users as $user) {
                     if (Teacher::query()->where('user_id', $user->id)->exists()) {
                         continue;
                     }
                     $teachers++;
                     if (!$dry) {
-                        Teacher::create([
-                            'user_id' => $user->id,
-                            'specialization_id' => null,
-                            'name' => (string) $user->name,
-                            'gender' => null,
-                            'joining_date' => null,
-                            'address' => null,
-                        ]);
+                        $createPortalUser->ensureProfileForRole($user, 'teacher');
                     }
                 }
             });
@@ -49,24 +43,14 @@ class BackfillUserProfilesCommand extends Command
         // الأولياء بلا سجل ولي.
         User::query()
             ->whereHas('roles', fn ($q) => $q->where('name', 'guardian'))
-            ->chunkById(100, function ($users) use (&$guardians, $dry) {
+            ->chunkById(100, function ($users) use (&$guardians, $dry, $createPortalUser) {
                 foreach ($users as $user) {
                     if (MyParent::query()->where('user_id', $user->id)->exists()) {
                         continue;
                     }
                     $guardians++;
                     if (!$dry) {
-                        MyParent::create([
-                            'user_id' => $user->id,
-                            'prenomwali' => ['ar' => (string) $user->name, 'fr' => (string) $user->name, 'en' => (string) $user->name],
-                            'nomwali' => ['ar' => '', 'fr' => '', 'en' => ''],
-                            'relationetudiant' => '',
-                            'adressewali' => '',
-                            'wilayawali' => '',
-                            'dayrawali' => '',
-                            'baladiawali' => '',
-                            'numtelephonewali' => 0,
-                        ]);
+                        $createPortalUser->ensureProfileForRole($user, 'guardian');
                     }
                 }
             });

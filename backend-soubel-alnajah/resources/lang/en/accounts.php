@@ -28,4 +28,5 @@ return [
 
     'save' => 'Save',
     'filter' => 'Filter',
+    'cannot_change_own_role' => 'You cannot change your own role.',
 ];

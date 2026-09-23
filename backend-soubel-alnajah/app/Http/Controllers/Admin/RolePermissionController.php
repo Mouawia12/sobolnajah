@@ -263,6 +263,10 @@ class RolePermissionController extends Controller
         if (empty($data['section_id'])) {
             $errors['section_id'] = trans('roles.student_needs_section');
         }
+        // بلا تاريخ ميلاد كان يُحفظ تاريخ اليوم كتاريخ ميلاد وهمي.
+        if (empty($data['student_birth_date'])) {
+            $errors['student_birth_date'] = trans('roles.student_needs_birth_date');
+        }
 
         if ($errors) {
             throw \Illuminate\Validation\ValidationException::withMessages($errors);
@@ -313,9 +317,14 @@ class RolePermissionController extends Controller
         return [];
     }
 
-    public function updateUserRoles(Request $request, User $user)
+    public function updateUserRoles(Request $request, User $user, CreatePortalUserAction $createPortalUser)
     {
         $this->assertSameSchool($user);
+
+        // منع المسؤول من تغيير دوره بنفسه حتى لا يفقد صلاحية الإدارة.
+        if ((int) $user->id === (int) Auth::id()) {
+            return response()->json(['ok' => false, 'message' => trans('roles.cannot_change_own_role')], 422);
+        }
 
         if ($request->input('role') === '') {
             $request->merge(['role' => null]);
@@ -327,7 +336,10 @@ class RolePermissionController extends Controller
         ]);
 
         $role = $validated['role'] ?? null;
-        $user->syncRoles($role ? [$role] : []);
+        DB::transaction(function () use ($user, $role, $createPortalUser) {
+            $createPortalUser->ensureProfileForRole($user, $role);
+            $user->syncRoles($role ? [$role] : []);
+        });
         MenuAccessService::bustCache();
 
         return response()->json(['ok' => true, 'message' => trans('roles.roles_updated')]);

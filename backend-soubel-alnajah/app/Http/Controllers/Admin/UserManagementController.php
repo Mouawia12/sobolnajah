@@ -19,7 +19,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class UserManagementController extends Controller
 {
@@ -135,11 +134,7 @@ class UserManagementController extends Controller
                 ?: $this->joinNameParts($validated['first_name_ar'] ?? null, $validated['last_name_ar'] ?? null),
         ];
 
-        // التلميذ: تحقّق من القسم والولي (نفس المؤسسة) قبل الإنشاء.
-        if ($role === 'student') {
-            $this->assertValidStudentRelations($validated, $targetSchoolId);
-        }
-
+        // تحقّق قسم/ولي التلميذ (نفس المؤسسة) يتمّ داخل إجراء الإنشاء الموحّد.
         $createPortalUser->execute([
             'name' => $name,
             'email' => $validated['email'],
@@ -151,34 +146,6 @@ class UserManagementController extends Controller
         ]);
 
         return redirect()->route('admin.users.create')->with('success', 'تم إنشاء المستخدم بنجاح.');
-    }
-
-    /** يتحقّق أن قسم التلميذ ووليّه صالحان وضمن نفس المؤسسة. */
-    private function assertValidStudentRelations(array $validated, ?int $targetSchoolId): void
-    {
-        $section = Section::query()->findOrFail((int) $validated['section_id']);
-        if ($targetSchoolId && (int) $section->school_id !== (int) $targetSchoolId) {
-            throw ValidationException::withMessages([
-                'section_id' => 'القسم المختار لا ينتمي لنفس المؤسسة.',
-            ]);
-        }
-
-        $guardianUser = User::query()
-            ->whereKey((int) $validated['guardian_user_id'])
-            ->with('parentProfile')
-            ->firstOrFail();
-
-        if (!$guardianUser->hasRole('guardian') || !$guardianUser->parentProfile) {
-            throw ValidationException::withMessages([
-                'guardian_user_id' => 'ولي التلميذ غير صالح.',
-            ]);
-        }
-
-        if ($targetSchoolId && (int) $guardianUser->school_id !== (int) $targetSchoolId) {
-            throw ValidationException::withMessages([
-                'guardian_user_id' => 'ولي التلميذ يجب أن يكون من نفس المؤسسة.',
-            ]);
-        }
     }
 
     /** يبني حمولة الملف حسب الدور لتمريرها إلى إجراء الإنشاء الموحّد. */

@@ -74,4 +74,9 @@ return [
     'reset' => 'Password',
     'you' => 'You',
     'saving' => 'Saving...',
+    'cannot_change_own_role' => 'You cannot change your own role.',
+    'student_needs_birth_date' => 'Please enter the student birth date.',
+    'student_role_needs_profile' => 'An account cannot become a student by changing its role only; create the student with a guardian and section.',
+    'invalid_section' => 'The selected section is invalid or belongs to another school.',
+    'invalid_guardian' => 'The selected guardian is invalid or belongs to another school.',
 ];

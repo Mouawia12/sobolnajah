@@ -74,4 +74,9 @@ return [
     'reset' => 'Mot de passe',
     'you' => 'Vous',
     'saving' => 'Enregistrement...',
+    'cannot_change_own_role' => 'Vous ne pouvez pas modifier votre propre role.',
+    'student_needs_birth_date' => 'Veuillez saisir la date de naissance de l eleve.',
+    'student_role_needs_profile' => 'Impossible de convertir un compte en eleve par simple changement de role ; creez l eleve avec son tuteur et sa section.',
+    'invalid_section' => 'Section invalide ou d un autre etablissement.',
+    'invalid_guardian' => 'Tuteur invalide ou d un autre etablissement.',
 ];
