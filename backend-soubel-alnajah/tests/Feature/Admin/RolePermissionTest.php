@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\MenuAccessService;
 use App\Support\MenuCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mcamara\LaravelLocalization\Middleware\LocaleSessionRedirect;
 use Mcamara\LaravelLocalization\Middleware\LocalizationRedirect;
 use Mcamara\LaravelLocalization\Middleware\LocaleViewPath;
@@ -27,7 +28,7 @@ class RolePermissionTest extends TestCase
             LocaleViewPath::class,
         ]);
 
-        foreach (['admin', 'accountant', 'teacher'] as $role) {
+        foreach (['admin', 'accountant', 'teacher', 'student', 'guardian', 'supervisor'] as $role) {
             Role::firstOrCreate(['name' => $role]);
         }
     }
@@ -206,6 +207,132 @@ class RolePermissionTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('roles.index'));
         $this->assertTrue(in_array($response->status(), [302, 403, 404], true));
+    }
+
+    public function test_create_teacher_via_modal_without_specialization_creates_profile(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'أستاذ بلا تخصص',
+            'email' => 'teacher-nospec@example.test',
+            'password' => 'Secret123',
+            'role' => 'teacher',
+        ])->assertStatus(200)->assertJson(['ok' => true]);
+
+        $user = User::query()->where('email', 'teacher-nospec@example.test')->first();
+        $this->assertNotNull($user);
+        $this->assertTrue($user->hasRole('teacher'));
+        // سجل المعلّم يُنشأ حتى بلا تخصص (لا خطأ عند الدخول).
+        $this->assertDatabaseHas('teachers', ['user_id' => $user->id, 'specialization_id' => null]);
+    }
+
+    public function test_create_teacher_via_modal_with_specialization(): void
+    {
+        $admin = $this->admin();
+        $specId = DB::table('specializations')->insertGetId([
+            'name' => json_encode(['fr' => 'Math', 'ar' => 'رياضيات', 'en' => 'Math']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'أستاذ رياضيات',
+            'email' => 'teacher-spec@example.test',
+            'password' => 'Secret123',
+            'role' => 'teacher',
+            'specialization_id' => $specId,
+            'gender' => 1,
+        ])->assertStatus(200)->assertJson(['ok' => true]);
+
+        $user = User::query()->where('email', 'teacher-spec@example.test')->first();
+        $this->assertDatabaseHas('teachers', ['user_id' => $user->id, 'specialization_id' => $specId, 'gender' => 1]);
+    }
+
+    public function test_create_guardian_via_modal_creates_parent_profile(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'ولي أمر',
+            'email' => 'guardian-modal@example.test',
+            'password' => 'Secret123',
+            'role' => 'guardian',
+            'guardian_relation' => 'أب',
+            'guardian_phone' => '0550000000',
+        ])->assertStatus(200)->assertJson(['ok' => true]);
+
+        $user = User::query()->where('email', 'guardian-modal@example.test')->first();
+        $this->assertTrue($user->hasRole('guardian'));
+        $this->assertDatabaseHas('my_parents', ['user_id' => $user->id]);
+    }
+
+    public function test_create_student_via_modal_requires_guardian_and_section(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'تلميذ',
+            'email' => 'student-missing@example.test',
+            'password' => 'Secret123',
+            'role' => 'student',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('users', ['email' => 'student-missing@example.test']);
+    }
+
+    public function test_create_student_via_modal_creates_student_profile(): void
+    {
+        $admin = $this->admin();
+        [$sectionId, $guardianUserId] = $this->seedSectionAndGuardian();
+
+        $this->actingAs($admin)->postJson(route('roles.users.store'), [
+            'name' => 'تلميذ جديد',
+            'email' => 'student-modal@example.test',
+            'password' => 'Secret123',
+            'role' => 'student',
+            'guardian_user_id' => $guardianUserId,
+            'section_id' => $sectionId,
+            'gender' => 1,
+        ])->assertStatus(200)->assertJson(['ok' => true]);
+
+        $user = User::query()->where('email', 'student-modal@example.test')->first();
+        $this->assertTrue($user->hasRole('student'));
+        $this->assertDatabaseHas('studentinfos', ['user_id' => $user->id, 'section_id' => $sectionId]);
+    }
+
+    /** @return array{0:int,1:int} [sectionId, guardianUserId] */
+    private function seedSectionAndGuardian(): array
+    {
+        $schoolId = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'S', 'ar' => 'مدرسة', 'en' => 'S']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $gradeId = DB::table('schoolgrades')->insertGetId([
+            'school_id' => $schoolId, 'name_grade' => json_encode(['fr' => 'G', 'ar' => 'م', 'en' => 'G']),
+            'notes' => json_encode(['fr' => 'N', 'ar' => 'ن', 'en' => 'N']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classroomId = DB::table('classrooms')->insertGetId([
+            'school_id' => $schoolId, 'grade_id' => $gradeId, 'name_class' => json_encode(['fr' => 'C', 'ar' => 'ق', 'en' => 'C']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $sectionId = DB::table('sections')->insertGetId([
+            'school_id' => $schoolId, 'grade_id' => $gradeId, 'classroom_id' => $classroomId,
+            'name_section' => json_encode(['fr' => 'S', 'ar' => 'ف', 'en' => 'S']), 'Status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $guardianUser = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $guardianUser->attachRole('guardian');
+        DB::table('my_parents')->insert([
+            'prenomwali' => json_encode(['fr' => 'P', 'ar' => 'و', 'en' => 'P']),
+            'nomwali' => json_encode(['fr' => 'L', 'ar' => 'ل', 'en' => 'L']),
+            'relationetudiant' => 'father', 'adressewali' => 'A', 'wilayawali' => 'W',
+            'dayrawali' => 'D', 'baladiawali' => 'B', 'numtelephonewali' => 550000123,
+            'user_id' => $guardianUser->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return [$sectionId, $guardianUser->id];
     }
 
     private function admin(): User

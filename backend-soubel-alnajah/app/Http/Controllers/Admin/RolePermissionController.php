@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\User\CreatePortalUserAction;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\RoleMenuSection;
+use App\Models\School\Section;
+use App\Models\Specialization\Specialization;
 use App\Models\User;
 use App\Services\MenuAccessService;
 use App\Support\MenuCatalog;
@@ -35,6 +38,30 @@ class RolePermissionController extends Controller
             ->groupBy('role_id')
             ->map(fn ($rows) => $rows->pluck('section_key')->all());
 
+        $schoolId = $this->currentSchoolId();
+
+        // بيانات المودل المنبثق لإنشاء مستخدم بدور واحد + ملف حسب الدور.
+        $specializations = Specialization::query()->select(['id', 'name'])->orderBy('name')->get();
+
+        $classSections = Section::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->with([
+                'classroom:id,grade_id,name_class',
+                'classroom.schoolgrade:id,name_grade',
+            ])
+            ->select(['id', 'school_id', 'classroom_id', 'name_section'])
+            ->orderBy('id')
+            ->get();
+
+        $guardians = User::query()
+            ->whereHas('roles', fn ($q) => $q->where('name', 'guardian'))
+            ->whereHas('parentProfile')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->with('parentProfile:id,user_id')
+            ->select(['id', 'name', 'email', 'school_id'])
+            ->orderByDesc('id')
+            ->get();
+
         return view('admin.roles.index', [
             'notify' => $this->notifications(),
             'roles' => $roles,
@@ -42,6 +69,10 @@ class RolePermissionController extends Controller
             'sections' => MenuCatalog::sections(),
             'granted' => $granted,
             'protectedRoles' => RoleCatalog::coreRoleNames(),
+            'coreRoleNames' => RoleCatalog::coreRoleNames(),
+            'specializations' => $specializations,
+            'classSections' => $classSections,
+            'guardians' => $guardians,
             'currentUserId' => Auth::id(),
             'breadcrumbs' => [
                 ['label' => 'لوحة التحكم', 'url' => url('/admin')],
@@ -154,7 +185,7 @@ class RolePermissionController extends Controller
         ]);
     }
 
-    public function storeUser(Request $request)
+    public function storeUser(Request $request, CreatePortalUserAction $createPortalUser)
     {
         if ($request->input('role') === '') {
             $request->merge(['role' => null]);
@@ -166,18 +197,43 @@ class RolePermissionController extends Controller
             'password' => ['required', 'string', 'min:6', 'max:100'],
             // دور واحد فقط لكل مستخدم.
             'role' => ['nullable', 'string', 'exists:roles,name'],
-        ]);
-
-        $user = User::create([
-            'name' => ['ar' => $validated['name'], 'fr' => $validated['name'], 'en' => $validated['name']],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'must_change_password' => true,
-            'school_id' => $this->currentSchoolId(),
+            // بيانات المعلّم (اختيارية بالكامل).
+            'specialization_id' => ['nullable', 'integer', 'exists:specializations,id'],
+            'gender' => ['nullable', 'in:0,1'],
+            'joining_date' => ['nullable', 'date'],
+            'address' => ['nullable', 'string', 'max:500'],
+            // بيانات الولي.
+            'guardian_relation' => ['nullable', 'string', 'max:190'],
+            'guardian_phone' => ['nullable', 'string', 'max:40'],
+            'guardian_wilaya' => ['nullable', 'string', 'max:190'],
+            'guardian_dayra' => ['nullable', 'string', 'max:190'],
+            'guardian_baladia' => ['nullable', 'string', 'max:190'],
+            // بيانات التلميذ.
+            'guardian_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'section_id' => ['nullable', 'integer', 'exists:sections,id'],
+            'student_phone' => ['nullable', 'string', 'max:40'],
+            'student_birth_date' => ['nullable', 'date'],
+            'student_birth_place' => ['nullable', 'string', 'max:190'],
+            'student_wilaya' => ['nullable', 'string', 'max:190'],
+            'student_dayra' => ['nullable', 'string', 'max:190'],
+            'student_baladia' => ['nullable', 'string', 'max:190'],
         ]);
 
         $role = $validated['role'] ?? null;
-        $user->syncRoles($role ? [$role] : []);
+        $this->validateRoleProfile($role, $validated);
+
+        $fullName = $validated['name'];
+        $nameArr = ['ar' => $fullName, 'fr' => $fullName, 'en' => $fullName];
+
+        $user = $createPortalUser->execute([
+            'name' => $nameArr,
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => $role,
+            'school_id' => $this->currentSchoolId(),
+            'must_change_password' => true,
+            'profile' => $this->buildProfilePayload($role, $validated, $nameArr),
+        ]);
 
         MenuAccessService::bustCache();
 
@@ -186,11 +242,75 @@ class RolePermissionController extends Controller
             'message' => trans('roles.user_created'),
             'user' => [
                 'id' => $user->id,
-                'name' => $validated['name'],
+                'name' => $fullName,
                 'email' => $user->email,
                 'roles' => $role ? [$role] : [],
             ],
         ]);
+    }
+
+    /** التلميذ يحتاج وليّاً وقسماً؛ نتحقّق منهما فقط عند اختيار دور تلميذ. */
+    private function validateRoleProfile(?string $role, array $data): void
+    {
+        if ($role !== 'student') {
+            return;
+        }
+
+        $errors = [];
+        if (empty($data['guardian_user_id'])) {
+            $errors['guardian_user_id'] = trans('roles.student_needs_guardian');
+        }
+        if (empty($data['section_id'])) {
+            $errors['section_id'] = trans('roles.student_needs_section');
+        }
+
+        if ($errors) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+    }
+
+    /** يبني حمولة الملف المرتبط بالدور للتمريرها إلى إجراء الإنشاء الموحّد. */
+    private function buildProfilePayload(?string $role, array $data, array $nameArr): array
+    {
+        if ($role === 'teacher') {
+            return [
+                'specialization_id' => $data['specialization_id'] ?? null,
+                'gender' => $data['gender'] ?? null,
+                'joining_date' => $data['joining_date'] ?? null,
+                'address' => $data['address'] ?? null,
+            ];
+        }
+
+        if ($role === 'guardian') {
+            return [
+                'prenom' => $nameArr,
+                'nom' => ['ar' => '', 'fr' => '', 'en' => ''],
+                'relation' => $data['guardian_relation'] ?? '',
+                'phone' => $data['guardian_phone'] ?? 0,
+                'address' => $data['address'] ?? '',
+                'wilaya' => $data['guardian_wilaya'] ?? '',
+                'dayra' => $data['guardian_dayra'] ?? '',
+                'baladia' => $data['guardian_baladia'] ?? '',
+            ];
+        }
+
+        if ($role === 'student') {
+            return [
+                'prenom' => $nameArr,
+                'nom' => ['ar' => '', 'fr' => '', 'en' => ''],
+                'guardian_user_id' => $data['guardian_user_id'] ?? null,
+                'section_id' => $data['section_id'] ?? null,
+                'gender' => $data['gender'] ?? 0,
+                'phone' => $data['student_phone'] ?? 0,
+                'birth_date' => $data['student_birth_date'] ?? null,
+                'birth_place' => $data['student_birth_place'] ?? '',
+                'wilaya' => $data['student_wilaya'] ?? '',
+                'dayra' => $data['student_dayra'] ?? '',
+                'baladia' => $data['student_baladia'] ?? '',
+            ];
+        }
+
+        return [];
     }
 
     public function updateUserRoles(Request $request, User $user)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Inscription\BuildLocalizedNameAction;
+use App\Actions\User\CreatePortalUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePortalUserRequest;
 use App\Models\Inscription\MyParent;
@@ -119,7 +120,7 @@ class UserManagementController extends Controller
         ]);
     }
 
-    public function store(StorePortalUserRequest $request): RedirectResponse
+    public function store(StorePortalUserRequest $request, CreatePortalUserAction $createPortalUser): RedirectResponse
     {
         $validated = $request->validated();
         $role = (string) $validated['role'];
@@ -134,98 +135,94 @@ class UserManagementController extends Controller
                 ?: $this->joinNameParts($validated['first_name_ar'] ?? null, $validated['last_name_ar'] ?? null),
         ];
 
-        DB::transaction(function () use ($validated, $role, $targetSchoolId, $name): void {
-            $user = User::create([
-                'name' => $name,
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'must_change_password' => false,
-                'school_id' => $targetSchoolId,
-            ]);
+        // التلميذ: تحقّق من القسم والولي (نفس المؤسسة) قبل الإنشاء.
+        if ($role === 'student') {
+            $this->assertValidStudentRelations($validated, $targetSchoolId);
+        }
 
-            // دور واحد فقط لكل مستخدم.
-            $user->syncRoles([$role]);
-
-            if ($role === 'teacher') {
-                Teacher::create([
-                    'user_id' => $user->id,
-                    'specialization_id' => (int) $validated['specialization_id'],
-                    'name' => $name,
-                    'gender' => (int) $validated['gender'],
-                    'joining_date' => $validated['joining_date'],
-                    'address' => $validated['address'],
-                ]);
-            }
-
-            if ($role === 'guardian') {
-                MyParent::create([
-                    'user_id' => $user->id,
-                    'prenomwali' => $this->buildLocalizedNameAction->execute(
-                        $validated['first_name_fr'] ?? null,
-                        $validated['first_name_ar'] ?? null
-                    ),
-                    'nomwali' => $this->buildLocalizedNameAction->execute(
-                        $validated['last_name_fr'] ?? null,
-                        $validated['last_name_ar'] ?? null
-                    ),
-                    'relationetudiant' => $validated['guardian_relation'],
-                    'adressewali' => $validated['address'],
-                    'wilayawali' => $validated['guardian_wilaya'],
-                    'dayrawali' => $validated['guardian_dayra'],
-                    'baladiawali' => $validated['guardian_baladia'],
-                    'numtelephonewali' => $validated['guardian_phone'],
-                ]);
-            }
-
-            if ($role === 'student') {
-                $section = Section::query()->findOrFail((int) $validated['section_id']);
-                if ($targetSchoolId && (int) $section->school_id !== (int) $targetSchoolId) {
-                    throw ValidationException::withMessages([
-                        'section_id' => 'القسم المختار لا ينتمي لنفس المؤسسة.',
-                    ]);
-                }
-
-                $guardianUser = User::query()
-                    ->whereKey((int) $validated['guardian_user_id'])
-                    ->with('parentProfile')
-                    ->firstOrFail();
-
-                if (!$guardianUser->hasRole('guardian') || !$guardianUser->parentProfile) {
-                    throw ValidationException::withMessages([
-                        'guardian_user_id' => 'ولي التلميذ غير صالح.',
-                    ]);
-                }
-
-                if ($targetSchoolId && (int) $guardianUser->school_id !== (int) $targetSchoolId) {
-                    throw ValidationException::withMessages([
-                        'guardian_user_id' => 'ولي التلميذ يجب أن يكون من نفس المؤسسة.',
-                    ]);
-                }
-
-                StudentInfo::create([
-                    'user_id' => $user->id,
-                    'section_id' => (int) $validated['section_id'],
-                    'parent_id' => (int) $guardianUser->parentProfile->id,
-                    'gender' => (int) $validated['gender'],
-                    'prenom' => $this->buildLocalizedNameAction->execute(
-                        $validated['first_name_fr'] ?? null,
-                        $validated['first_name_ar'] ?? null
-                    ),
-                    'nom' => $this->buildLocalizedNameAction->execute(
-                        $validated['last_name_fr'] ?? null,
-                        $validated['last_name_ar'] ?? null
-                    ),
-                    'datenaissance' => $validated['student_birth_date'],
-                    'lieunaissance' => $validated['student_birth_place'],
-                    'wilaya' => $validated['student_wilaya'],
-                    'dayra' => $validated['student_dayra'],
-                    'baladia' => $validated['student_baladia'],
-                    'numtelephone' => $validated['student_phone'],
-                ]);
-            }
-        });
+        $createPortalUser->execute([
+            'name' => $name,
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => $role,
+            'school_id' => $targetSchoolId,
+            'must_change_password' => false,
+            'profile' => $this->buildProfilePayload($role, $validated),
+        ]);
 
         return redirect()->route('admin.users.create')->with('success', 'تم إنشاء المستخدم بنجاح.');
+    }
+
+    /** يتحقّق أن قسم التلميذ ووليّه صالحان وضمن نفس المؤسسة. */
+    private function assertValidStudentRelations(array $validated, ?int $targetSchoolId): void
+    {
+        $section = Section::query()->findOrFail((int) $validated['section_id']);
+        if ($targetSchoolId && (int) $section->school_id !== (int) $targetSchoolId) {
+            throw ValidationException::withMessages([
+                'section_id' => 'القسم المختار لا ينتمي لنفس المؤسسة.',
+            ]);
+        }
+
+        $guardianUser = User::query()
+            ->whereKey((int) $validated['guardian_user_id'])
+            ->with('parentProfile')
+            ->firstOrFail();
+
+        if (!$guardianUser->hasRole('guardian') || !$guardianUser->parentProfile) {
+            throw ValidationException::withMessages([
+                'guardian_user_id' => 'ولي التلميذ غير صالح.',
+            ]);
+        }
+
+        if ($targetSchoolId && (int) $guardianUser->school_id !== (int) $targetSchoolId) {
+            throw ValidationException::withMessages([
+                'guardian_user_id' => 'ولي التلميذ يجب أن يكون من نفس المؤسسة.',
+            ]);
+        }
+    }
+
+    /** يبني حمولة الملف حسب الدور لتمريرها إلى إجراء الإنشاء الموحّد. */
+    private function buildProfilePayload(string $role, array $v): array
+    {
+        if ($role === 'teacher') {
+            return [
+                'specialization_id' => $v['specialization_id'] ?? null,
+                'gender' => $v['gender'] ?? null,
+                'joining_date' => $v['joining_date'] ?? null,
+                'address' => $v['address'] ?? null,
+            ];
+        }
+
+        if ($role === 'guardian') {
+            return [
+                'prenom' => $this->buildLocalizedNameAction->execute($v['first_name_fr'] ?? null, $v['first_name_ar'] ?? null),
+                'nom' => $this->buildLocalizedNameAction->execute($v['last_name_fr'] ?? null, $v['last_name_ar'] ?? null),
+                'relation' => $v['guardian_relation'] ?? '',
+                'phone' => $v['guardian_phone'] ?? 0,
+                'address' => $v['address'] ?? '',
+                'wilaya' => $v['guardian_wilaya'] ?? '',
+                'dayra' => $v['guardian_dayra'] ?? '',
+                'baladia' => $v['guardian_baladia'] ?? '',
+            ];
+        }
+
+        if ($role === 'student') {
+            return [
+                'prenom' => $this->buildLocalizedNameAction->execute($v['first_name_fr'] ?? null, $v['first_name_ar'] ?? null),
+                'nom' => $this->buildLocalizedNameAction->execute($v['last_name_fr'] ?? null, $v['last_name_ar'] ?? null),
+                'guardian_user_id' => $v['guardian_user_id'] ?? null,
+                'section_id' => $v['section_id'] ?? null,
+                'gender' => $v['gender'] ?? 0,
+                'phone' => $v['student_phone'] ?? 0,
+                'birth_date' => $v['student_birth_date'] ?? null,
+                'birth_place' => $v['student_birth_place'] ?? '',
+                'wilaya' => $v['student_wilaya'] ?? '',
+                'dayra' => $v['student_dayra'] ?? '',
+                'baladia' => $v['student_baladia'] ?? '',
+            ];
+        }
+
+        return [];
     }
 
     private function resolveTargetSchoolId(mixed $requestedSchoolId): ?int

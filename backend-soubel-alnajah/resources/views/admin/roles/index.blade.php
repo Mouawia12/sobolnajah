@@ -46,60 +46,26 @@
 
                 {{-- ===================== المستخدمون ===================== --}}
                 <div class="tab-pane fade show active" id="tab-users">
-                    <div class="row g-3">
-                        <div class="col-lg-4">
-                            <div class="card border">
-                                <div class="card-header fw-bold">{{ trans('roles.create_user_title') }}</div>
-                                <div class="card-body">
-                                    <form id="createUserForm">
-                                        <div class="mb-2">
-                                            <label class="form-label">{{ trans('roles.full_name') }}</label>
-                                            <input type="text" name="name" class="form-control" required>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label class="form-label">{{ trans('roles.email') }}</label>
-                                            <input type="email" name="email" class="form-control" dir="ltr" required>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label class="form-label">{{ trans('roles.password') }}</label>
-                                            <input type="text" name="password" class="form-control" dir="ltr" minlength="6" required>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label class="form-label">{{ trans('roles.role') }}</label>
-                                            <select name="role" class="form-select">
-                                                <option value="">{{ trans('roles.no_role') }}</option>
-                                                @foreach ($roles as $r)
-                                                    <option value="{{ $r->name }}">{{ $r->display_name ?: $r->name }}</option>
-                                                @endforeach
-                                            </select>
-                                            <small class="text-muted">{{ trans('roles.single_role_hint') }}</small>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary w-100"><i class="fa fa-user-plus"></i> {{ trans('roles.create_user') }}</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-8">
-                            <div class="d-flex mb-2">
-                                <input type="search" id="userSearch" class="form-control" placeholder="{{ trans('roles.search_users') }}">
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-bordered align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>{{ trans('roles.full_name') }}</th>
-                                            <th>{{ trans('roles.email') }}</th>
-                                            <th>{{ trans('roles.roles') }}</th>
-                                            <th style="width:170px;">{{ trans('roles.actions') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="usersTbody">
-                                        <tr><td colspan="4" class="text-center text-muted py-4">…</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                        <input type="search" id="userSearch" class="form-control" style="max-width:340px;" placeholder="{{ trans('roles.search_users') }}">
+                        <button type="button" class="btn btn-primary ms-auto" id="openCreateUser">
+                            <i class="fa fa-user-plus"></i> {{ trans('roles.new_user') }}
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>{{ trans('roles.full_name') }}</th>
+                                    <th>{{ trans('roles.email') }}</th>
+                                    <th>{{ trans('roles.roles') }}</th>
+                                    <th style="width:170px;">{{ trans('roles.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTbody">
+                                <tr><td colspan="4" class="text-center text-muted py-4">…</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -184,6 +150,170 @@
         </div>
     </div>
 </div></div>
+
+{{-- مودال إنشاء مستخدم جديد بدور واحد + بيانات حسب الدور --}}
+<div class="modal fade" id="createUserModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+    <form id="createUserForm">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="fa fa-user-plus"></i> {{ trans('roles.create_user_title') }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">{{ trans('roles.full_name') }}</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ trans('roles.email') }}</label>
+                    <input type="email" name="email" class="form-control" dir="ltr" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ trans('roles.password') }}</label>
+                    <input type="text" name="password" class="form-control" dir="ltr" minlength="6" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ trans('roles.role') }}</label>
+                    <select name="role" id="cuRole" class="form-select">
+                        <option value="">{{ trans('roles.no_role') }}</option>
+                        @foreach ($roles as $r)
+                            <option value="{{ $r->name }}" data-core="{{ in_array($r->name, $coreRoleNames, true) ? '1' : '0' }}">{{ $r->display_name ?: $r->name }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">{{ trans('roles.single_role_hint') }}</small>
+                </div>
+            </div>
+
+            {{-- تلميح لدور مخصّص --}}
+            <div class="alert alert-info mt-3 d-none" id="cuCustomHint"><i class="fa fa-info-circle"></i> {{ trans('roles.custom_role_hint') }}</div>
+
+            {{-- بيانات المعلّم (اختيارية) --}}
+            <div class="cu-role-fields d-none mt-3" data-role="teacher">
+                <h6 class="fw-bold">{{ trans('roles.teacher_data') }}</h6>
+                <p class="text-muted small mb-2">{{ trans('roles.teacher_data_hint') }}</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.specialization') }}</label>
+                        <select name="specialization_id" class="form-select">
+                            <option value="">{{ trans('roles.choose') }}</option>
+                            @foreach ($specializations as $sp)
+                                <option value="{{ $sp->id }}">{{ $sp->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.gender') }}</label>
+                        <select name="gender_teacher" class="form-select">
+                            <option value="">{{ trans('roles.choose') }}</option>
+                            <option value="1">{{ trans('roles.male') }}</option>
+                            <option value="0">{{ trans('roles.female') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.joining_date') }}</label>
+                        <input type="date" name="joining_date" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">{{ trans('roles.address') }}</label>
+                        <input type="text" name="address_teacher" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            {{-- بيانات الولي --}}
+            <div class="cu-role-fields d-none mt-3" data-role="guardian">
+                <h6 class="fw-bold">{{ trans('roles.guardian_data') }}</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.relation') }}</label>
+                        <input type="text" name="guardian_relation" class="form-control" placeholder="{{ trans('roles.male') }} / {{ trans('roles.female') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.phone') }}</label>
+                        <input type="text" name="guardian_phone" class="form-control" dir="ltr">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.address') }}</label>
+                        <input type="text" name="address_guardian" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.wilaya') }}</label>
+                        <input type="text" name="guardian_wilaya" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.dayra') }}</label>
+                        <input type="text" name="guardian_dayra" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.baladia') }}</label>
+                        <input type="text" name="guardian_baladia" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            {{-- بيانات التلميذ --}}
+            <div class="cu-role-fields d-none mt-3" data-role="student">
+                <h6 class="fw-bold">{{ trans('roles.student_data') }}</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ trans('roles.guardian') }} <span class="text-danger">*</span></label>
+                        <select name="guardian_user_id" class="form-select">
+                            <option value="">{{ trans('roles.choose') }}</option>
+                            @foreach ($guardians as $g)
+                                <option value="{{ $g->id }}">{{ $g->name }} — {{ $g->email }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ trans('roles.section') }} <span class="text-danger">*</span></label>
+                        <select name="section_id" class="form-select">
+                            <option value="">{{ trans('roles.choose') }}</option>
+                            @foreach ($classSections as $sec)
+                                <option value="{{ $sec->id }}">{{ optional(optional($sec->classroom)->schoolgrade)->name_grade ?? '-' }} / {{ optional($sec->classroom)->name_class ?? '-' }} / {{ $sec->name_section }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.gender') }}</label>
+                        <select name="gender_student" class="form-select">
+                            <option value="">{{ trans('roles.choose') }}</option>
+                            <option value="1">{{ trans('roles.male') }}</option>
+                            <option value="0">{{ trans('roles.female') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.phone') }}</label>
+                        <input type="text" name="student_phone" class="form-control" dir="ltr">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ trans('roles.birth_date') }}</label>
+                        <input type="date" name="student_birth_date" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ trans('roles.birth_place') }}</label>
+                        <input type="text" name="student_birth_place" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ trans('roles.wilaya') }}</label>
+                        <input type="text" name="student_wilaya" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ trans('roles.dayra') }}</label>
+                        <input type="text" name="student_dayra" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ trans('roles.baladia') }}</label>
+                        <input type="text" name="student_baladia" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button>
+            <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> {{ trans('roles.create_user') }}</button>
+        </div>
+    </form>
+</div></div></div>
 
 {{-- مودالات المستخدم (أدوار / كلمة مرور) --}}
 <div class="modal fade" id="userRolesModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -286,15 +416,73 @@
         clearTimeout(searchTimer); searchTimer = setTimeout(loadUsers, 300);
     });
 
-    document.getElementById('createUserForm').addEventListener('submit', async function (e) {
+    /* ---------- مودال إنشاء مستخدم ---------- */
+    const createUserForm = document.getElementById('createUserForm');
+    const cuRole = document.getElementById('cuRole');
+    const cuCustomHint = document.getElementById('cuCustomHint');
+    const cuFieldGroups = Array.from(document.querySelectorAll('.cu-role-fields'));
+    let createUserModal = null;
+
+    function cuApplyRole() {
+        const opt = cuRole.options[cuRole.selectedIndex];
+        const role = cuRole.value;
+        const isCore = opt ? opt.dataset.core === '1' : false;
+
+        cuFieldGroups.forEach(g => g.classList.toggle('d-none', g.dataset.role !== role));
+        // تلميح الدور المخصّص: دور مختار وغير أساسي.
+        cuCustomHint.classList.toggle('d-none', !(role && !isCore));
+    }
+
+    document.getElementById('openCreateUser').addEventListener('click', function () {
+        createUserForm.reset();
+        cuApplyRole();
+        createUserModal = createUserModal || new bootstrap.Modal(document.getElementById('createUserModal'));
+        createUserModal.show();
+    });
+
+    cuRole.addEventListener('change', cuApplyRole);
+
+    createUserForm.addEventListener('submit', async function (e) {
         e.preventDefault();
         const f = e.target;
+        const role = f.role.value;
+        const payload = {
+            name: f.name.value,
+            email: f.email.value,
+            password: f.password.value,
+            role: role,
+        };
+
+        if (role === 'teacher') {
+            payload.specialization_id = f.specialization_id.value || null;
+            payload.gender = f.gender_teacher.value || null;
+            payload.joining_date = f.joining_date.value || null;
+            payload.address = f.address_teacher.value || null;
+        } else if (role === 'guardian') {
+            payload.guardian_relation = f.guardian_relation.value || null;
+            payload.guardian_phone = f.guardian_phone.value || null;
+            payload.address = f.address_guardian.value || null;
+            payload.guardian_wilaya = f.guardian_wilaya.value || null;
+            payload.guardian_dayra = f.guardian_dayra.value || null;
+            payload.guardian_baladia = f.guardian_baladia.value || null;
+        } else if (role === 'student') {
+            payload.guardian_user_id = f.guardian_user_id.value || null;
+            payload.section_id = f.section_id.value || null;
+            payload.gender = f.gender_student.value || null;
+            payload.student_phone = f.student_phone.value || null;
+            payload.student_birth_date = f.student_birth_date.value || null;
+            payload.student_birth_place = f.student_birth_place.value || null;
+            payload.student_wilaya = f.student_wilaya.value || null;
+            payload.student_dayra = f.student_dayra.value || null;
+            payload.student_baladia = f.student_baladia.value || null;
+        }
+
         try {
-            await api(URL.storeUser, 'POST', {
-                name: f.name.value, email: f.email.value, password: f.password.value, role: f.role.value,
-            });
+            await api(URL.storeUser, 'POST', payload);
             toast(@json(trans('roles.user_created')));
+            if (createUserModal) createUserModal.hide();
             f.reset();
+            cuApplyRole();
             loadUsers();
         } catch (e2) { toast(e2, false); }
     });
