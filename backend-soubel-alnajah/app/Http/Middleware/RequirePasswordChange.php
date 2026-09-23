@@ -18,6 +18,8 @@ class RequirePasswordChange
         $allowedRoutes = [
             'home',
             'changePassword',
+            'password.change.page',
+            'admin.password.change.page',
             'logout',
             'login',
             'password.request',
@@ -30,7 +32,12 @@ class RequirePasswordChange
             return $next($request);
         }
 
-        return redirect()->route('home')->withErrors([
+        // التلميذ والولي يغيّران كلمة المرور من صفحة ملفهم (home)؛ بقية الأدوار
+        // تُوجَّه لصفحة تغيير كلمة المرور، وإلا تحدث حلقة إعادة توجيه لا تنتهي
+        // (home ← لوحة الأستاذ/المحاسب ← home ...).
+        $target = $user->hasRole(['student', 'guardian']) ? 'home' : 'password.change.page';
+
+        return redirect()->route($target)->withErrors([
             'error' => 'يجب تغيير كلمة المرور قبل متابعة استخدام النظام.',
         ]);
     }

@@ -7,6 +7,7 @@ use App\Http\Requests\DestroyPromotionRequest;
 use App\Http\Requests\StorePromotionRequest;
 use App\Models\Inscription\StudentInfo;
 use App\Models\Promotion\Promotion;
+use App\Models\School\Section;
 use App\Services\HomeDashboardCacheService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -75,6 +76,16 @@ class PromotionController extends Controller
             (int) $validated['school_id'] !== $schoolId
             || (int) $validated['school_id_new'] !== $schoolId
         )) {
+            abort(403);
+        }
+
+        // القسمان يجب أن ينتميا للمؤسستين المختارتين (منع نقل التلاميذ لقسم مؤسسة أخرى).
+        $sectionMatches = fn ($sectionId, $sectionSchoolId) => Section::query()
+            ->whereKey((int) $sectionId)
+            ->where('school_id', (int) $sectionSchoolId)
+            ->exists();
+        if (!$sectionMatches($validated['section_id'], $validated['school_id'])
+            || !$sectionMatches($validated['section_id_new'], $validated['school_id_new'])) {
             abort(403);
         }
 

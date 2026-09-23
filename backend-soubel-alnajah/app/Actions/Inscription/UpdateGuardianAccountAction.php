@@ -27,9 +27,14 @@ class UpdateGuardianAccountAction
                 Arr::get($guardianData, 'first_name.en'),
                 true
             ),
-            'email' => Arr::get($guardianData, 'email') ?: $user->email,
-            'school_id' => $schoolId,
         ]);
+
+        // الولي الموجود يُطابَق بالهاتف أو البريد من نموذج تسجيل (قد يكون عاماً)،
+        // فلا نغيّر بريد الدخول ولا ننقله لمؤسسة أخرى: تغيير البريد ثم «نسيت كلمة
+        // المرور» كان يسمح بالاستيلاء على حساب الولي بمجرد معرفة رقم هاتفه.
+        if (!$user->school_id) {
+            $user->school_id = $schoolId;
+        }
 
         $user->save();
 

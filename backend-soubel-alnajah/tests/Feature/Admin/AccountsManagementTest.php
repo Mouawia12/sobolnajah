@@ -73,6 +73,19 @@ class AccountsManagementTest extends TestCase
         $this->assertCount(1, $target->roles);
     }
 
+    public function test_admin_can_assign_custom_role_from_accounts_page(): void
+    {
+        $admin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $admin->attachRole('admin');
+        Role::firstOrCreate(['name' => 'librarian'], ['display_name' => 'Librarian']);
+        $target = User::factory()->create(['must_change_password' => false]);
+
+        $this->actingAs($admin)->post(route('accounts.roles', $target->id), ['role' => 'librarian'])
+            ->assertStatus(302)->assertSessionHasNoErrors();
+
+        $this->assertTrue($target->fresh()->hasRole('librarian'));
+    }
+
     public function test_updating_role_replaces_previous_role(): void
     {
         $admin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);

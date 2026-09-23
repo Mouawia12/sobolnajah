@@ -8,6 +8,18 @@ use Illuminate\Support\Facades\Http;
 
 class OpenAIServiceController extends Controller
 {
+    public function __construct()
+    {
+        // المساعد الذكي أداة للطاقم (واجهة الإدارة) ويستهلك مفتاح OpenAI المدفوع:
+        // نمنع التلاميذ والأولياء ونحدّ عدد الرسائل.
+        $this->middleware(function ($request, $next) {
+            abort_if($request->user()?->hasRole(['student', 'guardian']), 403);
+
+            return $next($request);
+        });
+        $this->middleware('throttle:20,1')->only('send');
+    }
+
     public function index()
     {
         return view('admin.chat', [

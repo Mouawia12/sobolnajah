@@ -65,6 +65,36 @@ class TeacherEnrollmentActionsTest extends TestCase
         $this->assertSame($schoolId, (int) $teacherUser->school_id);
     }
 
+    public function test_teacher_without_specialization_can_be_assigned_one_later(): void
+    {
+        [$admin, $schoolId, $sectionId] = $this->bootstrapSchoolAdminAndSection();
+        $specializationId = $this->createSpecialization('Physics');
+
+        $teacherUser = User::factory()->create(['school_id' => $schoolId, 'must_change_password' => false]);
+        // أستاذ أُنشئ بحساب فقط (من المودل أو backfill).
+        $teacher = Teacher::query()->create([
+            'user_id' => $teacherUser->id,
+            'specialization_id' => null,
+            'name' => ['fr' => 'Bare', 'ar' => 'أستاذ', 'en' => 'Bare'],
+            'gender' => null,
+            'joining_date' => null,
+            'address' => null,
+        ]);
+        DB::table('teacher_section')->insert([
+            'teacher_id' => $teacher->id, 'section_id' => $sectionId,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->put(route('Teachers.update', ['Teacher' => $teacher->id]), [
+            'name_teacherfr' => 'Bare',
+            'name_teacherar' => 'أستاذ',
+            'email' => $teacherUser->email,
+            'specialization_id' => $specializationId,
+        ])->assertStatus(302)->assertSessionHasNoErrors();
+
+        $this->assertSame($specializationId, (int) $teacher->fresh()->specialization_id);
+    }
+
     public function test_teacher_destroy_deletes_teacher_and_user_when_not_linked_to_sections(): void
     {
         [$admin, $schoolId] = $this->bootstrapSchoolAdminAndSection();

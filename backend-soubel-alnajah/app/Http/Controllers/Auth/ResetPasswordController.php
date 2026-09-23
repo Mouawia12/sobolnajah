@@ -19,7 +19,9 @@ class ResetPasswordController extends Controller
     |
     */
 
-    use ResetsPasswords;
+    use ResetsPasswords {
+        resetPassword as protected traitResetPassword;
+    }
 
     /**
      * Where to redirect users after resetting their password.
@@ -27,4 +29,12 @@ class ResetPasswordController extends Controller
      * @var string
      */
     protected $redirectTo = RouteServiceProvider::HOME;
+
+    /** إعادة التعيين عبر البريد تُعدّ تغييراً لكلمة المرور، فنرفع إلزام التغيير. */
+    protected function resetPassword($user, $password)
+    {
+        $user->must_change_password = false;
+
+        $this->traitResetPassword($user, $password);
+    }
 }

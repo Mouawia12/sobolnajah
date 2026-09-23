@@ -358,7 +358,8 @@ class ChatController extends Controller
             return 'chat.guardian';
         }
 
-        // Safe fallback: keep chat available even if legacy/custom role names are used.
-        return 'chat.student';
+        // ناظر/موظف/أدوار مخصّصة: طاقم يعمل من واجهة الإدارة، فنستعمل قالب الطاقم
+        // (layoutsadmin) بدل قالب التلميذ الذي كان يُفقدهم السايدبار.
+        return 'chat.accountant';
     }
 }

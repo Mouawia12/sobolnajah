@@ -201,6 +201,7 @@ public function storeOrUpdate(StoreAbsenceStatusRequest $request)
             }
 
             StudentInfo::query()
+                ->forSchool($this->currentSchoolId())
                 ->findOrFail((int) $studentId);
 
             $absence = Absence::where('student_id', $studentId)

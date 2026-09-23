@@ -116,6 +116,8 @@ class NoteStudentController extends Controller
     public function store(StoreNoteStudentRequest $request)
      {
         $this->authorize('create', NoteStudent::class);
+        // التلميذ يجب أن يكون من مؤسسة المسؤول، وإلا أمكن استبدال كشف تلميذ من مؤسسة أخرى.
+        StudentInfo::query()->forSchool($this->currentSchoolId())->findOrFail((int) $request->student_id);
         $notestudent = NoteStudent::where('student_id', $request->student_id)->first();
         $noteColumn = "urlfile{$request->Anneescolaire}";
 

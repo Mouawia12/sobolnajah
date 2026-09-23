@@ -186,6 +186,15 @@ class HomeController extends Controller
             //return Auth::user()->id;
         }
 
+        // ناظر/موظف/أدوار مخصّصة/بلا دور: لا لوحة خاصة بهم، فنوجّههم لأول قسم
+        // مسموح يمكنهم فتحه (كانت الصفحة فارغة تماماً)، أو لصفحة ترحيب.
+        $landing = app(\App\Services\MenuAccessService::class)->firstAccessibleUrl(Auth::user());
+        if ($landing) {
+            return redirect()->to($landing);
+        }
+
+        return view('admin.welcome', ['notify' => $this->notifications()]);
+
     }
 
     public function teacherDashboard()

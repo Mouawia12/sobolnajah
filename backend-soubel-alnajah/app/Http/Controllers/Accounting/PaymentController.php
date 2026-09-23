@@ -334,7 +334,8 @@ class PaymentController extends Controller
         $this->authorize('viewAny', Payment::class);
         $this->ensureAccountingRole();
 
-        $branchId = (int) $request->query('branch_id') ?: null;
+        // المرتبط بمؤسسة يبحث في عقود مؤسسته فقط مهما كانت قيمة branch_id.
+        $branchId = $this->branchFilterId();
         $search = trim((string) $request->query('q'));
 
         if (mb_strlen($search) < 2) {

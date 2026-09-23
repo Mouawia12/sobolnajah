@@ -32,7 +32,8 @@ class AssessmentController extends Controller
         $assessments = Assessment::query()
             ->with(['section:id,classroom_id,name_section', 'section.classroom:id,name_class', 'specialization:id,name'])
             ->withCount('marks')
-            ->when($isTeacherOnly && $teacher, fn ($q) => $q->where('teacher_id', $teacher->id))
+            // أستاذ بلا سجل معلّم لا يرى شيئاً (بدون هذا الشرط كان يرى تقييمات كل المؤسسات).
+            ->when($isTeacherOnly, fn ($q) => $q->where('teacher_id', $teacher?->id ?? 0))
             ->when(!$isTeacherOnly, fn ($q) => $q->forSchool($this->branchFilterId()))
             ->when(request('section_id'), fn ($q) => $q->where('section_id', (int) request('section_id')))
             ->orderByDesc('date')

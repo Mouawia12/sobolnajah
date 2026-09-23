@@ -369,6 +369,29 @@ class RolePermissionTest extends TestCase
         $this->assertTrue($admin->fresh()->hasRole('admin'));
     }
 
+    public function test_supervisor_home_redirects_to_first_accessible_section(): void
+    {
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->attachRole('supervisor');
+
+        // لا يوجّه لـ employees.index المحمي بدور admin (كان يعطي 403)، بل لحضور الطاقم.
+        $this->assertFalse(app(MenuAccessService::class)->canAccessRoute($user, 'employees.index'));
+
+        $this->actingAs($user)->get(route('home'))
+            ->assertRedirect(route('staff-attendance.record', ['teachers']));
+    }
+
+    public function test_custom_role_without_sections_sees_welcome_page(): void
+    {
+        Role::firstOrCreate(['name' => 'librarian']);
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->attachRole('librarian');
+
+        $this->actingAs($user)->get(route('home'))
+            ->assertOk()
+            ->assertSee(trans('roles.welcome_no_sections'));
+    }
+
     /** @return array{0:int,1:int} [sectionId, guardianUserId] */
     private function seedSectionAndGuardian(): array
     {

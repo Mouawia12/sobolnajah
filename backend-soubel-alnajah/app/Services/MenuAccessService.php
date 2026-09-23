@@ -6,6 +6,8 @@ use App\Models\RoleMenuSection;
 use App\Models\User;
 use App\Support\MenuCatalog;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 class MenuAccessService
 {
@@ -60,6 +62,51 @@ class MenuAccessService
     public function canSeeSection(?User $user, string $sectionKey): bool
     {
         return in_array($sectionKey, $this->allowedSections($user), true);
+    }
+
+    /**
+     * هل يستطيع المستخدم فعلاً فتح المسار؟ يطابق قيود «role:...» في middleware
+     * المسار، حتى لا نعرض في السايدبار روابط تعطي 403 لدور مُنح القسم.
+     */
+    public function canAccessRoute(?User $user, string $routeName): bool
+    {
+        $route = Route::getRoutes()->getByName($routeName);
+        if (!$user || !$route) {
+            return false;
+        }
+
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && Str::startsWith($middleware, 'role:')) {
+                $roles = explode('|', explode(',', Str::after($middleware, 'role:'))[0]);
+                if (!$user->hasRole($roles)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * أول رابط يمكن للمستخدم فتحه من أقسامه المسموحة (صفحة هبوط للأدوار
+     * التي ليس لها لوحة خاصة: ناظر، موظف، أدوار مخصّصة).
+     */
+    public function firstAccessibleUrl(?User $user): ?string
+    {
+        $allowed = $this->allowedSections($user);
+
+        foreach (MenuCatalog::sections() as $key => $section) {
+            if (!in_array($key, $allowed, true)) {
+                continue;
+            }
+            foreach ($section['links'] as $link) {
+                if ($this->canAccessRoute($user, $link['route'])) {
+                    return route($link['route'], $link['params'] ?? []);
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -47,7 +47,12 @@
                         </thead>
                         <tbody>
                             @forelse ($users as $index => $user)
-                                @php $userRoles = $user->roles->pluck('name')->all(); @endphp
+                                @php
+                                    $userRoles = $user->roles->pluck('name')->all();
+                                    // حساب قديم بعدة أدوار: نختار دوراً واحداً بالأولوية (admin أولاً)
+                                    // حتى لا يختار المتصفح آخر خيار ويُنزَّل المسؤول لدور أدنى عند الحفظ.
+                                    $primaryRole = collect(array_keys($roles))->first(fn ($r) => in_array($r, $userRoles, true));
+                                @endphp
                                 <tr>
                                     <td>{{ $users->firstItem() + $index }}</td>
                                     <td class="fw-bold">{{ $user->name }}</td>
@@ -79,7 +84,7 @@
                                             <select name="role" class="form-select">
                                                 <option value="">{{ trans('accounts.no_roles') }}</option>
                                                 @foreach ($roles as $key => $label)
-                                                    <option value="{{ $key }}" @selected(in_array($key, $userRoles, true))>{{ $label }}</option>
+                                                    <option value="{{ $key }}" @selected($key === $primaryRole)>{{ $label }}</option>
                                                 @endforeach
                                             </select>
                                             <small class="text-muted">{{ trans('accounts.single_role_hint') }}</small>

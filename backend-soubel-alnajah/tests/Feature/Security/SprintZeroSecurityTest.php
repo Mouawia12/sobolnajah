@@ -31,6 +31,23 @@ class SprintZeroSecurityTest extends TestCase
         $response->assertRedirectContains('/ar');
     }
 
+    public function test_teacher_with_must_change_password_reaches_change_page_without_loop(): void
+    {
+        $this->withoutMiddleware([
+            \Mcamara\LaravelLocalization\Middleware\LocaleSessionRedirect::class,
+            \Mcamara\LaravelLocalization\Middleware\LocalizationRedirect::class,
+            \Mcamara\LaravelLocalization\Middleware\LocaleViewPath::class,
+        ]);
+        Role::firstOrCreate(['name' => 'teacher']);
+        $user = User::factory()->create(['must_change_password' => true]);
+        $user->attachRole('teacher');
+
+        $this->actingAs($user)->get(route('teacher.dashboard'))
+            ->assertRedirect(route('password.change.page'));
+
+        $this->actingAs($user)->get(route('password.change.page'))->assertOk();
+    }
+
     public function test_changing_password_clears_must_change_password_flag(): void
     {
         $user = User::factory()->create([
@@ -58,6 +75,15 @@ class SprintZeroSecurityTest extends TestCase
 
         $response->assertStatus(302);
         $response->assertSessionHasErrors('message');
+    }
+
+    public function test_student_cannot_use_ai_chat_proxy(): void
+    {
+        Role::firstOrCreate(['name' => 'student']);
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->attachRole('student');
+
+        $this->actingAs($user)->post('/chat-gpt', ['message' => 'hi'])->assertStatus(403);
     }
 
     public function test_chat_room_message_send_rejects_missing_body_payload(): void
@@ -828,6 +854,46 @@ class SprintZeroSecurityTest extends TestCase
 
         $response->assertStatus(302);
         $response->assertSessionHasErrors('section_id_new');
+    }
+
+    public function test_promotion_store_rejects_target_section_from_another_school(): void
+    {
+        Role::firstOrCreate(['name' => 'admin']);
+        $makeSection = function (string $tag): array {
+            $schoolId = DB::table('schools')->insertGetId([
+                'name_school' => json_encode(['fr' => $tag, 'ar' => $tag, 'en' => $tag]),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $gradeId = DB::table('schoolgrades')->insertGetId([
+                'school_id' => $schoolId, 'name_grade' => json_encode(['fr' => 'G', 'ar' => 'م', 'en' => 'G']),
+                'notes' => json_encode(['fr' => 'N', 'ar' => 'ن', 'en' => 'N']),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $classroomId = DB::table('classrooms')->insertGetId([
+                'school_id' => $schoolId, 'grade_id' => $gradeId,
+                'name_class' => json_encode(['fr' => 'C', 'ar' => 'ق', 'en' => 'C']),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $sectionId = DB::table('sections')->insertGetId([
+                'school_id' => $schoolId, 'grade_id' => $gradeId, 'classroom_id' => $classroomId,
+                'name_section' => json_encode(['fr' => $tag, 'ar' => $tag, 'en' => $tag]), 'Status' => 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return [$schoolId, $gradeId, $classroomId, $sectionId];
+        };
+
+        [$schoolA, $gradeA, $classA, $sectionA] = $makeSection('A');
+        [, $gradeB, $classB, $sectionB] = $makeSection('B');
+
+        $admin = User::factory()->create(['must_change_password' => false, 'school_id' => $schoolA]);
+        $admin->attachRole('admin');
+
+        $this->actingAs($admin)->post(route('Promotions.store'), [
+            'school_id' => $schoolA, 'grade_id' => $gradeA, 'classroom_id' => $classA, 'section_id' => $sectionA,
+            'school_id_new' => $schoolA, 'grade_id_new' => $gradeB, 'classroom_id_new' => $classB,
+            'section_id_new' => $sectionB,
+        ])->assertStatus(403);
     }
 
     public function test_legacy_store_route_rejects_non_existing_inscription_id(): void

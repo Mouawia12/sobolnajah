@@ -54,9 +54,47 @@ class UpdateGuardianAccountActionTest extends TestCase
         $user->refresh();
         $this->assertSame('Fatima', $user->getTranslation('name', 'fr'));
         $this->assertSame('فاطمة', $user->getTranslation('name', 'ar'));
-        $this->assertSame('new.guardian@example.test', $user->email);
+        // بريد الدخول لا يتغيّر عبر التسجيل (منع الاستيلاء على الحساب).
+        $this->assertSame('old.guardian@example.test', $user->email);
+        // المؤسسة تُسند فقط إن كانت فارغة.
         $this->assertSame($schoolId, (int) $user->school_id);
         $this->assertTrue($user->hasRole('guardian'));
+    }
+
+    public function test_it_does_not_move_guardian_from_existing_school(): void
+    {
+        Role::firstOrCreate(['name' => 'guardian']);
+
+        $schoolA = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'A', 'ar' => 'أ', 'en' => 'A']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $schoolB = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'B', 'ar' => 'ب', 'en' => 'B']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'victim@example.test',
+            'school_id' => $schoolA,
+            'must_change_password' => false,
+        ]);
+        $guardian = MyParent::query()->create([
+            'user_id' => $user->id,
+            'prenomwali' => ['fr' => 'V', 'ar' => 'و', 'en' => 'V'],
+            'nomwali' => ['fr' => 'G', 'ar' => 'ج', 'en' => 'G'],
+            'relationetudiant' => 'father', 'adressewali' => 'A', 'wilayawali' => 'W',
+            'dayrawali' => 'D', 'baladiawali' => 'B', 'numtelephonewali' => '0550000009',
+        ]);
+
+        (new UpdateGuardianAccountAction(new BuildLocalizedNameAction()))->execute($guardian, [
+            'first_name' => ['fr' => 'X', 'ar' => 'س'],
+            'email' => 'attacker@example.test',
+        ], $schoolB);
+
+        $user->refresh();
+        $this->assertSame('victim@example.test', $user->email);
+        $this->assertSame($schoolA, (int) $user->school_id);
     }
 
     public function test_it_throws_when_guardian_has_no_user(): void

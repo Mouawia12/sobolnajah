@@ -79,4 +79,6 @@ return [
     'student_role_needs_profile' => 'Impossible de convertir un compte en eleve par simple changement de role ; creez l eleve avec son tuteur et sa section.',
     'invalid_section' => 'Section invalide ou d un autre etablissement.',
     'invalid_guardian' => 'Tuteur invalide ou d un autre etablissement.',
+    'welcome_title' => 'Bienvenue',
+    'welcome_no_sections' => 'Aucune section n est encore attribuee a votre role. Contactez l administrateur.',
 ];

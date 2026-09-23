@@ -85,10 +85,12 @@
  
                      <td>{{ optional($ins->specialization)->name }}</td>         
                      <td class="col-md-2">
-                        @if ( $ins->gender == 1 )              
+                        @if (is_null($ins->gender))
+                         —
+                        @elseif ( $ins->gender == 1 )
                          {{ trans('inscription.male') }}
                         @else
-                         {{ trans('inscription.female') }}     
+                         {{ trans('inscription.female') }}
                         @endif                     
                     </td>
                      <td class="col-md-2">{{  $ins->joining_date }}</td>
@@ -178,29 +180,24 @@
         <div class="col-md-6">
           <div class="form-group">
               <label class="form-label">{{ trans('inscription.gender') }}</label>
-              <select class="form-select" name="gender"  required>
-                @if ($ins->gender==1)
-                <option selected value="{{1}}">{{ trans('inscription.male') }}</option>
-                <option value="{{0}}">{{ trans('inscription.female') }}</option>
-                @else
-                <option value="{{1}}">{{ trans('inscription.male') }}</option>
-                <option selected value="{{0}}">{{ trans('inscription.female') }}</option>
-                @endif
-               
+              <select class="form-select" name="gender">
+                <option value="" @selected(is_null($ins->gender))>{{ trans('roles.choose') }}</option>
+                <option value="1" @selected(!is_null($ins->gender) && (int) $ins->gender === 1)>{{ trans('inscription.male') }}</option>
+                <option value="0" @selected(!is_null($ins->gender) && (int) $ins->gender === 0)>{{ trans('inscription.female') }}</option>
              </select>
           </div>
         </div>
         <div class="col-md-6">
           <div class="form-group">
               <label class="form-label">{{ trans('teacher.joiningdate') }}</label>
-              <input type="date" name="joining_date" value="{{$ins->joining_date}}" class="form-control" required>
+              <input type="date" name="joining_date" value="{{$ins->joining_date}}" class="form-control">
           </div>
         </div>
         
         <div class="col-md-12">
           <div class="form-group">
             <label class="form-label">{{ trans('teacher.address') }}</label>
-            <input type="text" name="address" value="{{$ins->address}}" class="form-control" placeholder="{{ trans('teacher.address') }}" required>
+            <input type="text" name="address" value="{{$ins->address}}" class="form-control" placeholder="{{ trans('teacher.address') }}">
           </div>
          </div>
          <div class="col-md-12">

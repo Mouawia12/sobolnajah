@@ -79,4 +79,6 @@ return [
     'student_role_needs_profile' => 'An account cannot become a student by changing its role only; create the student with a guardian and section.',
     'invalid_section' => 'The selected section is invalid or belongs to another school.',
     'invalid_guardian' => 'The selected guardian is invalid or belongs to another school.',
+    'welcome_title' => 'Welcome',
+    'welcome_no_sections' => 'No sections have been assigned to your role yet. Please contact the administrator.',
 ];

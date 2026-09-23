@@ -6,7 +6,8 @@
                     @php
                         $user = auth()->user();
                         $isAdmin = $user && $user->hasRole('admin');
-                        $allowedSections = app(\App\Services\MenuAccessService::class)->allowedSections($user);
+                        $menuAccess = app(\App\Services\MenuAccessService::class);
+                        $allowedSections = $menuAccess->allowedSections($user);
                         $catalog = \App\Support\MenuCatalog::sections();
                         $dashboardUrl = $isAdmin
                             ? url('/admin')
@@ -38,7 +39,13 @@
                     {{-- الأقسام حسب صلاحيات الدور --}}
                     @foreach($catalog as $key => $section)
                         @continue(!in_array($key, $allowedSections, true))
-                        @php $links = $section['links']; @endphp
+                        @php
+                            // إخفاء الروابط المحمية بدور لا يملكه المستخدم (كانت تعطي 403).
+                            $links = $isAdmin
+                                ? $section['links']
+                                : array_values(array_filter($section['links'], fn ($link) => $menuAccess->canAccessRoute($user, $link['route'])));
+                        @endphp
+                        @continue(count($links) === 0)
 
                         @if(count($links) === 1)
                             <li class="header">{{ $section['label'] }}</li>

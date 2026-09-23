@@ -41,7 +41,7 @@ class AccountsController extends Controller
 
         return view('admin.accounts.index', [
             'users' => $users,
-            'roles' => RoleCatalog::CORE_ROLES,
+            'roles' => $this->roleOptions(),
             'currentUserId' => Auth::id(),
             'notify' => $this->notifications(),
             'breadcrumbs' => [
@@ -49,6 +49,19 @@ class AccountsController extends Controller
                 ['label' => trans('accounts.title')],
             ],
         ]);
+    }
+
+    /** الأدوار الأساسية أولاً (admin في المقدّمة) ثم المخصّصة: المعرّف => الاسم المعروض. */
+    private function roleOptions(): array
+    {
+        $custom = Role::query()
+            ->whereNotIn('name', RoleCatalog::coreRoleNames())
+            ->orderBy('id')
+            ->get(['name', 'display_name'])
+            ->mapWithKeys(fn (Role $r) => [$r->name => $r->display_name ?: $r->name])
+            ->all();
+
+        return RoleCatalog::CORE_ROLES + $custom;
     }
 
     public function resetPassword(Request $request, User $user)
@@ -84,7 +97,8 @@ class AccountsController extends Controller
 
         $validated = $request->validate([
             // دور واحد فقط لكل مستخدم.
-            'role' => ['nullable', 'string', 'in:' . implode(',', RoleCatalog::coreRoleNames())],
+            // الأدوار الأساسية والمخصّصة معاً (كان الدور المخصّص يُحذف عند الحفظ).
+            'role' => ['nullable', 'string', 'in:' . implode(',', array_keys($this->roleOptions()))],
         ]);
 
         $role = $validated['role'] ?? null;

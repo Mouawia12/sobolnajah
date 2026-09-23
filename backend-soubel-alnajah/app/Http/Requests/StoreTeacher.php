@@ -35,13 +35,17 @@ class StoreTeacher extends FormRequest
         return [
             'name_teacherfr' => 'required',
             'name_teacherar' => 'required',
-            'address' => 'required',
+            // بيانات المعلّم اختيارية (يمكن إكمالها لاحقاً).
+            'address' => 'nullable|string|max:500',
             'email' => 'required|email',
-            'gender' => 'required',
+            'gender' => 'nullable|in:0,1',
+            'joining_date' => 'nullable|date',
             'password' => $passwordRules,
 
             'specialization_id' => [
-                'required',
+                'nullable',
+                'integer',
+                'exists:specializations,id',
                 Rule::unique('teachers')
                     ->ignore($teacherId)
                     ->where('specialization_id', $specialization_id)

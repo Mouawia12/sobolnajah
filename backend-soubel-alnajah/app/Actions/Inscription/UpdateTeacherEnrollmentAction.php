@@ -18,6 +18,8 @@ class UpdateTeacherEnrollmentAction
             $payload = $this->buildTeacherEnrollmentPayloadAction->execute($input);
 
             $teacher->update([
+                // التخصص قابل للإسناد لاحقاً (أستاذ أُنشئ بحساب فقط).
+                'specialization_id' => $payload['teacher']['specialization_id'],
                 'name' => $payload['teacher']['name'],
                 'gender' => $payload['teacher']['gender'],
                 'joining_date' => $payload['teacher']['joining_date'],
@@ -28,8 +30,11 @@ class UpdateTeacherEnrollmentAction
                 $userData = [
                     'name' => $payload['user']['name'],
                     'email' => $payload['user']['email'],
-                    'school_id' => $schoolId,
                 ];
+                // المسؤول العام (بلا مؤسسة) لا يُفرغ مؤسسة الأستاذ عند التعديل.
+                if ($schoolId) {
+                    $userData['school_id'] = $schoolId;
+                }
 
                 if (!empty($payload['user']['password'])) {
                     $userData['password'] = Hash::make($payload['user']['password']);
