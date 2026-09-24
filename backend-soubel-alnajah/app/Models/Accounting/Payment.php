@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Payment extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     protected $guarded = [];
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Publication extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
     use HasTranslations;
     public $translatable = ['title','body'];
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Timetable extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     protected $guarded = [];
 

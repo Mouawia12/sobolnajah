@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class StaffAttendance extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     // حالات الحضور اليومية
     public const ABSENT = 0;

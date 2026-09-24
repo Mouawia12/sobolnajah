@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PaymentPlan extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     protected $guarded = [];
 

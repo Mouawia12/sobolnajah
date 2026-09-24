@@ -11,6 +11,7 @@ use Spatie\Translatable\HasTranslations;
 class Schoolgrade extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
     use HasTranslations;
     public $translatable = ['name_grade','notes'];
 

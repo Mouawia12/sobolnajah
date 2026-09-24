@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class JobApplication extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     protected $guarded = [];
 

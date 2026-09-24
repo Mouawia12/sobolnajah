@@ -13,6 +13,7 @@ use Spatie\Translatable\HasTranslations;
 class Classroom extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
     use HasTranslations;
     public $translatable = ['name_class'];
 

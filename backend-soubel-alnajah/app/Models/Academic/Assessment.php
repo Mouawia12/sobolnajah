@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Assessment extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     public const TYPE_DEVOIR = 'devoir'; // فرض
     public const TYPE_EXAM = 'exam';     // امتحان

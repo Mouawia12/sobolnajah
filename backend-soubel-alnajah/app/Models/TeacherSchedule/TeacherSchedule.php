@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TeacherSchedule extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     protected $guarded = [];
 

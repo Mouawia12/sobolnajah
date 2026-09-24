@@ -17,6 +17,7 @@ use Spatie\Translatable\HasTranslations;
 class Section extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
     use HasTranslations;
     public $translatable = ['name_section'];
 

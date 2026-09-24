@@ -13,6 +13,7 @@ use App\Models\School\Classroom;
 class Inscription extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
     use HasTranslations;
     public $translatable = ['prenom','nom','prenomwali','nomwali','name_class'];
 

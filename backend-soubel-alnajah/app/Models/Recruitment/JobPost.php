@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class JobPost extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\BelongsToSchool;
 
     protected $guarded = [];
     protected $casts = [
