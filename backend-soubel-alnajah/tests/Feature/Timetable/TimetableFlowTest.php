@@ -67,6 +67,41 @@ class TimetableFlowTest extends TestCase
         $this->assertDatabaseCount('timetable_entries', 2);
     }
 
+    public function test_timetable_rejects_teacher_from_another_branch_and_accepts_own(): void
+    {
+        [$admin, $schoolId, $sectionId] = $this->bootstrapAdminWithSection();
+        $otherSchoolId = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'B', 'ar' => 'ب', 'en' => 'B']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $makeTeacher = function (int $userSchoolId): int {
+            $userId = User::factory()->create(['school_id' => $userSchoolId, 'must_change_password' => false])->id;
+
+            return DB::table('teachers')->insertGetId([
+                'user_id' => $userId, 'name' => json_encode(['fr' => 'T', 'ar' => 'أ', 'en' => 'T']),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        };
+        $ownTeacher = $makeTeacher($schoolId);
+        $foreignTeacher = $makeTeacher($otherSchoolId);
+
+        $payload = fn (int $teacherId) => [
+            'section_id' => $sectionId,
+            'academic_year' => '2026-2027',
+            'entries' => [[
+                'day_of_week' => 1, 'period_index' => 1, 'subject_name' => 'Math', 'teacher_id' => $teacherId,
+            ]],
+        ];
+
+        $this->actingAs($admin)->post(route('timetables.store'), $payload($foreignTeacher))
+            ->assertSessionHasErrors('entries.0.teacher_id');
+        $this->assertDatabaseCount('timetable_entries', 0);
+
+        $this->actingAs($admin)->post(route('timetables.store'), $payload($ownTeacher))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('timetable_entries', ['teacher_id' => $ownTeacher]);
+    }
+
     public function test_admin_cannot_create_timetable_for_section_of_another_school(): void
     {
         [$admin] = $this->bootstrapAdminWithSection();

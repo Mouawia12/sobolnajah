@@ -66,4 +66,7 @@ return [
         'view' => 'Voir les conflits',
         'days' => ['','Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],
     ],
+    'validation' => [
+        'teacher_other_branch' => 'L enseignant choisi n appartient pas a la branche de cette section.',
+    ],
 ];

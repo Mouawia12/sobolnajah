@@ -100,7 +100,7 @@
                                         <div class="modal-header"><h5 class="modal-title">{{ trans('accounts.reset_password') }} — {{ $user->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                                         <div class="modal-body text-start">
                                             <label class="form-label">{{ trans('accounts.new_password') }}</label>
-                                            <input type="text" name="new_password" class="form-control" dir="ltr" required minlength="6">
+                                            <input type="text" name="new_password" class="form-control" dir="ltr" required minlength="8">
                                             <small class="text-muted">{{ trans('accounts.reset_hint') }}</small>
                                         </div>
                                         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button><button type="submit" class="btn btn-warning">{{ trans('accounts.save') }}</button></div>

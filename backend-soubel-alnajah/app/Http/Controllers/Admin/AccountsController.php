@@ -69,7 +69,7 @@ class AccountsController extends Controller
         $this->assertSameSchool($user);
 
         $validated = $request->validate([
-            'new_password' => ['required', 'string', 'min:6', 'max:100'],
+            'new_password' => ['required', 'string', 'min:8', 'max:100'],
         ]);
 
         $user->update([

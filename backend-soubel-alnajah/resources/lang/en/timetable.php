@@ -66,4 +66,7 @@ return [
         'view' => 'View conflicts',
         'days' => ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
     ],
+    'validation' => [
+        'teacher_other_branch' => 'The selected teacher does not belong to this section branch.',
+    ],
 ];

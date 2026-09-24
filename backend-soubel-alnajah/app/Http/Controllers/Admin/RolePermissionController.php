@@ -194,7 +194,7 @@ class RolePermissionController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6', 'max:100'],
+            'password' => ['required', 'string', 'min:8', 'max:100'],
             // دور واحد فقط لكل مستخدم.
             'role' => ['nullable', 'string', 'exists:roles,name'],
             // بيانات المعلّم (اختيارية بالكامل).
@@ -350,7 +350,7 @@ class RolePermissionController extends Controller
         $this->assertSameSchool($user);
 
         $validated = $request->validate([
-            'new_password' => ['required', 'string', 'min:6', 'max:100'],
+            'new_password' => ['required', 'string', 'min:8', 'max:100'],
         ]);
 
         $user->update([

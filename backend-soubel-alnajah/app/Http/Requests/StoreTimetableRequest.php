@@ -26,7 +26,7 @@ class StoreTimetableRequest extends FormRequest
             'entries.*.starts_at' => ['nullable', 'date_format:H:i'],
             'entries.*.ends_at' => ['nullable', 'date_format:H:i'],
             'entries.*.subject_name' => ['required', 'string', 'max:140'],
-            'entries.*.teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
+            'entries.*.teacher_id' => ['nullable', 'integer', 'exists:teachers,id', new \App\Rules\TeacherBelongsToSectionSchool($this->input('section_id'))],
             'entries.*.room_name' => ['nullable', 'string', 'max:80'],
             'entries.*.notes' => ['nullable', 'string', 'max:255'],
         ];

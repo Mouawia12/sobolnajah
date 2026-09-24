@@ -170,7 +170,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">{{ trans('roles.password') }}</label>
-                    <input type="text" name="password" class="form-control" dir="ltr" minlength="6" required>
+                    <input type="text" name="password" class="form-control" dir="ltr" minlength="8" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">{{ trans('roles.role') }}</label>
@@ -330,7 +330,7 @@
     <div class="modal-header"><h5 class="modal-title">{{ trans('roles.reset_password') }} — <span id="upName"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
         <label class="form-label">{{ trans('roles.new_password') }}</label>
-        <input type="text" id="upPassword" class="form-control" dir="ltr" minlength="6">
+        <input type="text" id="upPassword" class="form-control" dir="ltr" minlength="8">
         <small class="text-muted">{{ trans('accounts.reset_hint') }}</small>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('opt.close') }}</button><button class="btn btn-warning" id="upSave">{{ trans('roles.save') }}</button></div>
