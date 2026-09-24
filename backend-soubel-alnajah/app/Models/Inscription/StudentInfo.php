@@ -2,6 +2,7 @@
 
 namespace App\Models\Inscription;
 
+use App\Models\Concerns\BelongsToSchoolThroughRelations;
 use App\Models\User;
 use App\Models\School\Section;
 use App\Models\AgendaScolaire\NoteStudent;
@@ -23,6 +24,7 @@ class StudentInfo extends Model
 {
     use SoftDeletes;
     use HasFactory;
+    use BelongsToSchoolThroughRelations;
     use HasTranslations;
     public $translatable = ['prenom','nom'];
 
@@ -54,6 +56,12 @@ class StudentInfo extends Model
     public function noteStudent(): HasOne
     {
         return $this->hasOne(NoteStudent::class, 'student_id');
+    }
+
+    /** فرع التلميذ هو فرع قسمه (يُشتقّ دائماً من القسم فلا يخرج عن التطابق). */
+    public function restrictToSchool(Builder $query, int $schoolId): void
+    {
+        $query->whereHas('section', fn (Builder $q) => $q->where('sections.school_id', $schoolId));
     }
 
     public function scopeForSchool(Builder $query, ?int $schoolId): Builder

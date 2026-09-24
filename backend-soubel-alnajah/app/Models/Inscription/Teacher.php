@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models\Inscription;
+use App\Models\Concerns\BelongsToSchoolThroughRelations;
 use App\Models\User;
 use App\Models\Specialization\Specialization;
 use App\Models\School\Section;
@@ -18,6 +19,7 @@ use Spatie\Translatable\HasTranslations;
 class Teacher extends Model
 {
     use HasFactory;
+    use BelongsToSchoolThroughRelations;
     use HasTranslations;
     public $translatable = ['name'];
 
@@ -40,6 +42,15 @@ class Teacher extends Model
     public function sections(): BelongsToMany
     {
         return $this->belongsToMany(Section::class,'teacher_section');
+    }
+
+    /** الأستاذ ينتمي للفرع إن درّس أحد أقسامه أو كان حسابه فيه (قد يدرّس في فرعين). */
+    public function restrictToSchool(Builder $query, int $schoolId): void
+    {
+        $query->where(function (Builder $builder) use ($schoolId) {
+            $builder->whereHas('sections', fn (Builder $q) => $q->where('sections.school_id', $schoolId))
+                ->orWhereHas('user', fn (Builder $q) => $q->where('users.school_id', $schoolId));
+        });
     }
 
     public function scopeForSchool(Builder $query, ?int $schoolId): Builder

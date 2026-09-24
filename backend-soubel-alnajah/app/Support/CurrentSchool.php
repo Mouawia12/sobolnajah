@@ -54,6 +54,19 @@ class CurrentSchool
         return Auth::check() && (bool) Auth::user()?->school_id;
     }
 
+    /**
+     * هل المستخدم الحالي ولي أو تلميذ؟ وصولهما مبني على الملكية (أبناؤه/سجلّه)
+     * لا على الفرع، فالولي قد يكون له أبناء في فرعين مختلفين.
+     */
+    public static function isFamilyUser(): bool
+    {
+        if (self::$overridden || !Auth::check()) {
+            return false;
+        }
+
+        return (bool) Auth::user()?->hasRole(['guardian', 'student']);
+    }
+
     /** تثبيت فرع مؤقتاً (للمهام/الطرفية/عمليات المدير العام عبر الفروع). */
     public static function set(?int $schoolId): void
     {

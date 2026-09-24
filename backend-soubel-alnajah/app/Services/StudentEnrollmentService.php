@@ -187,7 +187,9 @@ class StudentEnrollmentService
         $sourceFingerprints = $this->buildNameFingerprints($firstNames, $lastNames);
         $sourceNameTokens = $this->extractNameTokens($firstNames, $lastNames);
 
+        // الفرع محدَّد صراحة هنا، فلا نربطه بفرع الجلسة.
         $duplicateQuery = StudentInfo::query()
+            ->acrossSchools()
             ->forSchool($schoolId)
             ->with(['parent:id,numtelephonewali', 'user:id,email'])
             ->select(['id', 'user_id', 'parent_id', 'section_id', 'prenom', 'nom', 'datenaissance', 'numtelephone']);
@@ -284,7 +286,9 @@ class StudentEnrollmentService
             ]);
         }
 
+        // الولي قد يكون له أبناء في فرعين: نبحث عنه في كل الفروع لتفادي تكرار حسابه.
         $guardian = MyParent::query()
+            ->acrossSchools()
             ->where(function (Builder $query) use ($phone, $email) {
                 if ($phone) {
                     $query->orWhere('numtelephonewali', $phone);

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models\Inscription;
+use App\Models\Concerns\BelongsToSchoolThroughRelations;
 use App\Models\User;
 use App\Models\Inscription\StudentInfo;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,6 +17,7 @@ use Spatie\Translatable\HasTranslations;
 class MyParent extends Model
 {
     use HasFactory;
+    use BelongsToSchoolThroughRelations;
     use HasTranslations;
     public $translatable = ['prenomwali','nomwali'];
 
@@ -32,6 +34,15 @@ class MyParent extends Model
     public function students(): HasMany
     {
         return $this->hasMany(StudentInfo::class, 'parent_id');
+    }
+
+    /** الولي ينتمي للفرع إن كان له ابن فيه أو كان حسابه فيه (قد يكون له أبناء في فرعين). */
+    public function restrictToSchool(Builder $query, int $schoolId): void
+    {
+        $query->where(function (Builder $builder) use ($schoolId) {
+            $builder->whereHas('students.section', fn (Builder $q) => $q->where('sections.school_id', $schoolId))
+                ->orWhereHas('user', fn (Builder $q) => $q->where('users.school_id', $schoolId));
+        });
     }
 
     public function scopeForSchool(Builder $query, ?int $schoolId): Builder

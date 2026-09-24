@@ -117,11 +117,11 @@ class CreatePortalUserAction
      */
     public function ensureProfileForRole(User $user, ?string $role): void
     {
-        if ($role === 'teacher' && !Teacher::query()->where('user_id', $user->id)->exists()) {
+        if ($role === 'teacher' && !Teacher::query()->acrossSchools()->where('user_id', $user->id)->exists()) {
             $this->buildProfile($user, 'teacher', ['name' => $this->nameArray($user)]);
-        } elseif ($role === 'guardian' && !$user->parentProfile()->exists()) {
+        } elseif ($role === 'guardian' && !$user->parentProfile()->acrossSchools()->exists()) {
             $this->buildProfile($user, 'guardian', ['name' => $this->nameArray($user)]);
-        } elseif ($role === 'student' && !$user->studentProfile()->exists()) {
+        } elseif ($role === 'student' && !$user->studentProfile()->acrossSchools()->exists()) {
             throw ValidationException::withMessages([
                 'role' => trans('roles.student_role_needs_profile'),
             ]);

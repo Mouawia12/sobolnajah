@@ -124,7 +124,8 @@ class MinistryStudentImportService
                     $sectionName
                 );
 
-                $existing = StudentInfo::withTrashed()->where('national_id', $nationalId)->first();
+                // الرقم الوطني فريد في كل الفروع: تلميذ انتقل من فرع آخر يُحدَّث بدل خطأ تكرار.
+                $existing = StudentInfo::withTrashed()->acrossSchools()->where('national_id', $nationalId)->first();
 
                 if ($existing) {
                     $status = $this->updateExistingStudent($existing, $row, $section, $nationalId);

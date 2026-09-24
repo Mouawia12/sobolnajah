@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Tenancy;
 
+use App\Models\Inscription\MyParent;
+use App\Models\Inscription\StudentInfo;
+use App\Models\Inscription\Teacher;
 use App\Models\Role;
 use App\Models\School\Schoolgrade;
 use App\Models\School\Section;
@@ -127,7 +130,93 @@ class CentralSchoolIsolationTest extends TestCase
         $this->assertDatabaseMissing('note_students', ['student_id' => $studentB]);
     }
 
+    /* ============== عزل التلميذ والأستاذ والولي (عبر العلاقات) ============== */
+
+    public function test_branch_admin_sees_only_own_students_and_guardians(): void
+    {
+        [$schoolA, $sectionA] = $this->makeSchoolWithSection('A');
+        [$schoolB, $sectionB] = $this->makeSchoolWithSection('B');
+        $studentA = $this->makeStudent($schoolA, $sectionA);
+        $this->makeStudent($schoolB, $sectionB);
+
+        $this->actingAs($this->branchAdmin($schoolA));
+
+        $this->assertSame([$studentA], StudentInfo::query()->pluck('id')->all());
+        $this->assertSame(1, MyParent::query()->count());
+        // التجاوز الصريح يرى كل الفروع.
+        $this->assertSame(2, StudentInfo::query()->acrossSchools()->count());
+    }
+
+    public function test_global_admin_sees_students_of_all_branches(): void
+    {
+        [$schoolA, $sectionA] = $this->makeSchoolWithSection('A');
+        [$schoolB, $sectionB] = $this->makeSchoolWithSection('B');
+        $this->makeStudent($schoolA, $sectionA);
+        $this->makeStudent($schoolB, $sectionB);
+
+        $globalAdmin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $globalAdmin->attachRole('admin');
+        $this->actingAs($globalAdmin);
+
+        $this->assertSame(2, StudentInfo::query()->count());
+        $this->assertSame(2, MyParent::query()->count());
+    }
+
+    public function test_teacher_teaching_in_two_branches_is_visible_in_both(): void
+    {
+        [$schoolA, $sectionA] = $this->makeSchoolWithSection('A');
+        [$schoolB, $sectionB] = $this->makeSchoolWithSection('B');
+
+        $sharedUser = User::factory()->create(['school_id' => $schoolA, 'must_change_password' => false]);
+        $shared = $this->makeTeacher($sharedUser->id, [$sectionA, $sectionB]);
+        $onlyAUser = User::factory()->create(['school_id' => $schoolA, 'must_change_password' => false]);
+        $this->makeTeacher($onlyAUser->id, [$sectionA]);
+
+        $this->actingAs($this->branchAdmin($schoolB));
+        $this->assertSame([$shared], Teacher::query()->pluck('id')->all());
+
+        $this->actingAs($this->branchAdmin($schoolA));
+        $this->assertSame(2, Teacher::query()->count());
+    }
+
+    public function test_guardian_with_children_in_two_branches_sees_all_children(): void
+    {
+        Role::firstOrCreate(['name' => 'guardian']);
+        [$schoolA, $sectionA] = $this->makeSchoolWithSection('A');
+        [$schoolB, $sectionB] = $this->makeSchoolWithSection('B');
+        $childA = $this->makeStudent($schoolA, $sectionA);
+        $childB = $this->makeStudent($schoolB, $sectionB);
+
+        // نفس الولي لابن الفرع (ب).
+        $parentId = (int) DB::table('studentinfos')->where('id', $childA)->value('parent_id');
+        DB::table('studentinfos')->where('id', $childB)->update(['parent_id' => $parentId]);
+
+        $guardianUser = User::query()->find(DB::table('my_parents')->where('id', $parentId)->value('user_id'));
+        $guardianUser->attachRole('guardian');
+        $this->actingAs($guardianUser);
+
+        $parent = MyParent::query()->where('user_id', $guardianUser->id)->firstOrFail();
+        $this->assertEqualsCanonicalizing([$childA, $childB], $parent->students()->pluck('id')->all());
+    }
+
     /* ============================ أدوات ============================ */
+
+    private function makeTeacher(int $userId, array $sectionIds): int
+    {
+        $teacherId = DB::table('teachers')->insertGetId([
+            'user_id' => $userId,
+            'name' => json_encode(['fr' => 'T', 'ar' => 'أ', 'en' => 'T']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        foreach ($sectionIds as $sectionId) {
+            DB::table('teacher_section')->insert([
+                'teacher_id' => $teacherId, 'section_id' => $sectionId,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        return $teacherId;
+    }
 
     /** @return array{0:int,1:int} [schoolId, sectionId] */
     private function makeSchoolWithSection(string $suffix): array
