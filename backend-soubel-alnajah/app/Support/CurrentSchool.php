@@ -43,6 +43,11 @@ class CurrentSchool
         }
 
         // مدير عام: فرع نشط اختياري من الجلسة، وإلا كل الفروع.
+        // المبدّل خاص بالمدير فقط، فلا يؤثّر الفرع النشط على غيره.
+        if (!$user || !$user->hasRole('admin')) {
+            return null;
+        }
+
         $active = self::sessionBranchId();
 
         return $active ?: null;

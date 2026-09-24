@@ -22,4 +22,7 @@ return [
     'timetables' => 'Timetables',
     'profile' => 'Profile',
     'setting' => 'Settings',
+    'active_branch' => 'Active branch',
+    'all_branches' => 'All branches',
+    'branch_switched' => 'Branch switched.',
 ];

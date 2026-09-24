@@ -217,6 +217,30 @@
 		
       <div class="navbar-custom-menu r-side">
         <ul class="nav navbar-nav">	
+			{{-- مبدّل الفروع: للمدير العام فقط (مدير الفرع مقيّد بفرعه) --}}
+			@php
+				$branchUser = auth()->user();
+				$canSwitchBranch = $branchUser && !$branchUser->school_id && $branchUser->hasRole('admin');
+			@endphp
+			@if ($canSwitchBranch)
+				@php
+					$headerBranches = \Illuminate\Support\Facades\Cache::remember('lookup:branches', 3600, fn () => \App\Models\School\School::query()
+						->select(['id', 'name_school'])->orderBy('name_school')->get());
+					$activeBranchId = \App\Support\CurrentSchool::id();
+				@endphp
+				<li class="nav-item d-flex align-items-center mx-5">
+					<form method="POST" action="{{ route('admin.branch.switch') }}" class="branch-switcher d-flex align-items-center">
+						@csrf
+						<i class="mdi mdi-source-branch me-5 {{ $activeBranchId ? 'text-warning' : 'text-muted' }}" title="{{ trans('main_header.active_branch') }}"></i>
+						<select name="branch_id" class="form-select form-select-sm" aria-label="{{ trans('main_header.active_branch') }}" onchange="this.form.submit()" style="min-width: 150px; max-width: 220px;">
+							<option value="">{{ trans('main_header.all_branches') }}</option>
+							@foreach ($headerBranches as $headerBranch)
+								<option value="{{ $headerBranch->id }}" @selected($activeBranchId === (int) $headerBranch->id)>{{ $headerBranch->name_school }}</option>
+							@endforeach
+						</select>
+					</form>
+				</li>
+			@endif
 			<li class="btn-group nav-item d-lg-inline-flex d-none">
 				<a
 					href="{{ route('site.home') }}"

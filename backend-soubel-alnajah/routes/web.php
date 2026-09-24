@@ -180,6 +180,7 @@ Route::group(
 
         Route::group(['middleware' => ['role:admin','auth','force.password.change','localeSessionRedirect', 'localizationRedirect', 'localeViewPath']], function() {
             Route::get('/admin', [HomeController::class, 'index'])->name('admin.dashboard');
+            Route::post('/admin/active-branch', [\App\Http\Controllers\Admin\ActiveBranchController::class, 'update'])->name('admin.branch.switch');
             Route::get('/admin/users/create', [UserManagementController::class, 'create'])->name('admin.users.create');
             Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
             Route::get('/admin/roles', [RolePermissionController::class, 'index'])->name('roles.index');

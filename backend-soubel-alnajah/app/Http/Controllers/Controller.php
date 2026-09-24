@@ -20,9 +20,8 @@ class Controller extends BaseController
      */
     protected function currentSchoolId(): ?int
     {
-        $user = Auth::user();
-
-        return $user?->school_id;
+        // فرع المستخدم، أو الفرع النشط الذي اختاره المدير العام من المبدّل.
+        return \App\Support\CurrentSchool::id();
     }
 
     /**
@@ -33,9 +32,10 @@ class Controller extends BaseController
      */
     protected function branchFilterId(): ?int
     {
-        $ownSchoolId = Auth::user()?->school_id;
-        if ($ownSchoolId) {
-            return (int) $ownSchoolId;
+        // مدير فرع، أو مدير عام اختار فرعاً نشطاً: الفلتر مثبّت على هذا الفرع.
+        $activeSchoolId = \App\Support\CurrentSchool::id();
+        if ($activeSchoolId) {
+            return $activeSchoolId;
         }
 
         return (int) request('branch_id') ?: null;
@@ -49,10 +49,10 @@ class Controller extends BaseController
      */
     protected function branchOptions(): Collection
     {
-        $ownSchoolId = Auth::user()?->school_id;
-        if ($ownSchoolId) {
+        $activeSchoolId = \App\Support\CurrentSchool::id();
+        if ($activeSchoolId) {
             return \App\Models\School\School::query()
-                ->whereKey($ownSchoolId)
+                ->whereKey($activeSchoolId)
                 ->select(['id', 'name_school'])
                 ->get();
         }

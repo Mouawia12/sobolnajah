@@ -22,4 +22,7 @@ return [
     'timetables' => 'الجداول',
     'profile'=>'الصفحة الشخصية',
     'setting'=>'الاعدادات',
+    'active_branch' => 'الفرع النشط',
+    'all_branches' => 'كل الفروع',
+    'branch_switched' => 'تم تبديل الفرع.',
 ];

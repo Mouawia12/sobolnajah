@@ -25,4 +25,7 @@ return [
     
     
 
+    'active_branch' => 'Branche active',
+    'all_branches' => 'Toutes les branches',
+    'branch_switched' => 'Branche changee.',
 ];

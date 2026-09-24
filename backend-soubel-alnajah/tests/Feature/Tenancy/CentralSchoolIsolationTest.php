@@ -199,6 +199,81 @@ class CentralSchoolIsolationTest extends TestCase
         $this->assertEqualsCanonicalizing([$childA, $childB], $parent->students()->pluck('id')->all());
     }
 
+    /* ============================ مبدّل الفروع ============================ */
+
+    public function test_global_admin_can_switch_active_branch_and_back(): void
+    {
+        [$schoolA] = $this->makeSchoolWithSection('A');
+        $this->makeSchoolWithSection('B');
+        $globalAdmin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $globalAdmin->attachRole('admin');
+
+        $this->actingAs($globalAdmin)->from('/admin')
+            ->post(route('admin.branch.switch'), ['branch_id' => $schoolA])
+            ->assertRedirect('/admin')
+            ->assertSessionHas(\App\Support\CurrentSchool::SESSION_KEY, $schoolA);
+
+        // الفرع النشط يقيّد كل الاستعلامات تلقائياً.
+        $this->assertSame(1, Section::query()->count());
+
+        $this->post(route('admin.branch.switch'), ['branch_id' => ''])
+            ->assertSessionMissing(\App\Support\CurrentSchool::SESSION_KEY);
+        $this->assertSame(2, Section::query()->count());
+    }
+
+    public function test_branch_admin_cannot_switch_branch(): void
+    {
+        [$schoolA] = $this->makeSchoolWithSection('A');
+        [$schoolB] = $this->makeSchoolWithSection('B');
+
+        $this->actingAs($this->branchAdmin($schoolA))
+            ->post(route('admin.branch.switch'), ['branch_id' => $schoolB])
+            ->assertStatus(403);
+    }
+
+    public function test_switch_rejects_unknown_branch(): void
+    {
+        $globalAdmin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $globalAdmin->attachRole('admin');
+
+        $this->actingAs($globalAdmin)
+            ->post(route('admin.branch.switch'), ['branch_id' => 999999])
+            ->assertSessionHasErrors('branch_id');
+    }
+
+    public function test_active_branch_in_session_does_not_affect_non_admin(): void
+    {
+        [$schoolA] = $this->makeSchoolWithSection('A');
+        $this->makeSchoolWithSection('B');
+        Role::firstOrCreate(['name' => 'accountant']);
+        $user = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $user->attachRole('accountant');
+
+        $this->app['session']->start();
+        session([\App\Support\CurrentSchool::SESSION_KEY => $schoolA]);
+        $this->actingAs($user);
+        $this->assertNull(\App\Support\CurrentSchool::id());
+
+        // نفس الجلسة مع مدير عام تُفعّل الفرع النشط (للتأكد أن الاختبار ذو معنى).
+        $globalAdmin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $globalAdmin->attachRole('admin');
+        $this->actingAs($globalAdmin);
+        $this->assertSame($schoolA, \App\Support\CurrentSchool::id());
+    }
+
+    public function test_header_shows_branch_switcher_only_for_global_admin(): void
+    {
+        [$schoolA] = $this->makeSchoolWithSection('A');
+        $globalAdmin = User::factory()->create(['must_change_password' => false, 'school_id' => null]);
+        $globalAdmin->attachRole('admin');
+
+        $this->actingAs($globalAdmin)->get(route('roles.index'))
+            ->assertOk()->assertSee(route('admin.branch.switch'), false);
+
+        $this->actingAs($this->branchAdmin($schoolA))->get(route('roles.index'))
+            ->assertOk()->assertDontSee(route('admin.branch.switch'), false);
+    }
+
     /* ============================ أدوات ============================ */
 
     private function makeTeacher(int $userId, array $sectionIds): int
