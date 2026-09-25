@@ -42,6 +42,7 @@ class StudentController extends Controller
         $sectionId = request('section_id');
         $classroomId = request('classroom_id');
         $gradeId = request('grade_id');
+        $withoutNationalId = request()->boolean('without_national_id');
         $branchId = $this->branchFilterId();
 
         $data['School'] = $this->branchOptions();
@@ -60,6 +61,8 @@ class StudentController extends Controller
                 'section.classroom.sections:id,classroom_id,name_section',
             ])
             ->when($sectionId, fn ($query) => $query->where('section_id', $sectionId))
+            // تلاميذ بلا رقم تعريف وطني (مستوردون من القوائم) لاستكمال بياناتهم.
+            ->when($withoutNationalId, fn ($query) => $query->where(fn ($q) => $q->whereNull('national_id')->orWhere('national_id', '')))
             ->when($classroomId, function ($query) use ($classroomId) {
                 $query->whereHas('section', fn ($sectionQuery) => $sectionQuery->where('classroom_id', $classroomId));
             })
@@ -358,7 +361,7 @@ class StudentController extends Controller
         foreach (range('A', $sample->getHighestColumn()) as $col) {
             $sample->getColumnDimension($col)->setWidth(20);
         }
-        $sample->setCellValue('A4', 'ملاحظة: عبّئ بياناتك في ورقة «التلاميذ». رقم التعريف يجب أن يكون 16 رقماً. الجنس: ذكر/أنثى.');
+        $sample->setCellValue('A4', 'ملاحظة: عبّئ بياناتك في ورقة «التلاميذ». رقم التعريف (إن وُجد) 16 رقماً. الجنس: ذكر/أنثى.');
 
         $this->addTemplateDropdowns($main);
         $this->addTemplateGuideSheet($spreadsheet);
@@ -405,7 +408,7 @@ class StudentController extends Controller
 
         $rows = [
             ['العمود', 'إجباري', 'القيم المقبولة / الصيغة', 'ملاحظة'],
-            ['رقم التعريف', 'نعم', '16 رقماً', 'التلميذ يُحدَّث إن كان رقمه موجوداً، ويُضاف إن لم يكن.'],
+            ['رقم التعريف', 'لا (يُفضَّل)', '16 رقماً', 'يُحدَّث التلميذ إن كان رقمه موجوداً. بدونه يُطابَق بالاسم في نفس السنة، ويظهر في القائمة بالأحمر «بدون رقم تعريف».'],
             ['اللقب', 'نعم', 'نص عربي', ''],
             ['الاسم', 'نعم', 'نص عربي', ''],
             ['الجنس', 'نعم', 'ذكر / أنثى', 'اختر من القائمة المنسدلة.'],

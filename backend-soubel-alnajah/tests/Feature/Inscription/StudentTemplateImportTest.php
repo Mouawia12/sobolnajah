@@ -72,7 +72,61 @@ class StudentTemplateImportTest extends TestCase
         ]);
 
         $this->actingAs($admin)->post(route('students.import.template.upload'), ['file' => $file])->assertStatus(302);
-        $this->assertDatabaseMissing('studentinfos', ['national_id' => '123']);
+        // رقم مكتوب لكنه غير صالح: يُرفض السطر (لا يُعامل كتلميذ بلا رقم).
+        $this->assertDatabaseCount('studentinfos', 0);
+    }
+
+    public function test_rows_without_national_id_are_imported_and_reimport_does_not_duplicate(): void
+    {
+        $admin = $this->admin();
+        [$section1] = $this->makeSection((int) $admin->school_id, 'أولى', 'عام', '1');
+        $rows = [
+            ['', 'بوعمرة', 'زكرياء', 'ذكر', '', '', 'أولى', '', '1', '', '', ''],
+            ['', 'عون', 'صارية', 'أنثى', '', '', 'أولى', '', '1', '', '', ''],
+        ];
+
+        $this->actingAs($admin)->post(route('students.import.template.upload'), ['file' => $this->buildTemplateUpload($rows)])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('studentinfos', 2);
+        $this->assertSame(2, DB::table('studentinfos')->whereNull('national_id')->where('section_id', $section1)->count());
+        $this->assertSame(0, (int) DB::table('studentinfos')->where('prenom->ar', 'صارية')->value('gender'));
+
+        // إعادة رفع نفس الملف: مطابقة بالاسم في نفس السنة، بلا تكرار.
+        $this->actingAs($admin)->post(route('students.import.template.upload'), ['file' => $this->buildTemplateUpload($rows)]);
+        $this->assertDatabaseCount('studentinfos', 2);
+    }
+
+    public function test_same_name_twice_in_same_grade_without_id_is_rejected_but_other_grade_is_allowed(): void
+    {
+        $admin = $this->admin();
+        $this->makeSection((int) $admin->school_id, 'أولى', 'عام', '1');
+        $this->makeSection((int) $admin->school_id, 'أولى', 'عام', '2');
+        $this->makeSection((int) $admin->school_id, 'ثانية', 'عام', '1');
+
+        $this->actingAs($admin)->post(route('students.import.template.upload'), ['file' => $this->buildTemplateUpload([
+            ['', 'بوصبيع إبراهيم', 'لقمان', 'ذكر', '', '', 'أولى', '', '1', '', '', ''],
+            ['', 'بوصبيع إبراهيم', 'لقمان', 'ذكر', '', '', 'أولى', '', '2', '', '', ''],   // نفس السنة: غامض → يُرفض
+            ['', 'بوصبيع إبراهيم', 'لقمان', 'ذكر', '', '', 'ثانية', '', '1', '', '', ''],  // سنة أخرى: تلميذ مختلف
+        ])]);
+
+        $this->assertDatabaseCount('studentinfos', 2);
+    }
+
+    public function test_students_list_highlights_and_filters_students_without_national_id(): void
+    {
+        $admin = $this->admin();
+        $this->makeSection((int) $admin->school_id, 'أولى', 'عام', '1');
+        $this->actingAs($admin)->post(route('students.import.template.upload'), ['file' => $this->buildTemplateUpload([
+            ['1234567890123459', 'طلحاوي', 'قيدالرقم', 'ذكر', '2012-01-01', 'الوادي', 'أولى', '', '1', '', '', ''],
+            ['', 'زرفاوي', 'بلاقيد', 'ذكر', '', '', 'أولى', '', '1', '', '', ''],
+        ])]);
+
+        $this->actingAs($admin)->get(route('Students.index'))
+            ->assertOk()->assertSee('بدون رقم تعريف')->assertSee('قيدالرقم')->assertSee('بلاقيد');
+
+        $this->actingAs($admin)->get(route('Students.index', ['without_national_id' => 1]))
+            ->assertOk()->assertSee('بلاقيد')->assertDontSee('قيدالرقم');
     }
 
     public function test_template_lists_own_sections_and_copied_values_import_into_same_section(): void

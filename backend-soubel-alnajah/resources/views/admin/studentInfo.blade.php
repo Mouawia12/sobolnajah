@@ -176,6 +176,13 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" name="without_national_id" value="1" id="without_national_id"
+                            @checked(request()->boolean('without_national_id')) onchange="this.form.submit()">
+                        <label class="form-check-label text-danger" for="without_national_id">بدون رقم تعريف فقط</label>
+                    </div>
+                </div>
                 <div class="col-md-2 d-flex gap-1">
                     <button class="btn btn-primary" type="submit">تصفية</button>
                     <a href="{{ route('Students.index') }}" class="btn btn-outline-secondary">إعادة</a>
@@ -216,8 +223,12 @@
                                         $studentEmail = optional($ins->user)->email;
                                         $isImportEmail = $studentEmail && \Illuminate\Support\Str::endsWith($studentEmail, '@import.local');
                                     @endphp
-                                    <a href="#" class="text-dark fw-600 hover-primary fs-16">{{ $ins->prenom }}
+                                    <a href="#" class="{{ $ins->national_id ? 'text-dark' : 'text-danger' }} fw-600 hover-primary fs-16">{{ $ins->prenom }}
                                         {{ $ins->nom }}</a>
+                                    @unless ($ins->national_id)
+                                        <span class="badge badge-danger-light d-block mt-5" style="width: fit-content; margin-inline: auto;"
+                                            title="أُضيف بدون رقم التعريف الوطني؛ أكمل بياناته">بدون رقم تعريف</span>
+                                    @endunless
                                     @if ($ins->national_id)
                                         <span class="badge badge-info-light d-block mt-5 fs-14"
                                             style="direction: ltr; unicode-bidi: embed; letter-spacing: 1px; width: fit-content; margin-inline: auto;">
@@ -227,7 +238,8 @@
                                     @if ($studentEmail && !$isImportEmail)
                                         <span class="text-fade d-block">{{ $studentEmail }}</span>
                                     @endif
-                                    @if (!$ins->national_id)
+                                    {{-- المستورد بلا رقم تعريف يحمل هاتفاً داخلياً مؤقتاً لا يُعرض --}}
+                                    @if (!$ins->national_id && !$isImportEmail)
                                         <span class="text-fade d-block">0{{ $ins->numtelephone }}</span>
                                     @endif
                                 </td>
@@ -376,7 +388,7 @@
                                                         <span class="fw-600">{{ $studentEmail ?: '—' }}</span>
                                                     </div>
                                                 @endunless
-                                                @if ((string) $ins->numtelephone !== (string) $ins->national_id)
+                                                @if ((string) $ins->numtelephone !== (string) $ins->national_id && !$isImportEmail)
                                                     <div class="col-md-4 mb-15">
                                                         <span class="text-fade d-block fs-12">{{ trans('inscription.numtelephone') }}</span>
                                                         <span class="fw-600" style="direction: ltr; unicode-bidi: embed;">0{{ $ins->numtelephone }}</span>

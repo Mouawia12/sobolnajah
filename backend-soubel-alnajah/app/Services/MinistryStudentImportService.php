@@ -80,6 +80,7 @@ class MinistryStudentImportService
         ];
         $issues = [];
         $seenNationalIds = [];
+        $seenNamesWithoutId = [];
 
         $this->progress->running($token, [
             'total_rows' => $totalRows,
@@ -95,18 +96,21 @@ class MinistryStudentImportService
             try {
                 $nationalId = preg_replace('/\D+/', '', (string) ($row['national_id'] ?? ''));
 
-                if (strlen($nationalId) !== 16) {
+                // رقم التعريف اختياري؛ إن كُتب يجب أن يكون صحيحاً.
+                if ($nationalId !== '' && strlen($nationalId) !== 16) {
                     $counters['failed_rows']++;
                     $issues[] = "السطر {$rowNumber}: رقم تعريف غير صالح (يجب أن يكون 16 رقماً).";
                     continue;
                 }
 
-                if (isset($seenNationalIds[$nationalId])) {
-                    $counters['unchanged_rows']++;
-                    $issues[] = "السطر {$rowNumber}: رقم التعريف {$nationalId} مكرر داخل الملف، تم تجاهله.";
-                    continue;
+                if ($nationalId !== '') {
+                    if (isset($seenNationalIds[$nationalId])) {
+                        $counters['unchanged_rows']++;
+                        $issues[] = "السطر {$rowNumber}: رقم التعريف {$nationalId} مكرر داخل الملف، تم تجاهله.";
+                        continue;
+                    }
+                    $seenNationalIds[$nationalId] = true;
                 }
-                $seenNationalIds[$nationalId] = true;
 
                 $gradeName = (string) ($row['grade'] ?? '');
                 $sectionName = (string) ($row['section'] ?? '');
@@ -123,6 +127,29 @@ class MinistryStudentImportService
                     $hasStreams ? ($row['stream'] ?? null) : null,
                     $sectionName
                 );
+
+                if ($nationalId === '') {
+                    // بلا رقم تعريف: المطابقة بالاسم داخل نفس المدرسة ونفس السنة، حتى
+                    // لا يتكرر التلميذ عند إعادة رفع الملف نفسه.
+                    $nameKey = $section->grade_id . '|' . $this->nameKey($row);
+                    if (isset($seenNamesWithoutId[$nameKey])) {
+                        $counters['failed_rows']++;
+                        $issues[] = "السطر {$rowNumber}: الاسم مكرر في نفس السنة داخل الملف بدون رقم تعريف، تم تجاهله.";
+                        continue;
+                    }
+                    $seenNamesWithoutId[$nameKey] = true;
+
+                    $existing = $this->findByNameWithoutNationalId($row, $school->id, (int) $section->grade_id);
+                    if ($existing) {
+                        $status = $this->updateExistingStudent($existing, $row, $section, null);
+                        $counters[$status . '_rows']++;
+                    } else {
+                        $this->createStudent($row, $section, null);
+                        $counters['created_rows']++;
+                    }
+
+                    continue;
+                }
 
                 // الرقم الوطني فريد في كل الفروع: تلميذ انتقل من فرع آخر يُحدَّث بدل خطأ تكرار.
                 $existing = StudentInfo::withTrashed()->acrossSchools()->where('national_id', $nationalId)->first();
@@ -169,7 +196,7 @@ class MinistryStudentImportService
      *
      * @return string created|updated|moved|unchanged
      */
-    private function updateExistingStudent(StudentInfo $student, array $row, Section $section, string $nationalId): string
+    private function updateExistingStudent(StudentInfo $student, array $row, Section $section, ?string $nationalId): string
     {
         $changes = [];
 
@@ -236,8 +263,11 @@ class MinistryStudentImportService
         return ($hasFieldChanges || $wasTrashed) ? 'updated' : 'unchanged';
     }
 
-    private function createStudent(array $row, Section $section, string $nationalId): StudentInfo
+    private function createStudent(array $row, Section $section, ?string $nationalId): StudentInfo
     {
+        // بلا رقم تعريف: معرّف داخلي مؤقت فريد للحساب والهاتف فقط (لا يُحفظ كرقم تعريف).
+        $identity = $nationalId ?: $this->temporaryIdentity();
+
         $firstName = trim((string) ($row['first_name_ar'] ?? '')) ?: 'غير محدد';
         $lastName = trim((string) ($row['last_name_ar'] ?? '')) ?: 'غير محدد';
         $birthPlace = trim((string) ($row['birth_place'] ?? '')) ?: 'غير محدد';
@@ -245,9 +275,9 @@ class MinistryStudentImportService
         $studentPayload = [
             'first_name' => ['ar' => $firstName, 'fr' => $firstName, 'en' => $firstName],
             'last_name' => ['ar' => $lastName, 'fr' => $lastName, 'en' => $lastName],
-            'email' => $this->syntheticEmail('student', $nationalId),
+            'email' => $this->syntheticEmail('student', $identity),
             'gender' => $this->normalizeGender($row['gender'] ?? null),
-            'phone' => $nationalId, // هاتف مؤقت فريد وثابت حتى يُستكمل لاحقاً
+            'phone' => $identity, // هاتف مؤقت فريد وثابت حتى يُستكمل لاحقاً
             'birth_date' => $this->normalizeDate($row['birth_date'] ?? null) ?? '2010-01-01',
             'birth_place' => $birthPlace,
             'wilaya' => $birthPlace,
@@ -264,8 +294,8 @@ class MinistryStudentImportService
             'wilaya' => $birthPlace,
             'dayra' => $birthPlace,
             'baladia' => $birthPlace,
-            'phone' => '9' . substr($nationalId, 1), // هاتف مؤقت فريد مشتق من رقم التعريف
-            'email' => $this->syntheticEmail('guardian', $nationalId),
+            'phone' => '9' . substr($identity, 1), // هاتف مؤقت فريد مشتق من رقم التعريف
+            'email' => $this->syntheticEmail('guardian', $identity),
         ];
 
         return $this->enrollmentService->createStudentFromImport(
@@ -276,10 +306,10 @@ class MinistryStudentImportService
         );
     }
 
-    private function buildMinistryFields(array $row, string $nationalId): array
+    private function buildMinistryFields(array $row, ?string $nationalId): array
     {
         return [
-            'national_id' => $nationalId,
+            'national_id' => $nationalId ?: null,
             'registration_number' => trim((string) ($row['registration_number'] ?? '')) ?: null,
             'enrolled_at' => $this->normalizeDate($row['enrolled_at'] ?? null),
             'schooling_system' => $this->normalizeSchoolingSystem($row['schooling_system'] ?? null),
@@ -354,6 +384,49 @@ class MinistryStudentImportService
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /** مفتاح مقارنة الاسم: اللقب + الاسم بعد توحيد المسافات. */
+    private function nameKey(array $row): string
+    {
+        return $this->cleanName($row['last_name_ar'] ?? '') . '|' . $this->cleanName($row['first_name_ar'] ?? '');
+    }
+
+    private function cleanName(mixed $value): string
+    {
+        return trim((string) preg_replace('/[\x{00A0}\s]+/u', ' ', (string) $value));
+    }
+
+    /**
+     * تلميذ موجود بنفس الاسم في نفس المدرسة ونفس السنة. أكثر من تطابق = غموض،
+     * فنرفض السطر بدل الربط بتلميذ خاطئ.
+     */
+    private function findByNameWithoutNationalId(array $row, int $schoolId, int $gradeId): ?StudentInfo
+    {
+        $matches = StudentInfo::withTrashed()
+            ->acrossSchools()
+            ->forSchool($schoolId)
+            ->whereHas('section', fn ($query) => $query->where('grade_id', $gradeId))
+            ->where('nom->ar', $this->cleanName($row['last_name_ar'] ?? ''))
+            ->where('prenom->ar', $this->cleanName($row['first_name_ar'] ?? ''))
+            ->limit(2)
+            ->get();
+
+        if ($matches->count() > 1) {
+            throw new \RuntimeException('يوجد أكثر من تلميذ بنفس الاسم في نفس السنة؛ أضف رقم التعريف لتحديده.');
+        }
+
+        return $matches->first();
+    }
+
+    /** رقم داخلي مؤقت من 16 رقماً (يبدأ بـ 7) لا يتعارض مع أرقام التعريف الحقيقية. */
+    private function temporaryIdentity(): string
+    {
+        do {
+            $identity = '7' . str_pad((string) random_int(0, 999999999999999), 15, '0', STR_PAD_LEFT);
+        } while (StudentInfo::withTrashed()->acrossSchools()->where('numtelephone', $identity)->exists());
+
+        return $identity;
     }
 
     private function syntheticEmail(string $prefix, string $nationalId): string
