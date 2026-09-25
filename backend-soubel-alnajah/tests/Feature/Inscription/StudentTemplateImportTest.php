@@ -75,6 +75,59 @@ class StudentTemplateImportTest extends TestCase
         $this->assertDatabaseMissing('studentinfos', ['national_id' => '123']);
     }
 
+    public function test_template_lists_own_sections_and_copied_values_import_into_same_section(): void
+    {
+        $admin = $this->admin();
+        [$sectionA] = $this->makeSection((int) $admin->school_id, 'أولى', 'عام', '1');
+        $otherSchool = DB::table('schools')->insertGetId([
+            'name_school' => json_encode(['fr' => 'O', 'ar' => 'مدرسة أخرى', 'en' => 'O']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->makeSection($otherSchool, 'ثانية', 'عام', '2');
+
+        $response = $this->actingAs($admin)->get(route('students.import.template'));
+        $response->assertOk();
+        $book = \PhpOffice\PhpSpreadsheet\IOFactory::load($response->getFile()->getPathname());
+
+        $this->assertNotNull($book->getSheetByName('توضيحات'));
+        $sections = $book->getSheetByName('الأقسام المتاحة')->toArray();
+        // مدير الفرع يرى أقسام فرعه فقط، بالأسماء المخزّنة حرفياً (الشعبة «عام» تُترك فارغة).
+        $this->assertCount(2, $sections);
+        [$schoolId, , $grade, $stream, $sectionName, $sectionId] = $sections[1];
+        $this->assertSame([(int) $admin->school_id, 'أولى', '', '1', $sectionA], [(int) $schoolId, $grade, (string) $stream, (string) $sectionName, (int) $sectionId]);
+
+        // نسخ القيم كما هي من الورقة يضع التلميذ في نفس القسم دون إنشاء قسم مكرر.
+        $sectionsBefore = DB::table('sections')->count();
+        $file = $this->buildTemplateUpload([
+            ['1234567890123458', 'بن علي', 'أحمد', 'ذكر', '2012-09-15', 'الوادي', $grade, $stream, $sectionName, '', '', ''],
+        ]);
+        $this->actingAs($admin)->post(route('students.import.template.upload'), ['file' => $file])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($sectionsBefore, DB::table('sections')->count());
+        $this->assertDatabaseHas('studentinfos', ['national_id' => '1234567890123458', 'section_id' => $sectionA]);
+    }
+
+    /** @return array{0:int} [sectionId] */
+    private function makeSection(int $schoolId, string $grade, string $stream, string $section): array
+    {
+        $json = fn (string $v) => json_encode(['fr' => $v, 'ar' => $v, 'en' => $v]);
+        $gradeId = DB::table('schoolgrades')->insertGetId([
+            'school_id' => $schoolId, 'name_grade' => $json($grade), 'notes' => $json(''),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classroomId = DB::table('classrooms')->insertGetId([
+            'school_id' => $schoolId, 'grade_id' => $gradeId, 'name_class' => $json($stream),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $sectionId = DB::table('sections')->insertGetId([
+            'school_id' => $schoolId, 'grade_id' => $gradeId, 'classroom_id' => $classroomId,
+            'name_section' => $json($section), 'Status' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return [$sectionId];
+    }
+
     private function admin(): User
     {
         $admin = User::factory()->create(['must_change_password' => false]);

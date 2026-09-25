@@ -360,6 +360,10 @@ class StudentController extends Controller
         }
         $sample->setCellValue('A4', 'ملاحظة: عبّئ بياناتك في ورقة «التلاميذ». رقم التعريف يجب أن يكون 16 رقماً. الجنس: ذكر/أنثى.');
 
+        $this->addTemplateDropdowns($main);
+        $this->addTemplateGuideSheet($spreadsheet);
+        $this->addTemplateSectionsSheet($spreadsheet);
+
         $spreadsheet->setActiveSheetIndex(0);
 
         $fileName = 'قالب-استيراد-التلاميذ.xlsx';
@@ -369,6 +373,107 @@ class StudentController extends Controller
         return response()->download($tmp, $fileName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    /** قوائم منسدلة للقيم الثابتة في ورقة التعبئة (تمنع أخطاء الكتابة). */
+    private function addTemplateDropdowns(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet): void
+    {
+        $lists = [
+            'D' => '"ذكر,أنثى"',                  // الجنس
+            'J' => '"خارجي,نصف داخلي,داخلي"',     // نظام التمدرس
+        ];
+
+        foreach ($lists as $column => $formula) {
+            $validation = $sheet->getCell($column . '2')->getDataValidation();
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $validation->setAllowBlank(true);
+            $validation->setShowDropDown(true);
+            $validation->setShowErrorMessage(true);
+            $validation->setErrorTitle('قيمة غير مقبولة');
+            $validation->setError('اختر قيمة من القائمة.');
+            $validation->setFormula1($formula);
+            $sheet->setDataValidation($column . '2:' . $column . '3000', $validation);
+        }
+    }
+
+    /** ورقة «توضيحات»: شرح كل عمود وقيمه المقبولة وطريقة الرفع. */
+    private function addTemplateGuideSheet(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): void
+    {
+        $guide = $spreadsheet->createSheet();
+        $guide->setTitle('توضيحات');
+        $guide->setRightToLeft(true);
+
+        $rows = [
+            ['العمود', 'إجباري', 'القيم المقبولة / الصيغة', 'ملاحظة'],
+            ['رقم التعريف', 'نعم', '16 رقماً', 'التلميذ يُحدَّث إن كان رقمه موجوداً، ويُضاف إن لم يكن.'],
+            ['اللقب', 'نعم', 'نص عربي', ''],
+            ['الاسم', 'نعم', 'نص عربي', ''],
+            ['الجنس', 'نعم', 'ذكر / أنثى', 'اختر من القائمة المنسدلة.'],
+            ['تاريخ الازدياد', 'يُفضَّل', 'YYYY-MM-DD مثل 2012-09-15', ''],
+            ['مكان الازدياد', 'يُفضَّل', 'نص', ''],
+            ['السنة', 'نعم', 'انسخها حرفياً من ورقة «الأقسام المتاحة»', 'أي اختلاف ولو بحرف يُنشئ سنة/قسماً جديداً مكرراً.'],
+            ['الشعبة', 'حسب القسم', 'انسخها حرفياً من ورقة «الأقسام المتاحة»', 'تُترك فارغة إن كانت الشعبة «عام».'],
+            ['القسم', 'نعم', 'انسخه حرفياً من ورقة «الأقسام المتاحة»', ''],
+            ['نظام التمدرس', 'لا', 'خارجي / نصف داخلي / داخلي', ''],
+            ['رقم القيد', 'لا', 'نص', ''],
+            ['تاريخ التسجيل', 'لا', 'YYYY-MM-DD', ''],
+            [],
+            ['طريقة الرفع', '', 'الملف يُرفع لمدرسة واحدة في كل مرة: اختر المدرسة عند الرفع، واستعمل أقسام تلك المدرسة فقط.', ''],
+            ['ورقة «الأقسام المتاحة»', '', 'تُولَّد من المنصة لحظة التنزيل: الأسماء والمعرّفات كما هي مخزّنة الآن.', ''],
+        ];
+        $guide->fromArray($rows, null, 'A1');
+        $guide->getStyle('A1:D1')->getFont()->setBold(true);
+        $guide->getStyle('A15:A16')->getFont()->setBold(true);
+        foreach (['A' => 22, 'B' => 11, 'C' => 60, 'D' => 60] as $col => $width) {
+            $guide->getColumnDimension($col)->setWidth($width);
+        }
+    }
+
+    /**
+     * ورقة «الأقسام المتاحة»: كل الأقسام التي يراها المستخدم (حسب فرعه) بأسمائها
+     * المخزّنة حرفياً ومعرّفاتها، لتُنسخ منها قيم «السنة/الشعبة/القسم» دون أخطاء.
+     */
+    private function addTemplateSectionsSheet(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): void
+    {
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle('الأقسام المتاحة');
+        $sheet->setRightToLeft(true);
+
+        $sections = Section::query()
+            ->with(['school:id,name_school', 'classroom:id,grade_id,name_class', 'classroom.schoolgrade:id,name_grade'])
+            ->withCount('students')
+            ->orderBy('school_id')
+            ->orderBy('grade_id')
+            ->orderBy('classroom_id')
+            ->orderBy('id')
+            ->get();
+
+        $ar = fn ($model, string $attribute) => $model ? (string) $model->getTranslation($attribute, 'ar', false) : '';
+
+        $rows = [['معرّف المدرسة', 'المدرسة', 'السنة', 'الشعبة', 'القسم', 'معرّف القسم', 'عدد التلاميذ الحاليين']];
+        foreach ($sections as $section) {
+            $stream = $ar($section->classroom, 'name_class');
+            $rows[] = [
+                $section->school_id,
+                $ar($section->school, 'name_school'),
+                $ar($section->classroom?->schoolgrade, 'name_grade'),
+                $stream === \App\Services\SchoolStructureSyncService::DEFAULT_CLASSROOM_NAME ? '' : $stream,
+                $ar($section, 'name_section'),
+                $section->id,
+                $section->students_count,
+            ];
+        }
+
+        $sheet->fromArray($rows, null, 'A1', true);
+        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+        $sheet->setAutoFilter('A1:G' . max(1, count($rows)));
+        $sheet->freezePane('A2');
+        foreach (['A' => 14, 'B' => 34, 'C' => 22, 'D' => 30, 'E' => 14, 'F' => 14, 'G' => 18] as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+        // القيم نصية حتى لا يحوّل Excel «01» إلى 1.
+        $sheet->getStyle('C2:E' . max(2, count($rows)))->getNumberFormat()
+            ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
     }
 
     /**
